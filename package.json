@@ -1,0 +1,10 @@
+{
+  "name": "auditsym",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Local-first cybersecurity audit platform. The app runs as a single file:// HTML; this package.json exists only so the pure-logic core/ modules can be unit-tested under Node.",
+  "scripts": {
+    "test": "node tests/run.mjs"
+  }
+}
