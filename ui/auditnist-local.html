@@ -88,6 +88,31 @@ class AuditSession {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Lifecycle Foundation (M0) — mirrors core/lifecycle.js
+// Shared helpers for audit-lifecycle records (Engagement, Finding, Response,
+// Remediation). Records are "born with history": { id, createdAt, updatedAt, history[] }.
+// ─────────────────────────────────────────────────────────────────────────────
+function genId(prefix='REC'){ return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2,7)}`; }
+function nowTs(){ return Date.now(); }
+function newRecord(prefix, fields={}){ return { id:genId(prefix), createdAt:nowTs(), updatedAt:nowTs(), history:[], ...fields }; }
+function recordChange(rec, actor, field, from, to){
+  if(!rec.history) rec.history=[];
+  rec.history.push({ ts:nowTs(), actor:actor||'system', field, from, to });
+  rec.updatedAt=nowTs();
+  return rec;
+}
+function applyChanges(rec, actor, changes={}){
+  let changed=0;
+  for(const [field,to] of Object.entries(changes)){
+    const from=rec[field];
+    if(from===to) continue;
+    recordChange(rec, actor, field, from, to);
+    rec[field]=to; changed++;
+  }
+  return changed;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Assessment Engine — scoring model (mirrors core/assessmentEngine.js)
 // Issue #17: ControlScore = StatusScore × RiskMultiplier × FrameworkWeight
 // ─────────────────────────────────────────────────────────────────────────────
@@ -541,6 +566,72 @@ placeholder="Ej: INF-2025-001" class="w-full mt-1 p-2 rounded bg-gray-700 text-g
 </div>
 </div>
 
+
+<!-- ── Audit Plan / Engagement Record (#20) ───────────────────────────────── -->
+<section id="audit-plan-panel" class="mt-6 bg-gray-800 rounded border border-gray-700">
+<div class="flex items-center justify-between px-4 py-3 cursor-pointer" onclick="toggleAuditPlan()">
+<h3 class="font-bold text-cyberaccent" data-i18n="audit_plan_title">📋 Audit Plan</h3>
+<span id="audit-plan-icon" class="text-gray-400 text-sm">▼</span>
+</div>
+<div id="audit-plan-body" class="border-t border-gray-700 p-4 space-y-4">
+<div class="grid md:grid-cols-2 gap-4">
+<div>
+<label class="block text-sm font-bold text-cyberaccent" data-i18n="eng_objective_label">Engagement Objective</label>
+<textarea id="eng_objective" rows="2" data-i18n-placeholder="eng_objective_ph" class="w-full mt-1 p-2 rounded bg-gray-700 text-gray-100"></textarea>
+</div>
+<div>
+<label class="block text-sm font-bold text-cyberaccent" data-i18n="eng_type_label">Engagement Type</label>
+<select id="eng_type" class="w-full mt-1 p-2 rounded bg-gray-700 text-gray-100">
+<option value="internal_audit" data-i18n="eng_type_internal">Internal Audit</option>
+<option value="readiness_assessment" data-i18n="eng_type_readiness">Readiness Assessment</option>
+<option value="gap_analysis" data-i18n="eng_type_gap">Gap Analysis</option>
+<option value="certification_support" data-i18n="eng_type_cert">Certification Support</option>
+</select>
+</div>
+<div>
+<label class="block text-sm font-bold text-cyberaccent" data-i18n="eng_criteria_label">Audit Criteria</label>
+<input id="eng_criteria" type="text" data-i18n-placeholder="eng_criteria_ph" class="w-full mt-1 p-2 rounded bg-gray-700 text-gray-100"/>
+</div>
+<div>
+<label class="block text-sm font-bold text-cyberaccent" data-i18n="eng_scope_label">Scope Summary</label>
+<textarea id="eng_scope" rows="2" data-i18n-placeholder="eng_scope_ph" class="w-full mt-1 p-2 rounded bg-gray-700 text-gray-100"></textarea>
+</div>
+</div>
+<div>
+<label class="block text-sm font-bold text-cyberaccent" data-i18n="eng_period_label">Period Under Review</label>
+<div class="flex gap-3 mt-1 items-center">
+<input id="eng_period_start" type="date" class="flex-1 p-2 rounded bg-gray-700 text-gray-100"/>
+<span class="text-gray-500">→</span>
+<input id="eng_period_end" type="date" class="flex-1 p-2 rounded bg-gray-700 text-gray-100"/>
+</div>
+</div>
+<div>
+<label class="block text-sm font-bold text-cyberaccent" data-i18n="eng_keydates_label">Key Dates</label>
+<div class="grid md:grid-cols-3 gap-3 mt-1">
+<div><span class="text-xs text-gray-400" data-i18n="eng_kickoff_label">Kickoff</span><input id="eng_kickoff" type="date" class="w-full p-2 rounded bg-gray-700 text-gray-100"/></div>
+<div><span class="text-xs text-gray-400" data-i18n="eng_fieldwork_start_label">Fieldwork Start</span><input id="eng_fieldwork_start" type="date" class="w-full p-2 rounded bg-gray-700 text-gray-100"/></div>
+<div><span class="text-xs text-gray-400" data-i18n="eng_fieldwork_end_label">Fieldwork End</span><input id="eng_fieldwork_end" type="date" class="w-full p-2 rounded bg-gray-700 text-gray-100"/></div>
+<div><span class="text-xs text-gray-400" data-i18n="eng_draft_report_label">Draft Report</span><input id="eng_draft_report" type="date" class="w-full p-2 rounded bg-gray-700 text-gray-100"/></div>
+<div><span class="text-xs text-gray-400" data-i18n="eng_final_report_label">Final Report</span><input id="eng_final_report" type="date" class="w-full p-2 rounded bg-gray-700 text-gray-100"/></div>
+<div><span class="text-xs text-gray-400" data-i18n="eng_status_label">Status</span>
+<select id="eng_status" class="w-full p-2 rounded bg-gray-700 text-gray-100">
+<option value="draft" data-i18n="eng_status_draft">Draft</option>
+<option value="in_progress" data-i18n="eng_status_in_progress">In Progress</option>
+<option value="ready_for_report" data-i18n="eng_status_ready">Ready for Report</option>
+<option value="issued" data-i18n="eng_status_issued">Issued</option>
+</select>
+</div>
+</div>
+</div>
+<div>
+<div class="flex items-center justify-between">
+<label class="block text-sm font-bold text-cyberaccent" data-i18n="eng_team_label">Audit Team</label>
+<button type="button" onclick="addTeamRow()" class="px-2 py-1 bg-gray-700 text-cyberaccent rounded text-xs hover:bg-gray-600" data-i18n="eng_add_member">+ Add Member</button>
+</div>
+<div id="eng-team-rows" class="space-y-2 mt-2"></div>
+</div>
+</div>
+</section>
 
 <div id="controls" class="mt-6 space-y-4"></div>
 
@@ -1133,6 +1224,7 @@ function loadAuditById(key) {
   document.getElementById('alcance').value = data.alcance || '';
   document.getElementById('id_informe').value = data.id || '';
   document.getElementById('fecha').value = data.fecha || '';
+  applyEngagement(data);  // restores Audit Plan; defaults cleanly for pre-#20 (v1) files
 
   const ctrlsContainer = document.getElementById('controls');
   while (ctrlsContainer.firstChild) ctrlsContainer.removeChild(ctrlsContainer.firstChild);
@@ -1963,6 +2055,8 @@ function clearData() {
   ['empresa_auditada','empresa_auditora','auditor','alcance','id_informe','fecha']
     .forEach(id => document.getElementById(id).value = '');
 
+  applyEngagement({});  // reset Audit Plan panel to defaults
+
   const ctrls = document.getElementById('controls');
   while (ctrls.firstChild) ctrls.removeChild(ctrls.firstChild);
 
@@ -2012,19 +2106,99 @@ function clearData() {
 // ─────────────────────────────────────────────────────────────────────────────
 // 🔹 SAVE / LOAD PROGRESS
 // ─────────────────────────────────────────────────────────────────────────────
-function saveProgress() {
+// ─── Audit Plan / Engagement (#20) ────────────────────────────────────────────
+let currentUser = 'auditor';  // single-actor (Model 1); becomes real identity later
+
+function toggleAuditPlan() {
+const body = document.getElementById('audit-plan-body');
+const icon = document.getElementById('audit-plan-icon');
+if (!body) return;
+const hidden = body.classList.toggle('hidden');
+if (icon) icon.textContent = hidden ? '▶' : '▼';
+}
+
+function addTeamRow(name = '', role = '') {
+const container = document.getElementById('eng-team-rows');
+if (!container) return;
+const row = document.createElement('div');
+row.className = 'eng-team-row flex gap-2';
+row.innerHTML = `
+<input type="text" class="eng-team-name flex-1 p-2 rounded bg-gray-700 text-gray-100" placeholder="${T('eng_member_name_ph')}" value="${(name||'').replace(/"/g,'&quot;')}"/>
+<input type="text" class="eng-team-role flex-1 p-2 rounded bg-gray-700 text-gray-100" placeholder="${T('eng_member_role_ph')}" value="${(role||'').replace(/"/g,'&quot;')}"/>
+<button type="button" onclick="this.parentNode.remove()" class="px-2 bg-gray-700 text-red-400 rounded hover:bg-gray-600">&times;</button>`;
+container.appendChild(row);
+}
+
+function renderTeamRows(team = []) {
+const container = document.getElementById('eng-team-rows');
+if (!container) return;
+container.innerHTML = '';
+(team || []).forEach(m => addTeamRow(m.name, m.role));
+}
+
+function collectEngagement() {
+const val = id => document.getElementById(id)?.value || '';
+const team = [];
+document.querySelectorAll('#eng-team-rows .eng-team-row').forEach(row => {
+const name = row.querySelector('.eng-team-name')?.value || '';
+const role = row.querySelector('.eng-team-role')?.value || '';
+if (name || role) team.push({ name, role });
+});
+const criteriaRaw = val('eng_criteria');
+return {
+objective: val('eng_objective'),
+engagementType: val('eng_type'),
+criteria: criteriaRaw ? criteriaRaw.split(',').map(s => s.trim()).filter(Boolean) : [],
+periodUnderReview: { start: val('eng_period_start'), end: val('eng_period_end') },
+scopeSummary: val('eng_scope'),
+team,
+keyDates: {
+kickoff: val('eng_kickoff'),
+fieldworkStart: val('eng_fieldwork_start'),
+fieldworkEnd: val('eng_fieldwork_end'),
+draftReport: val('eng_draft_report'),
+finalReport: val('eng_final_report')
+},
+status: val('eng_status') || 'draft'
+};
+}
+
+function applyEngagement(data) {
+const eng = (data && data.engagement) || {};
+const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+set('eng_objective', eng.objective);
+set('eng_type', eng.engagementType || 'internal_audit');
+set('eng_criteria', Array.isArray(eng.criteria) ? eng.criteria.join(', ') : (eng.criteria || ''));
+set('eng_period_start', eng.periodUnderReview?.start);
+set('eng_period_end', eng.periodUnderReview?.end);
+set('eng_scope', eng.scopeSummary);
+set('eng_kickoff', eng.keyDates?.kickoff);
+set('eng_fieldwork_start', eng.keyDates?.fieldworkStart);
+set('eng_fieldwork_end', eng.keyDates?.fieldworkEnd);
+set('eng_draft_report', eng.keyDates?.draftReport);
+set('eng_final_report', eng.keyDates?.finalReport);
+set('eng_status', eng.status || 'draft');
+renderTeamRows(eng.team || []);
+}
+
+// ─── Single source of truth for audit persistence (M0) ────────────────────────
+// Every save / export path collects through here; every restore path applies
+// engagement through applyEngagement(). New lifecycle sections (findings,
+// responses, remediation) plug in here in later milestones.
+function collectAuditData() {
 const data = {
+schemaVersion: 2,
+id: document.getElementById('id_informe').value || 'sinID',
 empresa: document.getElementById('empresa_auditada').value,
 auditora: document.getElementById('empresa_auditora').value,
 auditor: document.getElementById('auditor').value,
 alcance: document.getElementById('alcance').value,
-id: document.getElementById('id_informe').value || 'sinID',
 fecha: document.getElementById('fecha').value || new Date().toLocaleDateString(),
 framework: currentFramework,
-controls: [],
-evaluatedControls: evaluatedControls
+engagement: collectEngagement(),
+evaluatedControls: evaluatedControls,
+controls: []
 };
-
 document.querySelectorAll('.control').forEach(blk => {
 const questionEl = blk.querySelector('.control-body p');
 data.controls.push({
@@ -2037,7 +2211,11 @@ evidencia: blk.querySelector('.evidencia')?.value,
 notes: blk.querySelector('.notes')?.value
 });
 });
+return data;
+}
 
+function saveProgress() {
+const data = collectAuditData();
 localStorage.setItem(`auditnist_${data.id}`, JSON.stringify(data));
 alert('✅ Informe guardado localmente.');
 isDirty = false;
@@ -2074,31 +2252,7 @@ class="px-3 py-1 bg-cyberaccent text-black text-xs rounded hover:bg-blue-300">
 // 🔹 EXPORT / IMPORT JSON
 // ─────────────────────────────────────────────────────────────────────────────
 function exportToJSON() {
-const data = {
-id: document.getElementById('id_informe').value || 'sinID',
-empresa: document.getElementById('empresa_auditada').value,
-auditora: document.getElementById('empresa_auditora').value,
-auditor: document.getElementById('auditor').value,
-alcance: document.getElementById('alcance').value,
-fecha: document.getElementById('fecha').value || new Date().toLocaleDateString(),
-framework: currentFramework,
-evaluatedControls: evaluatedControls,
-controls: []
-};
-
-document.querySelectorAll('.control').forEach(blk => {
-const questionEl = blk.querySelector('.control-body p');
-data.controls.push({
-scfId: blk.querySelector('.ctrl')?.dataset.scfId || '',
-ctrl: blk.querySelector('.ctrl').value,
-question: questionEl ? questionEl.textContent : '',
-cumple: blk.querySelector('.cumple')?.value,
-riesgo: blk.querySelector('.riesgo')?.value,
-evidencia: blk.querySelector('.evidencia')?.value,
-notes: blk.querySelector('.notes')?.value
-});
-});
-
+const data = collectAuditData();
 const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
 saveAs(blob, `Audit_${currentFramework.toUpperCase()}_${data.id}.json`);
 }
@@ -2118,6 +2272,7 @@ document.getElementById('auditor').value = data.auditor || '';
 document.getElementById('alcance').value = data.alcance || '';
 document.getElementById('id_informe').value = data.id || '';
 document.getElementById('fecha').value = data.fecha || '';
+applyEngagement(data);  // restores Audit Plan; defaults cleanly for pre-#20 (v1) files
 
 if (data.evaluatedControls) {
 evaluatedControls = data.evaluatedControls;
@@ -3005,6 +3160,62 @@ window.addEventListener('beforeunload', () => {
     y += infoItems.length * 13 + 22;
 
     // ────────────────────────────────────────────────────────────────────────
+    // 🔹 AUDIT PLAN / ENGAGEMENT (#20)
+    // ────────────────────────────────────────────────────────────────────────
+    const eng = collectEngagement();
+    const engTypeLabels = {
+      internal_audit: 'Internal Audit', readiness_assessment: 'Readiness Assessment',
+      gap_analysis: 'Gap Analysis', certification_support: 'Certification Support'
+    };
+    const engStatusLabels = {
+      draft: 'Draft', in_progress: 'In Progress', ready_for_report: 'Ready for Report', issued: 'Issued'
+    };
+    const hasEng = eng.objective || eng.scopeSummary || (eng.criteria && eng.criteria.length) ||
+                   eng.periodUnderReview.start || eng.periodUnderReview.end ||
+                   (eng.team && eng.team.length) || Object.values(eng.keyDates).some(Boolean);
+    if (hasEng) {
+      if (y > pageHeight - 150) { doc.addPage(); y = margin; }
+      doc.setDrawColor(226, 232, 240);
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 18;
+      doc.setFont("helvetica", "bold").setFontSize(12).setTextColor(COLORS.text[0], COLORS.text[1], COLORS.text[2]);
+      doc.text(' Audit Plan', margin, y);
+      y += 16;
+
+      const engPeriod = (eng.periodUnderReview.start || eng.periodUnderReview.end)
+        ? `${eng.periodUnderReview.start || '?'}  to  ${eng.periodUnderReview.end || '?'}` : '';
+      const dateBits = [];
+      if (eng.keyDates.kickoff)        dateBits.push(`Kickoff ${eng.keyDates.kickoff}`);
+      if (eng.keyDates.fieldworkStart) dateBits.push(`Fieldwork ${eng.keyDates.fieldworkStart}`);
+      if (eng.keyDates.fieldworkEnd)   dateBits.push(`to ${eng.keyDates.fieldworkEnd}`);
+      if (eng.keyDates.draftReport)    dateBits.push(`Draft ${eng.keyDates.draftReport}`);
+      if (eng.keyDates.finalReport)    dateBits.push(`Final ${eng.keyDates.finalReport}`);
+
+      const engItems = [
+        { lbl: 'Objective', val: eng.objective },
+        { lbl: 'Type', val: engTypeLabels[eng.engagementType] || eng.engagementType },
+        { lbl: 'Criteria', val: (eng.criteria || []).join(', ') },
+        { lbl: 'Period', val: engPeriod },
+        { lbl: 'Scope', val: eng.scopeSummary },
+        { lbl: 'Team', val: (eng.team || []).map(m => m.role ? `${m.name} (${m.role})` : m.name).join(', ') },
+        { lbl: 'Key Dates', val: dateBits.join('   ') },
+        { lbl: 'Status', val: engStatusLabels[eng.status] || eng.status }
+      ].filter(it => it.val);
+
+      doc.setFontSize(9);
+      engItems.forEach(item => {
+        if (y > pageHeight - 60) { doc.addPage(); y = margin; }
+        doc.setFont("helvetica", "normal").setTextColor(COLORS.textLight[0], COLORS.textLight[1], COLORS.textLight[2]);
+        doc.text(`${item.lbl}:`, margin, y);
+        doc.setFont("helvetica", "bold").setTextColor(COLORS.text[0], COLORS.text[1], COLORS.text[2]);
+        const wrapped = doc.splitTextToSize(String(item.val), pageWidth - margin*2 - 90);
+        doc.text(wrapped, margin + 90, y);
+        y += wrapped.length * 12 + 4;
+      });
+      y += 12;
+    }
+
+    // ────────────────────────────────────────────────────────────────────────
     // 🔹 CONTROLS ASSESSMENT
     // ────────────────────────────────────────────────────────────────────────
     doc.setFont("helvetica", "bold").setFontSize(12).setTextColor(COLORS.text[0], COLORS.text[1], COLORS.text[2]);
@@ -3732,7 +3943,23 @@ rag_offline_title:'Servidor RAG No Disponible', rag_offline_sub:'Inicia el servi
 rag_offline_hint:'o haz doble clic en start.bat',
 drop_pdfs_label:'Arrastra PDFs aquí o haz clic para buscar',
 start_analysis_btn:'🚀 Iniciar Análisis', stop_btn:'⏹ Detener',
-analysis_complete:'Análisis Completado', cancel_btn:'Cancelar'
+analysis_complete:'Análisis Completado', cancel_btn:'Cancelar',
+audit_plan_title:'📋 Plan de Auditoría',
+eng_objective_label:'Objetivo del Encargo', eng_objective_ph:'Por qué se realiza esta auditoría',
+eng_type_label:'Tipo de Encargo',
+eng_type_internal:'Auditoría Interna', eng_type_readiness:'Evaluación de Preparación',
+eng_type_gap:'Análisis de Brechas', eng_type_cert:'Soporte de Certificación',
+eng_criteria_label:'Criterios de Auditoría', eng_criteria_ph:'Marcos/normas (separados por comas)',
+eng_scope_label:'Resumen del Alcance', eng_scope_ph:'Sistemas, ubicaciones, unidades de negocio',
+eng_period_label:'Período Bajo Revisión',
+eng_keydates_label:'Fechas Clave',
+eng_kickoff_label:'Inicio', eng_fieldwork_start_label:'Inicio Trabajo de Campo',
+eng_fieldwork_end_label:'Fin Trabajo de Campo', eng_draft_report_label:'Informe Preliminar',
+eng_final_report_label:'Informe Final',
+eng_status_label:'Estado', eng_status_draft:'Borrador', eng_status_in_progress:'En Progreso',
+eng_status_ready:'Listo para Informe', eng_status_issued:'Emitido',
+eng_team_label:'Equipo de Auditoría', eng_add_member:'+ Añadir Miembro',
+eng_member_name_ph:'Nombre', eng_member_role_ph:'Rol'
 },
 en: {
 clear_data:'Clear Data', nist_function_label:'Domain',
@@ -3790,7 +4017,23 @@ rag_offline_title:'RAG Server Not Running', rag_offline_sub:'Start it first:',
 rag_offline_hint:'or double-click start.bat',
 drop_pdfs_label:'Drop PDFs here or click to browse',
 start_analysis_btn:'🚀 Start Analysis', stop_btn:'⏹ Stop',
-analysis_complete:'Analysis Complete', cancel_btn:'Cancel'
+analysis_complete:'Analysis Complete', cancel_btn:'Cancel',
+audit_plan_title:'📋 Audit Plan',
+eng_objective_label:'Engagement Objective', eng_objective_ph:'Why this audit is being performed',
+eng_type_label:'Engagement Type',
+eng_type_internal:'Internal Audit', eng_type_readiness:'Readiness Assessment',
+eng_type_gap:'Gap Analysis', eng_type_cert:'Certification Support',
+eng_criteria_label:'Audit Criteria', eng_criteria_ph:'Frameworks/standards (comma-separated)',
+eng_scope_label:'Scope Summary', eng_scope_ph:'Systems, locations, business units',
+eng_period_label:'Period Under Review',
+eng_keydates_label:'Key Dates',
+eng_kickoff_label:'Kickoff', eng_fieldwork_start_label:'Fieldwork Start',
+eng_fieldwork_end_label:'Fieldwork End', eng_draft_report_label:'Draft Report',
+eng_final_report_label:'Final Report',
+eng_status_label:'Status', eng_status_draft:'Draft', eng_status_in_progress:'In Progress',
+eng_status_ready:'Ready for Report', eng_status_issued:'Issued',
+eng_team_label:'Audit Team', eng_add_member:'+ Add Member',
+eng_member_name_ph:'Name', eng_member_role_ph:'Role'
 },
 fr: {
 clear_data:'Effacer données', nist_function_label:'Domaine',
@@ -4049,7 +4292,7 @@ strategic_label:'🔵 战略建议', close_btn:'关闭'
 }
 };
 
-function T(key) { return (TRANSLATIONS[currentLang] || TRANSLATIONS.es)[key] || key; }
+function T(key) { return (TRANSLATIONS[currentLang] || {})[key] || TRANSLATIONS.en[key] || TRANSLATIONS.es[key] || key; }
 
 function setLanguage(lang) {
 currentLang = lang;
