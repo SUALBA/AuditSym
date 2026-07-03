@@ -2231,28 +2231,48 @@ function collectAuditData() {
     publishedAt: null
   };
 
+  // 1. Recoger controles del DOM
   document.querySelectorAll('.control').forEach(blk => {
     const questionEl = blk.querySelector('.control-body p');
-      const ctrlInput = blk.querySelector('.ctrl');
-      const ctrlValue = ctrlInput?.value || '';
-      const fwCode = ctrlInput?.dataset?.fwCode || '';  // ← se obtiene del dataset
-      // Extraer el nombre (todo lo que viene después de " – ")
-      const name = ctrlValue.includes(' – ') ? ctrlValue.split(' – ').slice(1).join(' – ') : ctrlValue;
-     
+    const ctrlInput = blk.querySelector('.ctrl');
+    const ctrlValue = ctrlInput?.value || '';
+    const fwCode = ctrlInput?.dataset?.fwCode || '';
+    const name = ctrlValue.includes(' – ') ? ctrlValue.split(' – ').slice(1).join(' – ') : ctrlValue;
     data.controls.push({
-    scfId: ctrlInput?.dataset?.scfId || '',
-    ctrl: ctrlValue,
-    fwCode: fwCode,        // ← NUEVO
-    name: name,            // ← NUEVO
-    question: questionEl ? questionEl.textContent : '',
-    cumple: blk.querySelector('.cumple')?.value,
-    riesgo: blk.querySelector('.riesgo')?.value,
-    evidencia: blk.querySelector('.evidencia')?.value,
-    notes: blk.querySelector('.notes')?.value
+      scfId: ctrlInput?.dataset?.scfId || '',
+      ctrl: ctrlValue,
+      fwCode: fwCode,
+      name: name,
+      question: questionEl ? questionEl.textContent : '',
+      cumple: blk.querySelector('.cumple')?.value,
+      riesgo: blk.querySelector('.riesgo')?.value,
+      evidencia: blk.querySelector('.evidencia')?.value,
+      notes: blk.querySelector('.notes')?.value
     });
   });
 
-  // Generate structured findings from non‑compliant controls
+  // 2. ✅ NUEVO: Añadir controles evaluados desde EvaluationRegistry que no están en el DOM
+  const domScfIds = new Set(data.controls.map(c => c.scfId));
+  Object.entries(EvaluationRegistry.store).forEach(([scfId, controlData]) => {
+    if (!domScfIds.has(scfId) && controlData.evaluations.length > 0) {
+      const latest = EvaluationRegistry.getLatest(scfId);
+      if (latest) {
+        data.controls.push({
+          scfId: scfId,
+          ctrl: `${scfId} – ${scfId}`,
+          fwCode: scfId,
+          name: scfId,
+          question: '',
+          cumple: latest.compliance,
+          riesgo: latest.risk || '',
+          evidencia: latest.evidence || '',
+          notes: latest.notes || ''
+        });
+      }
+    }
+  });
+
+  // 3. Generar findings
   data.findings = buildFindingsFromControls(data.controls, data.id);
   return data;
 }
@@ -2352,7 +2372,7 @@ function buildFinding(control, auditId) {
     const controlName = control.name || control.ctrl || '';
     const question = control.question || '';
     
-    // ✅ CORRECCIÓN: obtener riesgo del campo correcto
+    // ✅ CORRECCIÓN: obtener riesgo del campo correcto y en minusculas
     const riskLevel = (control.riesgo || 'medium').toLowerCase();
     
     const reason = control.evidencia || control.notes || 'No specific evidence provided.';
