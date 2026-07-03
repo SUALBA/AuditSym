@@ -2308,41 +2308,39 @@ function issueFinalReport() {
   alert('✅ Final report issued. The JSON includes structured findings.');
 }
 
-// ──────────────────────────────────────────────────────────────────────
-// 🔹 FINDINGS GENERATION HELPERS (M1) — SHARED SCHEMA
-// ──────────────────────────────────────────────────────────────────────
-// ── Priority Scoring Engine (compartido con el Hub) ─────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// 🔹 FINDINGS GENERATION HELPERS (M1) — CORREGIDO
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Priority Scoring Engine (compartido con el Hub)
 const IMPACT_SCORES = { critical: 10, high: 7, medium: 4, low: 2 };
 const EFFORT_SCORES = { low: 1, medium: 2, high: 3 };
 const COST_LABELS = { low: '$', medium: '$$', high: '$$$' };
 const DEFAULT_TIMEFRAMES = { critical: 15, high: 30, medium: 60, low: 90 };
 
 function estimateEffort(control) {
-  const code = (control.controlCode || control.fwCode || '').toLowerCase();
-  const name = (control.controlName || control.name || '').toLowerCase();
-  const combined = code + ' ' + name;
-  if (combined.match(/encrypt|siem|monitor|backup|disaster|contingency|bcm|ird|irt|soc|incident/)) return 'high';
-  if (combined.match(/policy|procedure|training|awareness|asset|inventory|config|governance/)) return 'medium';
-  if (combined.match(/document|record|log|review|sign|approve|kri|kpi|indicator/)) return 'low';
-  return 'medium';
+    const code = (control.controlCode || control.fwCode || '').toLowerCase();
+    const name = (control.controlName || control.name || '').toLowerCase();
+    const combined = code + ' ' + name;
+    if (combined.match(/encrypt|siem|monitor|backup|disaster|contingency|bcm|ird|irt|soc|incident/)) return 'high';
+    if (combined.match(/policy|procedure|training|awareness|asset|inventory|config|governance/)) return 'medium';
+    if (combined.match(/document|record|log|review|sign|approve|kri|kpi|indicator/)) return 'low';
+    return 'medium';
 }
 
 function calculateScore(control) {
-  const severity = (control.severity || control.riskLevel || control.riesgo || 'medium').toLowerCase();
-  const impact = IMPACT_SCORES[severity] || 4;
-  const effort = estimateEffort(control);
-  const effortScore = EFFORT_SCORES[effort] || 2;
-  return Math.round((impact / effortScore) * 10) / 10;
+    const severity = (control.severity || control.riskLevel || control.riesgo || 'medium').toLowerCase();
+    const impact = IMPACT_SCORES[severity] || 4;
+    const effort = estimateEffort(control);
+    const effortScore = EFFORT_SCORES[effort] || 2;
+    return Math.round((impact / effortScore) * 10) / 10;
 }
+
 /**
  * Builds a STABLE ID for a finding.
- * IMPORTANT: It does NOT include auditId so the ID survives re-audits.
- * The Hub uses this stable ID to merge remediation data (owner, status, evidence)
- * across multiple audit cycles for the same control.
+ * Does NOT include auditId so the ID survives re-audits.
  */
 function buildFindingId(control) {
-    // ⚠️ IMPORTANTE: NO incluir auditId → el ID sobrevive a re-auditorías
-    // El Hub usa este ID estable para preservar owner/status/evidence
     const scfId = control.scfId || control.id || 'UNKNOWN';
     const framework = currentFramework || 'nist-csf';
     const normalizedKey = (scfId + '-' + framework).replace(/[^a-zA-Z0-9]/g, '_').toUpperCase();
@@ -2350,29 +2348,19 @@ function buildFindingId(control) {
 }
 
 /**
- * Calculates the default timeframe based on severity/risk (Innovación: SLAs Dinámicos).
- */
-function calculateTimeframe(riskLevel) {
-    switch((riskLevel || '').toLowerCase()) {
-        case 'critical': return '15 days';
-        case 'high': return '30 days';
-        case 'medium': return '60 days';
-        case 'low': return '90 days';
-        default: return '60 days';
-    }
-}
-
-/**
  * Builds a complete Finding object from a control.
  * Follows the M0 lifecycle convention ("born with history").
  */
 function buildFinding(control, auditId) {
+        // ✅ FIX: Ignorar controles sin scfId (evita findings fantasma)
+    if (!control.scfId || control.scfId === '') return null;
+    
     const scfId = control.scfId || control.id || '';
-    const controlCode = control.fwCode || control.ctrl || scfId;
+    const controlCode = control.fwCode || scfId;
     const controlName = control.name || control.ctrl || '';
     const question = control.question || '';
     
-    // ✅ CORRECCIÓN: obtener riesgo del campo correcto y en minusculas
+    // ✅ FIX: obtener riesgo del campo correcto y en minúsculas
     const riskLevel = (control.riesgo || 'medium').toLowerCase();
     
     const reason = control.evidencia || control.notes || 'No specific evidence provided.';
@@ -2405,9 +2393,9 @@ function buildFinding(control, auditId) {
         controlCode: controlCode,
         controlName: controlName,
         question: question,
-        // ── FINDING CONTENT ─
+        // ── FINDING CONTENT ──
         title: `${controlCode} – ${controlName}`,
-        severity: riskLevel,                 // ✅ Campo estándar para el Hub
+        severity: riskLevel,                 // ✅ Estándar GRC
         riskLevel: riskLevel,                // ✅ Backward compatibility
         reason: reason,
         evidence: evidence,
@@ -2416,14 +2404,13 @@ function buildFinding(control, auditId) {
         cost: effort,                        // ✅ $/$$/$$$
         score: score,                        // ✅ Impact ÷ Effort
         // ── MANAGEMENT RESPONSE STUB (M2) ──
-        decision: 'mitigate',                // ✅ minúsculas (el Hub lo espera así)
+        decision: 'mitigate',                // ✅ minúsculas
         owner: '',
         timeframe: `${days} days`,           // ✅ Formato "X days"
         status: 'open',                      // ✅ minúsculas
         notes: '',
         recommendation: ''
     };
-
 }
 
 /**
@@ -2432,7 +2419,8 @@ function buildFinding(control, auditId) {
 function buildFindingsFromControls(controls, auditId) {
     return controls
         .filter(c => c.cumple === 'no' || c.cumple === 'partial')
-        .map(c => buildFinding(c, auditId));
+        .map(c => buildFinding(c, auditId))
+        .filter(f => f !== null);  // ✅ Elimina findings nulos
 }
 function saveProgress() {
 const data = collectAuditData();
