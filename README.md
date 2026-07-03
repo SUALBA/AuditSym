@@ -10,7 +10,7 @@
 [![AI Providers](https://img.shields.io/badge/AI-Local%20%26%20Cloud%20Ready-yellow.svg)](#ai-providers)
 [![Privacy](https://img.shields.io/badge/Privacy-100%25%20Local%20First-orange.svg)](#privacy--security)
 
-[🚀 Live Demo](https://tuusuario.github.io/auditsym/) · 
+[🚀 Live Demo]((https://github.com/SUALBA/AudiNist_Pro/) 
 [📖 Documentation](docs/) · 
 [🐛 Report Bug](https://github.com/tuusuario/auditsym/issues) · 
 [💡 Request Feature](https://github.com/tuusuario/auditsym/issues)
