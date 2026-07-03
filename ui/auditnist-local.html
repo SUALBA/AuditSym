@@ -664,6 +664,9 @@ data-i18n="export_json_btn">💾 Exportar JSON</button>
 data-i18n="import_json_btn">📂 Importar JSON
 <input type="file" onchange="importFromJSON(this)" class="hidden" accept=".json">
 </label>
+ <button onclick="issueFinalReport()"
+          class="px-4 py-2 bg-purple-700 text-white rounded hover:bg-purple-600 font-bold"
+          data-i18n="issue_report_btn">📢 Emitir Informe Final</button>
 </div>
 
 </main>
@@ -1467,13 +1470,23 @@ renderControlGrid();
 // 🔹 LOAD JSON DATA
 // ─────────────────────────────────────────────────────────────────────────────
 async function loadScfDataAndCountControls() {
-try {
-const response = await fetch('../data/scf-controls.json');
-if (!response.ok) throw new Error('File not found');
-scfData = await response.json();
-} catch (e) {
-console.log('JSON no cargado aún:', e.message);
-}
+  try {
+    const response = await fetch('../data/scf-controls.json');
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    scfData = await response.json();
+    scfLoadError = false;
+    // Optionally update a status element
+    document.getElementById('suggest-status').textContent = '✅ Biblioteca cargada';
+    return true;
+  } catch (e) {
+    console.error('Error cargando scf-controls.json:', e.message);
+    scfLoadError = true;
+    scfData = null;
+    // Show a persistent warning in the UI
+    const status = document.getElementById('suggest-status');
+    if (status) status.innerHTML = '⚠️ No se pudo cargar la biblioteca de controles.';
+    return false;
+  }
 }
 // ─────────────────────────────────────────────────────────────────────────────
 // 🔹 SUGGEST CONTROLS (VERSIÓN ORIGINAL - BASADA EN JSON)
@@ -1594,12 +1607,12 @@ isDirty = true;
 // ─────────────────────────────────────────────────────────────────────────────
 function addControl(startCollapsed = false, question = '', scfId = '', fwCode = '', name = '', vertical = '') {
 const wrapper = document.createElement('div');
-wrapper.className = 'control bg-gray-800 rounded border border-gray-700';
+wrapper.className = 'control bg-gray-800 rounded border border-cyberaccent/40 hover:border-cyberaccent transition-colors duration-200';
 const displayCode = fwCode || scfId || 'N/A';
 const displayName = name || scfId || 'Control';
 wrapper.innerHTML = `
-<div class="control-header flex items-center gap-2 px-3 py-2 cursor-pointer"
-onclick="toggleControlCollapse(this.parentNode)">
+<div class="control-header flex items-center gap-2 px-3 py-2 cursor-pointer bg-gradient-to-r from-blue-900/20 to-transparent border-b border-cyberaccent/20"
+     onclick="toggleControlCollapse(this.parentNode)">
 <span class="collapse-icon text-gray-400 text-xs w-4">
 ${startCollapsed ? '▶' : '▼'}
 </span>
@@ -2181,39 +2194,226 @@ set('eng_status', eng.status || 'draft');
 renderTeamRows(eng.team || []);
 }
 
-// ─── Single source of truth for audit persistence (M0) ────────────────────────
-// Every save / export path collects through here; every restore path applies
-// engagement through applyEngagement(). New lifecycle sections (findings,
-// responses, remediation) plug in here in later milestones.
+/**
+ * -------------------------------------------------------------
+ * COLLECT AUDIT DATA (M1)
+ * -------------------------------------------------------------
+ * This function is the single source of truth for exporting the entire audit.
+ *
+ * Changes from M0:
+ *   - schemaVersion: 3        → indicates the JSON includes structured findings.
+ *   - findings: []            → array of findings generated from non‑compliant
+ *                               controls (cumple === 'no' | 'partial').
+ *   - publishedAt: null       → filled when the final report is issued.
+ *
+ * Findings are generated using ndingsFromControls(), which assigns
+ * a stable ID (FND-{auditId}-{framework}:{normalizedScfId}) so that
+ * the Remediation Hub can preserve remediation state across re‑imports.
+ *
+ * Backward compatibility: the JSON still includes controls[],
+ * so older versions of the Hub can still work.
+ * -------------------------------------------------------------
+ */
 function collectAuditData() {
-const data = {
-schemaVersion: 2,
-id: document.getElementById('id_informe').value || 'sinID',
-empresa: document.getElementById('empresa_auditada').value,
-auditora: document.getElementById('empresa_auditora').value,
-auditor: document.getElementById('auditor').value,
-alcance: document.getElementById('alcance').value,
-fecha: document.getElementById('fecha').value || new Date().toLocaleDateString(),
-framework: currentFramework,
-engagement: collectEngagement(),
-evaluatedControls: evaluatedControls,
-controls: []
-};
-document.querySelectorAll('.control').forEach(blk => {
-const questionEl = blk.querySelector('.control-body p');
-data.controls.push({
-scfId: blk.querySelector('.ctrl')?.dataset.scfId || '',
-ctrl: blk.querySelector('.ctrl').value,
-question: questionEl ? questionEl.textContent : '',
-cumple: blk.querySelector('.cumple')?.value,
-riesgo: blk.querySelector('.riesgo')?.value,
-evidencia: blk.querySelector('.evidencia')?.value,
-notes: blk.querySelector('.notes')?.value
-});
-});
-return data;
+  const data = {
+    schemaVersion: 3,
+    id: document.getElementById('id_informe').value || 'sinID',
+    empresa: document.getElementById('empresa_auditada').value,
+    auditora: document.getElementById('empresa_auditora').value,
+    auditor: document.getElementById('auditor').value,
+    alcance: document.getElementById('alcance').value,
+    fecha: document.getElementById('fecha').value || new Date().toLocaleDateString(),
+    framework: currentFramework,
+    engagement: collectEngagement(),
+    evaluatedControls: evaluatedControls,
+    controls: [],
+    findings: [],
+    publishedAt: null
+  };
+
+  document.querySelectorAll('.control').forEach(blk => {
+    const questionEl = blk.querySelector('.control-body p');
+      const ctrlInput = blk.querySelector('.ctrl');
+      const ctrlValue = ctrlInput?.value || '';
+      const fwCode = ctrlInput?.dataset?.fwCode || '';  // ← se obtiene del dataset
+      // Extraer el nombre (todo lo que viene después de " – ")
+      const name = ctrlValue.includes(' – ') ? ctrlValue.split(' – ').slice(1).join(' – ') : ctrlValue;
+     
+    data.controls.push({
+    scfId: ctrlInput?.dataset?.scfId || '',
+    ctrl: ctrlValue,
+    fwCode: fwCode,        // ← NUEVO
+    name: name,            // ← NUEVO
+    question: questionEl ? questionEl.textContent : '',
+    cumple: blk.querySelector('.cumple')?.value,
+    riesgo: blk.querySelector('.riesgo')?.value,
+    evidencia: blk.querySelector('.evidencia')?.value,
+    notes: blk.querySelector('.notes')?.value
+    });
+  });
+
+  // Generate structured findings from non‑compliant controls
+  data.findings = buildFindingsFromControls(data.controls, data.id);
+  return data;
+}
+/**
+ * -------------------------------------------------------------
+ * ISSUE FINAL REPORT (M1)
+ * -------------------------------------------------------------
+ * This function is called when the auditor clicks the
+ * "Issue Final Report" button.
+ *
+ * It:
+ * - Collects all audit data (including structured findings)
+ * - Sets the publishedAt timestamp
+ * - Marks the engagement status as 'issued'
+ * - Downloads a JSON file with the "_FINAL" suffix
+ *
+ * The exported JSON includes:
+ * - schemaVersion: 3
+ * - findings[] array with stable IDs
+ * - controls[] array (backward compatibility)
+ * - All engagement and audit metadata
+ * -------------------------------------------------------------
+ */
+function issueFinalReport() {
+  const data = collectAuditData();
+  data.publishedAt = new Date().toISOString();
+  data.engagement.status = 'issued';
+
+  // Create and download the JSON file with findings
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  saveAs(blob, `Audit_${currentFramework.toUpperCase()}_${data.id}_FINAL.json`);
+
+  alert('✅ Final report issued. The JSON includes structured findings.');
 }
 
+// ──────────────────────────────────────────────────────────────────────
+// 🔹 FINDINGS GENERATION HELPERS (M1) — SHARED SCHEMA
+// ──────────────────────────────────────────────────────────────────────
+// ── Priority Scoring Engine (compartido con el Hub) ─────────────────────
+const IMPACT_SCORES = { critical: 10, high: 7, medium: 4, low: 2 };
+const EFFORT_SCORES = { low: 1, medium: 2, high: 3 };
+const COST_LABELS = { low: '$', medium: '$$', high: '$$$' };
+const DEFAULT_TIMEFRAMES = { critical: 15, high: 30, medium: 60, low: 90 };
+
+function estimateEffort(control) {
+  const code = (control.controlCode || control.fwCode || '').toLowerCase();
+  const name = (control.controlName || control.name || '').toLowerCase();
+  const combined = code + ' ' + name;
+  if (combined.match(/encrypt|siem|monitor|backup|disaster|contingency|bcm|ird|irt|soc|incident/)) return 'high';
+  if (combined.match(/policy|procedure|training|awareness|asset|inventory|config|governance/)) return 'medium';
+  if (combined.match(/document|record|log|review|sign|approve|kri|kpi|indicator/)) return 'low';
+  return 'medium';
+}
+
+function calculateScore(control) {
+  const severity = (control.severity || control.riskLevel || control.riesgo || 'medium').toLowerCase();
+  const impact = IMPACT_SCORES[severity] || 4;
+  const effort = estimateEffort(control);
+  const effortScore = EFFORT_SCORES[effort] || 2;
+  return Math.round((impact / effortScore) * 10) / 10;
+}
+/**
+ * Builds a STABLE ID for a finding.
+ * IMPORTANT: It does NOT include auditId so the ID survives re-audits.
+ * The Hub uses this stable ID to merge remediation data (owner, status, evidence)
+ * across multiple audit cycles for the same control.
+ */
+function buildFindingId(control) {
+    // ⚠️ IMPORTANTE: NO incluir auditId → el ID sobrevive a re-auditorías
+    // El Hub usa este ID estable para preservar owner/status/evidence
+    const scfId = control.scfId || control.id || 'UNKNOWN';
+    const framework = currentFramework || 'nist-csf';
+    const normalizedKey = (scfId + '-' + framework).replace(/[^a-zA-Z0-9]/g, '_').toUpperCase();
+    return `FND-${normalizedKey}`;
+}
+
+/**
+ * Calculates the default timeframe based on severity/risk (Innovación: SLAs Dinámicos).
+ */
+function calculateTimeframe(riskLevel) {
+    switch((riskLevel || '').toLowerCase()) {
+        case 'critical': return '15 days';
+        case 'high': return '30 days';
+        case 'medium': return '60 days';
+        case 'low': return '90 days';
+        default: return '60 days';
+    }
+}
+
+/**
+ * Builds a complete Finding object from a control.
+ * Follows the M0 lifecycle convention ("born with history").
+ */
+function buildFinding(control, auditId) {
+    const scfId = control.scfId || control.id || '';
+    const controlCode = control.fwCode || control.ctrl || scfId;
+    const controlName = control.name || control.ctrl || '';
+    const question = control.question || '';
+    
+    // ✅ CORRECCIÓN: obtener riesgo del campo correcto
+    const riskLevel = (control.riesgo || 'medium').toLowerCase();
+    
+    const reason = control.evidencia || control.notes || 'No specific evidence provided.';
+    const evidence = control.evidencia || control.evidence || '';
+    
+    // ✅ NUEVO: calcular effort, score y cost
+    const effort = estimateEffort({ controlCode, controlName });
+    const score = calculateScore({ severity: riskLevel, controlCode, controlName });
+    const days = DEFAULT_TIMEFRAMES[riskLevel] || 60;
+    
+    const findingId = buildFindingId(control);
+    const now = Date.now();
+
+    return {
+        // ── IDENTITY & LIFECYCLE ──
+        id: findingId,
+        auditId: auditId,
+        scfId: scfId,
+        createdAt: now,
+        updatedAt: now,
+        history: [{                          // ✅ Nace con historial (M0)
+            ts: now,
+            actor: 'system',
+            field: 'status',
+            from: null,
+            to: 'open',
+            note: 'Finding auto-generated from audit engine.'
+        }],
+        // ── CONTROL LINKAGE ──
+        controlCode: controlCode,
+        controlName: controlName,
+        question: question,
+        // ── FINDING CONTENT ─
+        title: `${controlCode} – ${controlName}`,
+        severity: riskLevel,                 // ✅ Campo estándar para el Hub
+        riskLevel: riskLevel,                // ✅ Backward compatibility
+        reason: reason,
+        evidence: evidence,
+        // ── PRIORITY SCORING (Innovación) ──
+        effort: effort,                      // ✅ low/medium/high
+        cost: effort,                        // ✅ $/$$/$$$
+        score: score,                        // ✅ Impact ÷ Effort
+        // ── MANAGEMENT RESPONSE STUB (M2) ──
+        decision: 'mitigate',                // ✅ minúsculas (el Hub lo espera así)
+        owner: '',
+        timeframe: `${days} days`,           // ✅ Formato "X days"
+        status: 'open',                      // ✅ minúsculas
+        notes: '',
+        recommendation: ''
+    };
+
+}
+
+/**
+ * Generates an array of findings from non-compliant controls.
+ */
+function buildFindingsFromControls(controls, auditId) {
+    return controls
+        .filter(c => c.cumple === 'no' || c.cumple === 'partial')
+        .map(c => buildFinding(c, auditId));
+}
 function saveProgress() {
 const data = collectAuditData();
 localStorage.setItem(`auditnist_${data.id}`, JSON.stringify(data));
@@ -2265,6 +2465,12 @@ const reader = new FileReader();
 reader.onload = function(e) {
 try {
 const data = JSON.parse(e.target.result);
+
+// 👇  (opcional)
+      if (data.schemaVersion && data.schemaVersion >= 3) {
+        console.log('📦 JSON con findings estructurados (schemaVersion 3)');
+      
+      }
 
 document.getElementById('empresa_auditada').value = data.empresa || '';
 document.getElementById('empresa_auditora').value = data.auditora || '';
@@ -3023,19 +3229,6 @@ function generatePDF() {
 // setDirty(true);
 // En saveProgress(): setDirty(false);
 
-// Auto-save cada 2 minutos
-let autoSaveInterval = setInterval(() => {
-  if (isDirty) {
-    const id = document.getElementById('id_informe').value || 'autosave';
-    saveProgress(); // Usa tu función existente
-    console.log('🔄 Auto-guardado completado');
-  }
-}, 120000); // 2 minutos
-
-// Detener al salir
-window.addEventListener('beforeunload', () => {
-  clearInterval(autoSaveInterval);
-});
 
     // ────────────────────────────────────────────────────────────────────────
     // 🔹 HEADER CON LOGO
@@ -3953,6 +4146,7 @@ eng_criteria_label:'Criterios de Auditoría', eng_criteria_ph:'Marcos/normas (se
 eng_scope_label:'Resumen del Alcance', eng_scope_ph:'Sistemas, ubicaciones, unidades de negocio',
 eng_period_label:'Período Bajo Revisión',
 eng_keydates_label:'Fechas Clave',
+issue_report_btn: "📢 Emitir Informe Final",  
 eng_kickoff_label:'Inicio', eng_fieldwork_start_label:'Inicio Trabajo de Campo',
 eng_fieldwork_end_label:'Fin Trabajo de Campo', eng_draft_report_label:'Informe Preliminar',
 eng_final_report_label:'Informe Final',
@@ -3981,7 +4175,7 @@ strengths_label:'✅ Strengths', key_gaps_label:'❌ Key Gaps',
 immediate_actions_label:'🔴 Immediate Actions (0–30 days)', medium_term_label:'🟡 Medium-Term Improvements (30–90 days)',
 strategic_label:'🔵 Strategic Recommendations', close_btn:'Close',
 generate_pdf_btn:'📄 PDF', export_txt_btn:'📄 TXT',
-export_json_btn:'💾 Export JSON', import_json_btn:'📂 Import JSON',
+export_json_btn:'💾 Export JSON', import_json_btn:'📂 Import JSON', issue_report_btn: "📢 Issue Final Report",
 save_progress_btn:'💾 Save', view_saved_btn:'📋 Reports',
 chart_compliance:'Compliance', chart_risk:'Risks',
 yes:'Yes', no:'No', partial:'Partial',
@@ -4027,6 +4221,7 @@ eng_criteria_label:'Audit Criteria', eng_criteria_ph:'Frameworks/standards (comm
 eng_scope_label:'Scope Summary', eng_scope_ph:'Systems, locations, business units',
 eng_period_label:'Period Under Review',
 eng_keydates_label:'Key Dates',
+
 eng_kickoff_label:'Kickoff', eng_fieldwork_start_label:'Fieldwork Start',
 eng_fieldwork_end_label:'Fieldwork End', eng_draft_report_label:'Draft Report',
 eng_final_report_label:'Final Report',
@@ -4045,7 +4240,7 @@ scope_label:'Périmètre', scope_ph:'Systèmes, réseau, applications',
 report_id_label:'ID rapport', report_id_ph:'Ex: INF-2025-001',
 audit_date_label:'Date', add_control_btn:'+ Ajouter Contrôle',
 generate_pdf_btn:'📄 PDF', export_txt_btn:'📄 TXT',
-export_json_btn:'💾 Exporter JSON', import_json_btn:'📂 Importer JSON',
+export_json_btn:'💾 Exporter JSON', import_json_btn:'📂 Importer JSON', issue_report_btn: "📢 Publier le Rapport Final",
 save_progress_btn:'💾 Sauvegarder', view_saved_btn:'📋 Rapports',
 chart_compliance:'Conformité', chart_risk:'Risques',
 yes:'Oui', no:'Non', partial:'Partiel',
@@ -4096,7 +4291,7 @@ scope_label:'Umfang', scope_ph:'Systeme, Netzwerk, Anwendungen',
 report_id_label:'Bericht-ID', report_id_ph:'Bsp: INF-2025-001',
 audit_date_label:'Datum', add_control_btn:'+ Kontrolle hinzufügen',
 generate_pdf_btn:'📄 PDF', export_txt_btn:'📄 TXT',
-export_json_btn:'💾 JSON exportieren', import_json_btn:'📂 JSON importieren',
+export_json_btn:'💾 JSON exportieren', import_json_btn:'📂 JSON importieren', issue_report_btn: "📢 Abschlussbericht ausstellen",
 save_progress_btn:'💾 Speichern', view_saved_btn:'📋 Berichte',
 chart_compliance:'Konformität', chart_risk:'Risiken',
 yes:'Ja', no:'Nein', partial:'Teilweise',
@@ -4147,7 +4342,7 @@ scope_label:'Escopo', scope_ph:'Sistemas, rede, aplicações',
 report_id_label:'ID relatório', report_id_ph:'Ex: INF-2025-001',
 audit_date_label:'Data', add_control_btn:'+ Adicionar Controle',
 generate_pdf_btn:'📄 PDF', export_txt_btn:'📄 TXT',
-export_json_btn:'💾 Exportar JSON', import_json_btn:'📂 Importar JSON',
+export_json_btn:'💾 Exportar JSON', import_json_btn:'📂 Importar JSON', issue_report_btn: "📢 Emitir Relatório Final",
 save_progress_btn:'💾 Salvar', view_saved_btn:'📋 Relatórios',
 chart_compliance:'Conformidade', chart_risk:'Riscos',
 yes:'Sim', no:'Não', partial:'Parcial',
@@ -4198,7 +4393,7 @@ scope_label:'النطاق', scope_ph:'الأنظمة، الشبكة، التطب
 report_id_label:'رقم التقرير', report_id_ph:'مثال: INF-2025-001',
 audit_date_label:'التاريخ', add_control_btn:'+ إضافة ضابط',
 generate_pdf_btn:'📄 PDF', export_txt_btn:'📄 TXT',
-export_json_btn:'💾 تصدير JSON', import_json_btn:'📂 استيراد JSON',
+export_json_btn:'💾 تصدير JSON', import_json_btn:'📂 استيراد JSON', issue_report_btn: "📢 إصدار التقرير النهائي",
 save_progress_btn:'💾 حفظ', view_saved_btn:'📋 التقارير',
 chart_compliance:'الامتثال', chart_risk:'المخاطر',
 yes:'نعم', no:'لا', partial:'جزئي',
@@ -4249,7 +4444,7 @@ scope_label:'范围', scope_ph:'系统、网络、应用程序',
 report_id_label:'报告编号', report_id_ph:'例: INF-2025-001',
 audit_date_label:'日期', add_control_btn:'+ 添加控制',
 generate_pdf_btn:'📄 PDF', export_txt_btn:'📄 TXT',
-export_json_btn:'💾 导出 JSON', import_json_btn:'📂 导入 JSON',
+export_json_btn:'💾 导出 JSON', import_json_btn:'📂 导入 JSON', issue_report_btn: "📢 发布最终报告",
 save_progress_btn:'💾 保存', view_saved_btn:'📋 报告',
 chart_compliance:'合规性', chart_risk:'风险',
 yes:'是', no:'否', partial:'部分',
@@ -4346,7 +4541,19 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
     }
   });
+// Auto-save cada 2 minutos
+let autoSaveInterval = setInterval(() => {
+  if (isDirty) {
+    const id = document.getElementById('id_informe').value || 'autosave';
+    saveProgress(); 
+    console.log('🔄 Auto-guardado completado');
+  }
+}, 120000); // 2 minutos
 
+// Detener al salir
+window.addEventListener('beforeunload', () => {
+  clearInterval(autoSaveInterval);
+});
 });
 // Añadir al título cuando hay cambios
 function setDirty(isDirty) {
@@ -4365,7 +4572,6 @@ function setDirty(isDirty) {
 // ─────────────────────────────────────────────────────────────────────────────
 // 🔹 GLOBAL FUNCTIONS EXPORT
 // ─────────────────────────────────────────────────────────────────────────────
-window.iaSuggestControls = iaSuggestControls;
 window.addAISuggestedControl = addAISuggestedControl;
 window.generarEvidenciaIA = generarEvidenciaIA;
 window.openTemplateLibrary = openTemplateLibrary;
@@ -4404,6 +4610,8 @@ window.addEventListener('beforeunload', function (e) {
     e.returnValue = '';
   }
 });
+
+
 </script>
 
 <!-- ─────────────────────────────────────────────────────────────────────────── -->
