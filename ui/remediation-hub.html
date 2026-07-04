@@ -442,6 +442,23 @@ tailwind.config = {
 
 <script>
 // ══════════════════════════════════════════════════════════════════════════
+// SECURITY FIX: HTML-escape any value before it is interpolated into innerHTML.
+// Findings rendered here can come from an imported audit JSON file, from user
+// text inputs (owner, remediation notes, risk-acceptance fields), or from AI
+// recommendations. Without escaping, a crafted value containing <, >, " could
+// inject executable HTML/JS into the page (stored XSS). This only changes how
+// special characters are rendered (as literal text) — it does not change any
+// data, calculation, or feature behavior.
+function escapeHTML(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // GLOBAL STATE
 // ══════════════════════════════════════════════════════════════════════════
 let state = {
@@ -1589,11 +1606,11 @@ function renderMatrixCards(findings, color) {
     const days = daysMatch ? daysMatch[1] : '—';
     
     return `
-      <div onclick="selectFinding('${f.id}')" class="bg-slate-900/60 border border-slate-700 rounded-lg p-3 cursor-pointer hover:border-${color}-500 transition group">
+      <div onclick="selectFinding('${escapeHTML(f.id)}')" class="bg-slate-900/60 border border-slate-700 rounded-lg p-3 cursor-pointer hover:border-${color}-500 transition group">
         <div class="flex items-start justify-between mb-1">
           <div class="flex-1 min-w-0">
-            <p class="text-xs font-bold text-slate-100 truncate">${f.controlCode || f.id}</p>
-            <p class="text-[11px] text-slate-300 truncate">${f.controlName || ''}</p>
+            <p class="text-xs font-bold text-slate-100 truncate">${escapeHTML(f.controlCode || f.id)}</p>
+            <p class="text-[11px] text-slate-300 truncate">${escapeHTML(f.controlName || '')}</p>
           </div>
           <span class="score-badge text-[10px] font-bold text-white px-2 py-0.5 rounded ml-2 flex-shrink-0">
             🎯 ${f.score}/10
@@ -1854,20 +1871,20 @@ function renderTable(findings) {
     const overdue = isOverdue(f);
     const isSelected = state.selectedId === f.id;
     return `
-      <tr onclick="selectFinding('${f.id}')" class="border-b border-slate-700/50 hover:bg-slate-700/30 cursor-pointer transition ${isSelected ? 'bg-indigo-900/20' : ''} ${overdue ? 'bg-red-900/10' : ''}">
+      <tr onclick="selectFinding('${escapeHTML(f.id)}')" class="border-b border-slate-700/50 hover:bg-slate-700/30 cursor-pointer transition ${isSelected ? 'bg-indigo-900/20' : ''} ${overdue ? 'bg-red-900/10' : ''}">
         <td class="p-3">
           <div class="flex items-center gap-2">
             <span class="w-1 h-8 rounded-full ${sev === 'critical' ? 'bg-red-500' : sev === 'high' ? 'bg-orange-500' : sev === 'medium' ? 'bg-yellow-500' : 'bg-green-500'}"></span>
             <div>
-              <p class="text-xs font-bold text-slate-100">${f.controlCode || f.id}</p>
-              <p class="text-[10px] text-slate-400 truncate max-w-[200px]">${f.controlName || ''}</p>
+              <p class="text-xs font-bold text-slate-100">${escapeHTML(f.controlCode || f.id)}</p>
+              <p class="text-[10px] text-slate-400 truncate max-w-[200px]">${escapeHTML(f.controlName || '')}</p>
             </div>
           </div>
         </td>
         <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold border ${sevBadge(sev)}">${sev.toUpperCase()}</span></td>
-        <td class="p-3 text-xs text-slate-300 max-w-[200px] truncate">${f.reason || '—'}</td>
-        <td class="p-3 text-xs text-slate-300">${f.owner || '<span class="text-slate-500 italic">Unassigned</span>'}</td>
-        <td class="p-3 text-xs text-slate-300">${f.timeframe || '—'}</td>
+        <td class="p-3 text-xs text-slate-300 max-w-[200px] truncate">${escapeHTML(f.reason || '—')}</td>
+        <td class="p-3 text-xs text-slate-300">${f.owner ? escapeHTML(f.owner) : '<span class="text-slate-500 italic">Unassigned</span>'}</td>
+        <td class="p-3 text-xs text-slate-300">${escapeHTML(f.timeframe || '—')}</td>
         <td class="p-3">
           <span class="px-2 py-0.5 rounded text-[10px] font-bold ${statusBadge(f.status)}">${(f.status || 'open').replace('_',' ').toUpperCase()}</span>
           ${overdue ? '<span class="ml-1 text-[9px] text-red-400 font-bold pulse-overdue">⚠ OVERDUE</span>' : ''}
@@ -1917,14 +1934,14 @@ function renderKanban(findings) {
       const scoreColor = score >= 7 ? 'text-green-400' : score >= 4 ? 'text-yellow-400' : 'text-red-400';
 
       return `
-        <div onclick="selectFinding('${f.id}')" class="kanban-card bg-slate-800 border border-slate-700 rounded-lg p-2.5 cursor-pointer hover:border-indigo-500 transition ${overdue ? 'border-red-500/50' : ''}">
+        <div onclick="selectFinding('${escapeHTML(f.id)}')" class="kanban-card bg-slate-800 border border-slate-700 rounded-lg p-2.5 cursor-pointer hover:border-indigo-500 transition ${overdue ? 'border-red-500/50' : ''}">
           <div class="flex items-start justify-between mb-1">
-            <span class="text-[10px] font-mono font-bold text-slate-100">${f.controlCode || f.id}</span>
+            <span class="text-[10px] font-mono font-bold text-slate-100">${escapeHTML(f.controlCode || f.id)}</span>
             <span class="w-2 h-2 rounded-full ${sevColor[sev] || 'bg-slate-500'}"></span>
           </div>
-          <p class="text-[11px] text-slate-300 line-clamp-2 mb-2">${f.controlName || ''}</p>
+          <p class="text-[11px] text-slate-300 line-clamp-2 mb-2">${escapeHTML(f.controlName || '')}</p>
           <div class="flex items-center justify-between text-[9px] text-slate-500">
-            <span>${f.owner || '—'}</span>
+            <span>${escapeHTML(f.owner || '—')}</span>
             <span class="font-bold ${scoreColor}"> ${score}/10</span>
           </div>
           ${overdue ? '<div class="text-[9px] text-red-400 font-bold mt-1 pulse-overdue"> OVERDUE</div>' : `<div class="text-[9px] text-slate-500 mt-1">${daysOpen(f)}d</div>`}
@@ -1980,8 +1997,8 @@ function renderDetail(id) {
   panel.innerHTML = `
     <div class="fade-in">
       <div class="border-l-4 ${sevBorder[sev] || 'border-slate-500'} pl-3 mb-4">
-        <p class="text-[10px] text-slate-400 uppercase tracking-wider">${f.controlCode || f.id}</p>
-        <h3 class="text-sm font-bold text-slate-100 mt-0.5">${f.controlName || f.title || 'Finding'}</h3>
+        <p class="text-[10px] text-slate-400 uppercase tracking-wider">${escapeHTML(f.controlCode || f.id)}</p>
+        <h3 class="text-sm font-bold text-slate-100 mt-0.5">${escapeHTML(f.controlName || f.title || 'Finding')}</h3>
         ${overdue ? '<p class="text-[10px] text-red-400 font-bold mt-1 pulse-overdue"> OVERDUE · ' + daysOpen(f) + ' ' + t('days_open') + '</p>' : ''}
       </div>
 
@@ -2006,26 +2023,26 @@ function renderDetail(id) {
 
       <div class="mb-4">
         <p class="text-[10px] text-slate-400 uppercase tracking-wider mb-1">${t('description')}</p>
-        <p class="text-xs text-slate-300 bg-slate-900/50 rounded p-2 leading-relaxed">${f.reason || '—'}</p>
+        <p class="text-xs text-slate-300 bg-slate-900/50 rounded p-2 leading-relaxed">${escapeHTML(f.reason || '—')}</p>
       </div>
 
       <div class="mb-4">
         <div class="flex items-center justify-between mb-1">
           <p class="text-[10px] text-slate-400 uppercase tracking-wider">${t('ai_recommendation')}</p>
-          <button onclick="generateAIRecommendation('${f.id}')" class="text-[10px] text-indigo-400 hover:text-indigo-300">✨ ${t('generate_recommendation')}</button>
+          <button onclick="generateAIRecommendation('${escapeHTML(f.id)}')" class="text-[10px] text-indigo-400 hover:text-indigo-300">✨ ${t('generate_recommendation')}</button>
         </div>
-        <p class="text-xs text-slate-300 bg-slate-900/50 rounded p-2 leading-relaxed min-h-[40px]">${f.recommendation || '<span class="text-slate-500 italic">Click to generate</span>'}</p>
+        <p class="text-xs text-slate-300 bg-slate-900/50 rounded p-2 leading-relaxed min-h-[40px]">${f.recommendation ? escapeHTML(f.recommendation) : '<span class="text-slate-500 italic">Click to generate</span>'}</p>
       </div>
 
       <div class="grid grid-cols-2 gap-2 mb-4">
         <div>
           <label class="text-[10px] text-slate-400 uppercase">${t('owner')}</label>
-          <input type="text" value="${f.owner || ''}" onchange="updateFinding('${f.id}', 'owner', this.value)" 
+          <input type="text" value="${escapeHTML(f.owner || '')}" onchange="updateFinding('${escapeHTML(f.id)}', 'owner', this.value)" 
             class="w-full mt-1 p-1.5 rounded bg-slate-900 border border-slate-600 text-xs focus:border-indigo-400 outline-none">
         </div>
         <div>
           <label class="text-[10px] text-slate-400 uppercase">${t('status')}</label>
-          <select onchange="updateFinding('${f.id}', 'status', this.value)" 
+          <select onchange="updateFinding('${escapeHTML(f.id)}', 'status', this.value)" 
             class="w-full mt-1 p-1.5 rounded bg-slate-900 border border-slate-600 text-xs focus:border-indigo-400 outline-none">
             <option value="open" ${f.status==='open'?'selected':''}>Open</option>
             <option value="assigned" ${f.status==='assigned'?'selected':''}>Assigned</option>
@@ -2039,7 +2056,7 @@ function renderDetail(id) {
 
       <div class="mb-4">
         <label class="text-[10px] text-slate-400 uppercase">${t('decision')}</label>
-        <select onchange="updateFinding('${f.id}', 'decision', this.value)" 
+        <select onchange="updateFinding('${escapeHTML(f.id)}', 'decision', this.value)" 
           class="w-full mt-1 p-1.5 rounded bg-slate-900 border border-slate-600 text-xs focus:border-indigo-400 outline-none">
           <option value="mitigate" ${f.decision==='mitigate'?'selected':''}>🛠️ Mitigate</option>
           <option value="risk_accepted" ${f.decision==='risk_accepted'?'selected':''}>⚠️ Risk Accepted</option>
@@ -2049,21 +2066,21 @@ function renderDetail(id) {
 
       <div class="mb-4">
         <label class="text-[10px] text-slate-400 uppercase">${t('remediation_notes')}</label>
-        <textarea onchange="updateFinding('${f.id}', 'remediationNotes', this.value)" rows="2"
-          class="w-full mt-1 p-2 rounded bg-slate-900 border border-slate-600 text-xs focus:border-indigo-400 outline-none">${f.remediationNotes || ''}</textarea>
+        <textarea onchange="updateFinding('${escapeHTML(f.id)}', 'remediationNotes', this.value)" rows="2"
+          class="w-full mt-1 p-2 rounded bg-slate-900 border border-slate-600 text-xs focus:border-indigo-400 outline-none">${escapeHTML(f.remediationNotes || '')}</textarea>
       </div>
 
       <div class="mb-4">
         <label class="text-[10px] text-slate-400 uppercase">${t('upload_evidence')}</label>
-        <input type="file" onchange="uploadEvidence('${f.id}', this)" 
+        <input type="file" onchange="uploadEvidence('${escapeHTML(f.id)}', this)" 
           class="w-full mt-1 p-1.5 rounded bg-slate-900 border border-slate-600 text-xs file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-indigo-600 file:text-white file:text-xs file:cursor-pointer">
-        ${f.evidenceFile ? `<p class="text-[10px] text-green-400 mt-1">📎 ${f.evidenceFile}</p>` : ''}
+        ${f.evidenceFile ? `<p class="text-[10px] text-green-400 mt-1">📎 ${escapeHTML(f.evidenceFile)}</p>` : ''}
       </div>
 
       <div class="grid grid-cols-2 gap-2 mb-4">
-        <button onclick="requestExtension('${f.id}')" class="px-2 py-1.5 bg-slate-700 hover:bg-slate-600 rounded text-[11px] transition">${t('request_extension')}</button>
-        <button onclick="markPending('${f.id}')" class="px-2 py-1.5 bg-yellow-700 hover:bg-yellow-600 rounded text-[11px] transition">${t('mark_pending')}</button>
-        <button onclick="closeFinding('${f.id}')" class="col-span-2 px-2 py-1.5 bg-green-700 hover:bg-green-600 rounded text-[11px] transition font-bold">${t('close_finding')}</button>
+        <button onclick="requestExtension('${escapeHTML(f.id)}')" class="px-2 py-1.5 bg-slate-700 hover:bg-slate-600 rounded text-[11px] transition">${t('request_extension')}</button>
+        <button onclick="markPending('${escapeHTML(f.id)}')" class="px-2 py-1.5 bg-yellow-700 hover:bg-yellow-600 rounded text-[11px] transition">${t('mark_pending')}</button>
+        <button onclick="closeFinding('${escapeHTML(f.id)}')" class="col-span-2 px-2 py-1.5 bg-green-700 hover:bg-green-600 rounded text-[11px] transition font-bold">${t('close_finding')}</button>
       </div>
 
       <div class="border-t border-slate-700 pt-3">
@@ -2076,10 +2093,10 @@ function renderDetail(id) {
       ${f.riskAcceptance ? `
         <div class="mt-4 p-3 bg-yellow-900/20 border border-yellow-700/50 rounded">
           <p class="text-[10px] text-yellow-400 font-bold uppercase mb-1">⚠️ ${t('risk_accepted')}</p>
-          <p class="text-[11px] text-slate-300"><strong>Approver:</strong> ${f.riskAcceptance.approver}</p>
-          <p class="text-[11px] text-slate-300"><strong>Justification:</strong> ${f.riskAcceptance.justification}</p>
-          <p class="text-[11px] text-slate-300"><strong>Review:</strong> ${f.riskAcceptance.reviewDate}</p>
-          ${f.riskAcceptance.compensatingControl ? `<p class="text-[11px] text-slate-300"><strong>Compensating:</strong> ${f.riskAcceptance.compensatingControl}</p>` : ''}
+          <p class="text-[11px] text-slate-300"><strong>Approver:</strong> ${escapeHTML(f.riskAcceptance.approver)}</p>
+          <p class="text-[11px] text-slate-300"><strong>Justification:</strong> ${escapeHTML(f.riskAcceptance.justification)}</p>
+          <p class="text-[11px] text-slate-300"><strong>Review:</strong> ${escapeHTML(f.riskAcceptance.reviewDate)}</p>
+          ${f.riskAcceptance.compensatingControl ? `<p class="text-[11px] text-slate-300"><strong>Compensating:</strong> ${escapeHTML(f.riskAcceptance.compensatingControl)}</p>` : ''}
         </div>
       ` : ''}
     </div>
@@ -2110,8 +2127,8 @@ function renderTimeline(history) {
         ${i < sorted.length - 1 ? '<div class="timeline-line"></div>' : ''}
         <div class="timeline-dot ${color}"></div>
         <div class="text-[10px]">
-          <p class="text-slate-200"><span class="font-bold">${icon} ${h.field || 'change'}</span> <span class="text-slate-400">by ${h.actor || 'system'}</span></p>
-          <p class="text-slate-400 text-[9px]">${note}</p>
+          <p class="text-slate-200"><span class="font-bold">${icon} ${escapeHTML(h.field || 'change')}</span> <span class="text-slate-400">by ${escapeHTML(h.actor || 'system')}</span></p>
+          <p class="text-slate-400 text-[9px]">${escapeHTML(note)}</p>
           <p class="text-slate-500 text-[9px] mt-0.5">${date}</p>
         </div>
       </div>

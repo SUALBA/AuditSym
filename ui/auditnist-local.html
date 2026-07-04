@@ -92,6 +92,23 @@ class AuditSession {
 // Shared helpers for audit-lifecycle records (Engagement, Finding, Response,
 // Remediation). Records are "born with history": { id, createdAt, updatedAt, history[] }.
 // ─────────────────────────────────────────────────────────────────────────────
+// SECURITY FIX: HTML-escape any value before it is interpolated into innerHTML.
+// Without this, text coming from imported JSON files, the SCF control library,
+// or AI-generated responses could contain characters like <, >, " and inject
+// executable HTML/JS into the page (stored/reflected XSS) when the app builds
+// markup with template literals + innerHTML. This does not change any app
+// logic or output text — it only neutralizes HTML-special characters so they
+// render as literal text instead of being parsed as markup.
+function escapeHTML(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function genId(prefix='REC'){ return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2,7)}`; }
 function nowTs(){ return Date.now(); }
 function newRecord(prefix, fields={}){ return { id:genId(prefix), createdAt:nowTs(), updatedAt:nowTs(), history:[], ...fields }; }
@@ -1608,8 +1625,15 @@ isDirty = true;
 function addControl(startCollapsed = false, question = '', scfId = '', fwCode = '', name = '', vertical = '') {
 const wrapper = document.createElement('div');
 wrapper.className = 'control bg-gray-800 rounded border border-cyberaccent/40 hover:border-cyberaccent transition-colors duration-200';
-const displayCode = fwCode || scfId || 'N/A';
-const displayName = name || scfId || 'Control';
+// SECURITY FIX: escape values that can come from an imported JSON file or the
+// control library before they are placed inside innerHTML/attributes below.
+// Same displayed text, just safe from HTML/JS injection.
+const displayCode = escapeHTML(fwCode || scfId || 'N/A');
+const displayName = escapeHTML(name || scfId || 'Control');
+const safeScfId = escapeHTML(scfId);
+const safeFwCode = escapeHTML(fwCode);
+const safeVertical = escapeHTML(vertical);
+const safeQuestion = escapeHTML(question);
 wrapper.innerHTML = `
 <div class="control-header flex items-center gap-2 px-3 py-2 cursor-pointer bg-gradient-to-r from-blue-900/20 to-transparent border-b border-cyberaccent/20"
      onclick="toggleControlCollapse(this.parentNode)">
@@ -1619,9 +1643,9 @@ ${startCollapsed ? '▶' : '▼'}
 <input class="ctrl flex-1 bg-transparent text-cyberaccent font-mono text-sm font-bold
 border-b border-gray-600 focus:outline-none"
 value="${displayCode} – ${displayName}"
-data-scf-id="${scfId}"
-data-fw-code="${fwCode}"
-data-vertical="${vertical}"
+data-scf-id="${safeScfId}"
+data-fw-code="${safeFwCode}"
+data-vertical="${safeVertical}"
 onclick="event.stopPropagation()" readonly />
 <div class="flex items-center gap-2 text-xs">
 <div class="flex flex-col items-start">
@@ -1651,7 +1675,7 @@ onclick="removeControl(this); event.stopPropagation()">×</button>
 ${question ? `
 <div class="mb-3 p-3 bg-gray-900 rounded border border-cyberaccent">
 <label class="text-xs text-cyberaccent font-bold">${T('audit_question_label')}</label>
-<p class="text-sm text-gray-300 mt-1">${question}</p>
+<p class="text-sm text-gray-300 mt-1">${safeQuestion}</p>
 </div>
 ` : ''}
 <label class="text-xs text-cyberaccent">${T('auditor_notes_label')}</label>
