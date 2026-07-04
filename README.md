@@ -12,8 +12,8 @@
 
 [🚀 Live Demo]((https://github.com/SUALBA/AudiNist_Pro/) 
 [📖 Documentation](docs/) · 
-[🐛 Report Bug](https://github.com/tuusuario/auditsym/issues) · 
-[💡 Request Feature](https://github.com/tuusuario/auditsym/issues)
+[🐛 Report Bug](https://github.com/SUALBA/AudiNist_Pro/issues) · 
+[💡 Request Feature](https://github.com/SUALBA/AudiNist_Pro/issues) ·
 
 </div>
 
