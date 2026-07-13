@@ -4,16 +4,16 @@
 
 **A local-first, multi-framework GRC intelligence platform with AI-powered auditing, risk remediation, and continuous improvement tracking.**
 
-[![Version](https://img.shields.io/badge/version-2.0.1-blue.svg)](https://github.com/tuusuario/auditsym/releases)
+[![Version](https://img.shields.io/badge/version-0.2.0-blue.svg)](https://github.com/SUALBA/AuditSym/releases)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-green.svg)](LICENSE)
 [![Frameworks](https://img.shields.io/badge/frameworks-NIST%20%7C%20ISO%20%7C%20CIS%20%7C%20COBIT-purple.svg)](#supported-frameworks)
 [![AI Providers](https://img.shields.io/badge/AI-Local%20%26%20Cloud%20Ready-yellow.svg)](#ai-providers)
 [![Privacy](https://img.shields.io/badge/Privacy-100%25%20Local%20First-orange.svg)](#privacy--security)
 
-[🚀 Live Demo]((https://github.com/SUALBA/AudiNist_Pro/) 
+[🚀 Live Demo](https://github.com/SUALBA/AuditSym) · 
 [📖 Documentation](docs/) · 
-[🐛 Report Bug](https://github.com/SUALBA/AudiNist_Pro/issues) · 
-[💡 Request Feature](https://github.com/SUALBA/AudiNist_Pro/issues) ·
+[🐛 Report Bug](https://github.com/SUALBA/AuditSym/issues) · 
+[💡 Request Feature](https://github.com/SUALBA/AuditSym/issues)
 
 </div>
 
@@ -23,15 +23,15 @@
 
 AuditSym is actively developed and architected by:
 
-#### 👩‍💻 Project Creator  · Product Vision 
+#### 👩‍💻 Project Creator · Product Vision 
 **Susana Alba Santamaria** 
-UX · Audit Methodology  · Product Vision 
+UX · Audit Methodology · Product Vision 
 Cybersecurity & Audit-Focused Builder  
- sualba.dev@gmail.com
+sualba.dev@gmail.com
 
-####  Main Collaborator & Architecture Contributor
+#### Main Collaborator & Architecture Contributor
 **Vandan Panwala**  
-Cybersecurity . Software Engineering & Contributor Core Engineering 
+Cybersecurity · Software Engineering & Contributor Core Engineering 
 🔗 [GitHub Profile](https://github.com/PanwalaVandan)
 
 ---
@@ -51,15 +51,15 @@ Cybersecurity frameworks are powerful, but in practice, they are often difficult
 | Cloud GRC tools expose sensitive data | **100% Local-First** — your data never leaves your browser |
 | Expensive SaaS subscriptions | **Open Source & Free** — no license fees, ever |
 | Single-framework silos | **Multi-Framework** — NIST, ISO, CIS, COBIT in one place |
-| Manual, spreadsheet-based audits | 🧠 **AI as a Co-Pilot**, Not an Autopilot . AuditSym uses AI to eliminate the blank-page syndrome. It suggests risk scores, drafts executive narratives, and extracts evidence from your PDFs via local RAG. However, the auditor always retains absolute control. Every AI suggestion requires explicit human validation before being recorded. If AI is unavailable, our deterministic scoring engine steps in seamlessly. Your audit, your criteria, your liability. |
+| Manual, spreadsheet-based audits | **🧠 AI as a Co-Pilot**, Not an Autopilot. AuditSym uses AI to eliminate the blank-page syndrome. It suggests risk scores, drafts executive narratives, and extracts evidence from your PDFs via local RAG. However, the auditor always retains absolute control. Every AI suggestion requires explicit human validation before being recorded. If AI is unavailable, our deterministic scoring engine steps in seamlessly. Your audit, your criteria, your liability. |
 | No prioritization of findings | **Priority Matrix** — Quick Wins first (Impact vs. Effort) |
 | No historical tracking | **Evolution Tracking** — year-over-year security improvement |
 
 ---
 
 ## 📸 Interface Preview
+
 ### 📊 Multi-Framework Dashboard
-### Multi-Framework Dashboard
 
 ![Multi-Framework Dashboard](screenshots/dashboardRiskSYM..jpg)
 
@@ -119,23 +119,27 @@ The main workspace is built around practical control handling: compliance, risk,
 
 ![Reporting View](screenshots/SCREENSHOT1.jpg)
 
-AuditNIST Pro is designed to support structured reporting and a cleaner audit output workflow.
+AuditSym is designed to support structured reporting and a cleaner audit output workflow.
 
 ---
 
-###  Remediation Hub & Priority Matrix
+### Remediation Hub & Priority Matrix
+
 ![Priority Matrix](screenshots/HALLAZGOSyREMEDIACION.jpg)
+
 *Automatically classifies findings into Quick Wins, Critical, Opportunities, and Strategic based on Impact vs. Effort.*
 
 ### 🤖 AI-Assisted Finding Detail
+
 ![Finding Detail](screenshots/historicalEvolutionSYM.jpg)
+
 *Each finding includes AI-assisted remediation guidance and prioritization, evidence suggestions, and complexity/effort analysis.*
 
 ---
 
 ## ✨ Key Features
 
-###  Audit Engine (`auditnist-local.html`)
+### Audit Engine (`auditnist-local.html`)
 - **Multi-Framework Support**: Evaluate controls against NIST CSF 2.0, ISO 27001, CIS Controls v8, and COBIT 2019 simultaneously.
 - **AI Assessment**: Risk-weighted scoring with maturity model and AI-generated executive narrative.
 - **Local RAG**: Semantic search and analysis of PDF policies and procedures (requires local Python server).
@@ -149,7 +153,7 @@ AuditNIST Pro is designed to support structured reporting and a cleaner audit ou
 - **AI Remediation Copilot (initial version)**: AI-generated recommendations and evidence suggestions per finding.
 - **Historical Evolution Dashboard**: Year-over-year security posture tracking and continuous improvement.
 
-###  Platform & Privacy
+### Platform & Privacy
 - **7 Languages**: ES, EN, FR, DE, PT, AR, ZH.
 - **Local-First Design**: No backend required. All data persists in browser LocalStorage.
 - **Offline Ready**: Fully functional without an internet connection.
@@ -184,7 +188,7 @@ AuditSym is evolving toward a modular, scalable architecture built around:
 - [x] Risk Acceptance workflow
 - [x] 7-language internationalization
 
-### 🔵 Phase 2 —  Audit Lifecycle (In Progress)
+### 🔵 Phase 2 — Audit Lifecycle (In Progress)
 
 ✔ Initial Remediation Hub
 ✔ Historical Evolution
@@ -235,30 +239,50 @@ Simply open `auditnist-local.html` or `remediation-hub.html` in your browser.
 
 **Option 2: Local Server (Recommended)**
 
+```bash
 python -m http.server 8080
- Then visit http://localhost:8080
- 
- 
+```
+
+Then visit: http://localhost:8080
+
 **Option 3: Local RAG Server (Optional)**
-    123
-    License
+
+For PDF semantic search and document analysis, start the RAG server:
+
+```bash
+python rag/server.py
+```
+
+Then use the "Auto Analyze" feature in the Audit Engine.
+
+---
+
+## 📄 License
 
 This project is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0).
 See the LICENSE file for details.
-What this means:
-✅ Free to use, modify, and distribute.
-✅ Can be used commercially.
-️ Modifications must also be open source (AGPL).
-⚠️ Network use requires sharing source code.
+
+**What this means:**
+- ✅ Free to use, modify, and distribute.
+- ✅ Can be used commercially.
+- ⚠️ Modifications must also be open source (AGPL).
+- ⚠️ Network use requires sharing source code.
+
 This license protects the open-source nature of AuditSym while allowing commercial consulting and support services.
-⭐ Support the Project
-If you find AuditSym useful: Give the repository a star ⭐
-Open issues for improvements or bugs
-Contribute new framework adapters or translations
-Share your feedback and use cases
+
+---
+
+## ⭐ Support the Project
+
+If you find AuditSym useful:
+- Give the repository a star ⭐
+- Open issues for improvements or bugs
+- Contribute new framework adapters or translations
+- Share your feedback and use cases
+
 AuditSym is being built to make cybersecurity audits more structured, intelligent, and privacy-first.
 
-We believe an audit should not end with a report — it should drive continuous improvement.
+---
 
 <div align="center">
 
@@ -270,10 +294,6 @@ We believe an audit should not end with a report — it should drive continuous 
 
 **Plan • Assess • Report • Remediate • Improve**
 
+⬆ [Back to top](#-auditsym--ai-assisted-cybersecurity-audit--grc-platform)
 
-
-</div>
-<div align="center">
-
-⬆ Back to top
 </div>
