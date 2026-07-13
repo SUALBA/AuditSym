@@ -51,7 +51,7 @@ Cybersecurity frameworks are powerful, but in practice, they are often difficult
 | Cloud GRC tools expose sensitive data | **100% Local-First** — your data never leaves your browser |
 | Expensive SaaS subscriptions | **Open Source & Free** — no license fees, ever |
 | Single-framework silos | **Multi-Framework** — NIST, ISO, CIS, COBIT in one place |
-| Manual, spreadsheet-based audits | **AI-Assisted** — automated scoring, narratives, and RAG |
+| Manual, spreadsheet-based audits | 🧠 **AI as a Co-Pilot**, Not an Autopilot . AuditSym uses AI to eliminate the blank-page syndrome. It suggests risk scores, drafts executive narratives, and extracts evidence from your PDFs via local RAG. However, the auditor always retains absolute control. Every AI suggestion requires explicit human validation before being recorded. If AI is unavailable, our deterministic scoring engine steps in seamlessly. Your audit, your criteria, your liability. |
 | No prioritization of findings | **Priority Matrix** — Quick Wins first (Impact vs. Effort) |
 | No historical tracking | **Evolution Tracking** — year-over-year security improvement |
 

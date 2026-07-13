@@ -63,12 +63,12 @@ tailwind.config = {
   <div class="container mx-auto px-4 py-3">
     <div class="flex justify-between items-center flex-wrap gap-3">
       <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
-          <span class="text-xl">🛡️</span>
-        </div>
-        <div>
+    <div class="w-16 h-16 rounded-lg flex items-center justify-center overflow-hidden">
+        <img src="/screenshots/logo_AuditSYM.png" alt="AuditSym Logo" class="w-full h-full object-cover">
+    </div>
+    <div>
           <h1 class="text-xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
-            AuditSym · Remediation Hub Pro
+            AuditSym · Remediation Hub 
           </h1>
           <p class="text-[10px] text-slate-400" data-i18n="header_subtitle">Priority-driven findings management with historical evolution</p>
         </div>
@@ -2040,16 +2040,15 @@ function renderDetail(id) {
           <input type="text" value="${escapeHTML(f.owner || '')}" onchange="updateFinding('${escapeHTML(f.id)}', 'owner', this.value)" 
             class="w-full mt-1 p-1.5 rounded bg-slate-900 border border-slate-600 text-xs focus:border-indigo-400 outline-none">
         </div>
-        <div>
-          <label class="text-[10px] text-slate-400 uppercase">${t('status')}</label>
-          <select onchange="updateFinding('${escapeHTML(f.id)}', 'status', this.value)" 
+        <div class="mb-4">
+          <label class="text-[10px] text-slate-400 uppercase">${t('decision')}</label>
+          <select onchange="updateFinding('${escapeHTML(f.id)}', 'decision', this.value)" 
             class="w-full mt-1 p-1.5 rounded bg-slate-900 border border-slate-600 text-xs focus:border-indigo-400 outline-none">
-            <option value="open" ${f.status==='open'?'selected':''}>Open</option>
-            <option value="assigned" ${f.status==='assigned'?'selected':''}>Assigned</option>
-            <option value="in_progress" ${f.status==='in_progress'?'selected':''}>In Progress</option>
-            <option value="pending_validation" ${f.status==='pending_validation'?'selected':''}>Pending Validation</option>
-            <option value="closed" ${f.status==='closed'?'selected':''}>Closed</option>
-            <option value="risk_accepted" ${f.status==='risk_accepted'?'selected':''}>Risk Accepted</option>
+            <option value="avoid" ${f.decision==='avoid'?'selected':''}>🚫 Evitar</option>
+            <option value="mitigate" ${f.decision==='mitigate'?'selected':''}>🛠️ Mitigar</option>
+            <option value="transfer" ${f.decision==='transfer'?'selected':''}>📤 Transferir</option>
+            <option value="accept" ${f.decision==='accept'?'selected':''}>⚠️ Aceptar</option>
+            <option value="false_positive" ${f.decision==='false_positive'?'selected':''}>❌ Falso positivo</option>
           </select>
         </div>
       </div>
