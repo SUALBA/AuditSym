@@ -2324,6 +2324,16 @@ function issueFinalReport() {
   data.publishedAt = new Date().toISOString();
   data.engagement.status = 'issued';
 
+  // The issued state must live in the app, not only in the downloaded file.
+  // Without this the status selector still reads its previous value, so the
+  // next saveProgress()/exportToJSON() would silently write the audit back to
+  // 'draft' and contradict a report that has already been issued. M4 locking
+  // will key off this persisted state.
+  const statusEl = document.getElementById('eng_status');
+  if (statusEl) statusEl.value = 'issued';
+  localStorage.setItem(`auditnist_${data.id}`, JSON.stringify(data));
+  isDirty = false;
+
   // Create and download the JSON file with findings
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   saveAs(blob, `Audit_${currentFramework.toUpperCase()}_${data.id}_FINAL.json`);
@@ -2338,7 +2348,6 @@ function issueFinalReport() {
 // Priority Scoring Engine (compartido con el Hub)
 const IMPACT_SCORES = { critical: 10, high: 7, medium: 4, low: 2 };
 const EFFORT_SCORES = { low: 1, medium: 2, high: 3 };
-const COST_LABELS = { low: '$', medium: '$$', high: '$$$' };
 const DEFAULT_TIMEFRAMES = { critical: 15, high: 30, medium: 60, low: 90 };
 
 function estimateEffort(control) {
@@ -2362,11 +2371,17 @@ function calculateScore(control) {
 /**
  * Builds a STABLE ID for a finding.
  * Does NOT include auditId so the ID survives re-audits.
+ *
+ * Controls added manually (via "+ Add Control") carry no scfId, so they fall
+ * back to their framework code / name. That keeps custom controls addressable
+ * instead of dropping them, and keeps the id stable across re-issues.
+ * The Remediation Hub mirrors this formula so both sides derive the same id.
  */
 function buildFindingId(control) {
-    const scfId = control.scfId || control.id || 'UNKNOWN';
     const framework = currentFramework || 'nist-csf';
-    const normalizedKey = (scfId + '-' + framework).replace(/[^a-zA-Z0-9]/g, '_').toUpperCase();
+    const scfId = control.scfId || control.id || '';
+    const key = scfId || `CUSTOM-${control.fwCode || control.name || control.ctrl || 'UNKNOWN'}`;
+    const normalizedKey = (key + '-' + framework).replace(/[^a-zA-Z0-9]/g, '_').toUpperCase();
     return `FND-${normalizedKey}`;
 }
 
@@ -2375,9 +2390,12 @@ function buildFindingId(control) {
  * Follows the M0 lifecycle convention ("born with history").
  */
 function buildFinding(control, auditId) {
-        // ✅ FIX: Ignorar controles sin scfId (evita findings fantasma)
-    if (!control.scfId || control.scfId === '') return null;
-    
+    // Skip only controls with no identity at all (avoids phantom findings from
+    // empty rows). A manually added control has no scfId but still has a code
+    // or name, so it must produce a finding rather than be silently dropped.
+    const hasIdentity = control.scfId || control.fwCode || control.name || control.ctrl;
+    if (!hasIdentity) return null;
+
     const scfId = control.scfId || control.id || '';
     const controlCode = control.fwCode || scfId;
     const controlName = control.name || control.ctrl || '';
@@ -2423,9 +2441,9 @@ function buildFinding(control, auditId) {
         reason: reason,
         evidence: evidence,
         // ── PRIORITY SCORING (Innovación) ──
-        effort: effort,                      // ✅ low/medium/high
-        cost: effort,                        // ✅ $/$$/$$$
-        score: score,                        // ✅ Impact ÷ Effort
+        effort: effort,                      // low/medium/high
+        cost: effort,                        // cost band key; the Hub renders it as $/$$/$$$
+        score: score,                        // Impact ÷ Effort
         // ── MANAGEMENT RESPONSE STUB (M2) ──
         decision: 'mitigate',                // ✅ minúsculas
         owner: '',
