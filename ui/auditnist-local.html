@@ -1244,6 +1244,7 @@ function loadAuditById(key) {
   document.getElementById('id_informe').value = data.id || '';
   document.getElementById('fecha').value = data.fecha || '';
   applyEngagement(data);  // restores Audit Plan; defaults cleanly for pre-#20 (v1) files
+  applyPublishState(data);  // an already-issued audit stays frozen after reload
 
   const ctrlsContainer = document.getElementById('controls');
   while (ctrlsContainer.firstChild) ctrlsContainer.removeChild(ctrlsContainer.firstChild);
@@ -2091,7 +2092,8 @@ function clearData() {
   ['empresa_auditada','empresa_auditora','auditor','alcance','id_informe','fecha']
     .forEach(id => document.getElementById(id).value = '');
 
-  applyEngagement({});  // reset Audit Plan panel to defaults
+  applyEngagement({});    // reset Audit Plan panel to defaults
+  applyPublishState({});  // a cleared workspace is a fresh draft, not an issued audit
 
   const ctrls = document.getElementById('controls');
   while (ctrls.firstChild) ctrls.removeChild(ctrls.firstChild);
@@ -2199,6 +2201,28 @@ status: val('eng_status') || 'draft'
 };
 }
 
+/**
+ * Publish snapshot.
+ *
+ * Issuing a report has to CAPTURE the findings, not just stamp a date.
+ * collectAuditData() re-derives everything from the DOM, so without a snapshot
+ * an issued audit would lose publishedAt on the next save and its findings
+ * would silently follow any later control edit — quietly contradicting the
+ * report already delivered to the client.
+ *
+ * While the audit is a draft this stays null and findings are derived live
+ * (so the Hub can consume drafts). Once issued, the captured findings and
+ * timestamp are carried forward verbatim. M4 builds the formal
+ * locking/revision flow on top of this.
+ */
+let publishedSnapshot = null;   // { publishedAt, findings } once issued
+
+function applyPublishState(data) {
+  publishedSnapshot = (data && data.publishedAt)
+    ? { publishedAt: data.publishedAt, findings: Array.isArray(data.findings) ? data.findings : [] }
+    : null;
+}
+
 function applyEngagement(data) {
 const eng = (data && data.engagement) || {};
 const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
@@ -2295,8 +2319,15 @@ function collectAuditData() {
     }
   });
 
-  // 3. Generar findings
-  data.findings = buildFindingsFromControls(data.controls, data.id);
+  // 3. Findings: frozen once the audit has been issued, derived live otherwise.
+  //    Re-deriving here on an issued audit is what let a later control edit
+  //    rewrite findings that had already been reported, and reset publishedAt.
+  if (publishedSnapshot) {
+    data.findings    = publishedSnapshot.findings;
+    data.publishedAt = publishedSnapshot.publishedAt;
+  } else {
+    data.findings = buildFindingsFromControls(data.controls, data.id);
+  }
   return data;
 }
 /**
@@ -2320,9 +2351,15 @@ function collectAuditData() {
  * -------------------------------------------------------------
  */
 function issueFinalReport() {
+  // Derive findings fresh from the current controls at the moment of issue,
+  // ignoring any earlier snapshot (re-issuing must re-capture, not replay).
+  publishedSnapshot = null;
   const data = collectAuditData();
   data.publishedAt = new Date().toISOString();
   data.engagement.status = 'issued';
+
+  // Freeze exactly what was issued so later edits cannot rewrite it.
+  publishedSnapshot = { publishedAt: data.publishedAt, findings: data.findings };
 
   // The issued state must live in the app, not only in the downloaded file.
   // Without this the status selector still reads its previous value, so the
@@ -2528,6 +2565,7 @@ document.getElementById('alcance').value = data.alcance || '';
 document.getElementById('id_informe').value = data.id || '';
 document.getElementById('fecha').value = data.fecha || '';
 applyEngagement(data);  // restores Audit Plan; defaults cleanly for pre-#20 (v1) files
+applyPublishState(data);  // an already-issued audit stays frozen after import
 
 if (data.evaluatedControls) {
 evaluatedControls = data.evaluatedControls;
