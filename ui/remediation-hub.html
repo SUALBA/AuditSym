@@ -1342,6 +1342,18 @@ function importHubJSON(input) {
   input.value = '';
 }
 
+/**
+ * Mirrors buildFindingId() in the audit engine so both sides derive an
+ * identical stable id for the same control. Keeping the two formulas in sync
+ * matters because the merge below prefers matching on id.
+ */
+function buildFindingId(control, framework) {
+  const fw = framework || 'nist-csf';
+  const scfId = control.scfId || control.id || '';
+  const key = scfId || `CUSTOM-${control.fwCode || control.name || control.ctrl || 'UNKNOWN'}`;
+  return `FND-${(key + '-' + fw).replace(/[^a-zA-Z0-9]/g, '_').toUpperCase()}`;
+}
+
 function processImportedData(data) {
   let incomingFindings = [];
   if (data.findings && Array.isArray(data.findings) && data.findings.length > 0) {
@@ -1353,7 +1365,7 @@ function processImportedData(data) {
         const severity = c.riesgo || 'medium';
         const days = DEFAULT_TIMEFRAMES[severity.toLowerCase()] || 60;
         return {
-          id: `FND-${(c.scfId || c.id || 'UNKNOWN').toUpperCase().replace(/[^A-Z0-9]/g,'_')}`,
+          id: buildFindingId(c, data.framework),
           scfId: c.scfId || '',
           controlCode: c.fwCode || c.ctrl || '',
           controlName: c.name || '',
@@ -1377,16 +1389,33 @@ function processImportedData(data) {
       });
   }
 
-  // Calculate scores
+  // Normalise incoming findings before anything reads them. data.findings is
+  // taken straight from the imported file, so an older or hand-edited payload
+  // can omit fields the renderers assume exist — a missing timeframe used to
+  // throw and abort the whole import, leaving the Hub blank.
   incomingFindings.forEach(f => {
-    f.score = calculateScore(f);
-    f.effort = f.effort || estimateEffort(f);
-    f.cost = f.cost || f.effort;
+    const sev   = (f.severity || f.riskLevel || 'medium').toLowerCase();
+    f.severity  = sev;
+    f.riskLevel = f.riskLevel || sev;
+    f.effort    = f.effort || estimateEffort(f);
+    f.cost      = f.cost || f.effort;
+    f.score     = calculateScore(f);
+    f.timeframe = f.timeframe || `${DEFAULT_TIMEFRAMES[sev] || 60} days`;
+    f.status    = f.status || 'open';
+    f.decision  = f.decision || 'mitigate';
+    f.history   = Array.isArray(f.history) ? f.history : [];
+    f.createdAt = f.createdAt || Date.now();
+    f.updatedAt = f.updatedAt || Date.now();
   });
 
   const localFindings = JSON.parse(localStorage.getItem('hub_findings') || '[]');
   const mergedFindings = incomingFindings.map(newF => {
-    const existing = localFindings.find(e => e.id === newF.id || e.scfId === newF.scfId);
+    // Match on id first. Only fall back to scfId when it is actually present:
+    // manually added controls carry scfId === '', and an unguarded comparison
+    // would make every such finding match the first one and merge them together.
+    const existing = localFindings.find(e =>
+      e.id === newF.id || (newF.scfId && e.scfId === newF.scfId)
+    );
     if (existing) {
       return {
         ...newF,
@@ -1602,7 +1631,7 @@ function renderMatrixCards(findings, color) {
     const effortIcon = { low: '🟢', medium: '🟡', high: '🔴' }[f.effort] || '';
     const effortLabel = { low: t('effort_low'), medium: t('effort_medium'), high: t('effort_high') }[f.effort] || f.effort;
     const costLabel = COST_LABELS[f.cost] || '$$';
-    const daysMatch = f.timeframe.match(/(\d+)/);
+    const daysMatch = String(f.timeframe || '').match(/(\d+)/);
     const days = daysMatch ? daysMatch[1] : '—';
     
     return `
