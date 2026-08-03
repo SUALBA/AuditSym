@@ -514,6 +514,8 @@ const I18N = {
     ai_copilot: '🤖 AI Remediation Copilot', generate_recommendation: 'Generar Recomendación',
     suggest_evidence: 'Sugerir Evidencia', history: 'Historial de Cambios',
     owner: 'Responsable', deadline: 'Plazo', decision: 'Decisión', status: 'Estado',
+    decision_avoid: 'Evitar', decision_mitigate: 'Mitigar', decision_transfer: 'Transferir', decision_risk_accepted: 'Riesgo Aceptado', decision_false_positive: 'Falso Positivo',
+    mgmt_response: 'Respuesta de la Dirección', responder: 'Responde', responder_role: 'Cargo', response_date: 'Fecha de Respuesta', received_via: 'Recibido por', response_comments: 'Comentarios', source: 'Origen',
     finding: 'Hallazgo', control: 'Control', risk: 'Riesgo', reason: 'Razón',
     days_open: 'días abierto', overdue_label: 'VENCIDO',
     no_findings: 'No hay hallazgos que coincidan con los filtros',
@@ -564,6 +566,8 @@ const I18N = {
     ai_copilot: '🤖 AI Remediation Copilot', generate_recommendation: 'Generate Recommendation',
     suggest_evidence: 'Suggest Evidence', history: 'Change History',
     owner: 'Owner', deadline: 'Deadline', decision: 'Decision', status: 'Status',
+    decision_avoid: 'Avoid', decision_mitigate: 'Mitigate', decision_transfer: 'Transfer', decision_risk_accepted: 'Risk Accepted', decision_false_positive: 'False Positive',
+    mgmt_response: 'Management Response', responder: 'Responder', responder_role: 'Role', response_date: 'Response Date', received_via: 'Received Via', response_comments: 'Comments', source: 'Source',
     finding: 'Finding', control: 'Control', risk: 'Risk', reason: 'Reason',
     days_open: 'days open', overdue_label: 'OVERDUE',
     no_findings: 'No findings match the filters',
@@ -1403,6 +1407,18 @@ function processImportedData(data) {
     f.timeframe = f.timeframe || `${DEFAULT_TIMEFRAMES[sev] || 60} days`;
     f.status    = f.status || 'open';
     f.decision  = f.decision || 'mitigate';
+    // Migrate the legacy 'accept' value (from the old duplicate dropdown) to
+    // the 'risk_accepted' the status enum and Risk Acceptance Form already use.
+    if (f.decision === 'accept') f.decision = 'risk_accepted';
+    // Management-response provenance: who at the audited company responded, and
+    // how it reached us. source stays 'manual_entry' until an integration feeds
+    // responses in; the object is seeded so the detail panel always has a shape.
+    if (!f.managementResponse || typeof f.managementResponse !== 'object') {
+      f.managementResponse = { responder: '', responderRole: '', responseDate: '',
+                               receivedVia: '', comments: '', source: 'manual_entry' };
+    } else {
+      f.managementResponse.source = f.managementResponse.source || 'manual_entry';
+    }
     f.history   = Array.isArray(f.history) ? f.history : [];
     f.createdAt = f.createdAt || Date.now();
     f.updatedAt = f.updatedAt || Date.now();
@@ -1429,6 +1445,9 @@ function processImportedData(data) {
         recommendation: existing.recommendation || '',
         riskAcceptance: existing.riskAcceptance || null,
         compensatingControl: existing.compensatingControl || '',
+        // Preserve the recorded management response across re-imports, exactly
+        // like owner/decision — a re-audit must not wipe who responded.
+        managementResponse: existing.managementResponse || newF.managementResponse,
         createdAt: existing.createdAt || newF.createdAt,
         updatedAt: Date.now()
       };
@@ -2066,31 +2085,53 @@ function renderDetail(id) {
       <div class="grid grid-cols-2 gap-2 mb-4">
         <div>
           <label class="text-[10px] text-slate-400 uppercase">${t('owner')}</label>
-          <input type="text" value="${escapeHTML(f.owner || '')}" onchange="updateFinding('${escapeHTML(f.id)}', 'owner', this.value)" 
+          <input type="text" value="${escapeHTML(f.owner || '')}" onchange="updateFinding('${escapeHTML(f.id)}', 'owner', this.value)"
             class="w-full mt-1 p-1.5 rounded bg-slate-900 border border-slate-600 text-xs focus:border-indigo-400 outline-none">
         </div>
-        <div class="mb-4">
+        <div>
           <label class="text-[10px] text-slate-400 uppercase">${t('decision')}</label>
-          <select onchange="updateFinding('${escapeHTML(f.id)}', 'decision', this.value)" 
+          <select onchange="onDecisionChange('${escapeHTML(f.id)}', this.value)"
             class="w-full mt-1 p-1.5 rounded bg-slate-900 border border-slate-600 text-xs focus:border-indigo-400 outline-none">
-            <option value="avoid" ${f.decision==='avoid'?'selected':''}>🚫 Evitar</option>
-            <option value="mitigate" ${f.decision==='mitigate'?'selected':''}>🛠️ Mitigar</option>
-            <option value="transfer" ${f.decision==='transfer'?'selected':''}>📤 Transferir</option>
-            <option value="accept" ${f.decision==='accept'?'selected':''}>⚠️ Aceptar</option>
-            <option value="false_positive" ${f.decision==='false_positive'?'selected':''}>❌ Falso positivo</option>
+            <option value="avoid" ${f.decision==='avoid'?'selected':''}>🚫 ${t('decision_avoid')}</option>
+            <option value="mitigate" ${f.decision==='mitigate'?'selected':''}>🛠️ ${t('decision_mitigate')}</option>
+            <option value="transfer" ${f.decision==='transfer'?'selected':''}>📤 ${t('decision_transfer')}</option>
+            <option value="risk_accepted" ${f.decision==='risk_accepted'?'selected':''}>⚠️ ${t('decision_risk_accepted')}</option>
+            <option value="false_positive" ${f.decision==='false_positive'?'selected':''}>❌ ${t('decision_false_positive')}</option>
           </select>
         </div>
       </div>
 
-      <div class="mb-4">
-        <label class="text-[10px] text-slate-400 uppercase">${t('decision')}</label>
-        <select onchange="updateFinding('${escapeHTML(f.id)}', 'decision', this.value)" 
-          class="w-full mt-1 p-1.5 rounded bg-slate-900 border border-slate-600 text-xs focus:border-indigo-400 outline-none">
-          <option value="mitigate" ${f.decision==='mitigate'?'selected':''}>🛠️ Mitigate</option>
-          <option value="risk_accepted" ${f.decision==='risk_accepted'?'selected':''}>⚠️ Risk Accepted</option>
-          <option value="false_positive" ${f.decision==='false_positive'?'selected':''}>❌ False Positive</option>
-        </select>
+      ${(() => { const mr = f.managementResponse || {}; return `
+      <div class="mb-4 border border-slate-700 rounded p-2.5 bg-slate-900/40">
+        <p class="text-[10px] text-indigo-300 uppercase tracking-wider mb-2 font-bold">🗣️ ${t('mgmt_response')}</p>
+        <div class="grid grid-cols-2 gap-2 mb-2">
+          <div>
+            <label class="text-[10px] text-slate-400 uppercase">${t('responder')}</label>
+            <input type="text" value="${escapeHTML(mr.responder || '')}" onchange="updateResponseField('${escapeHTML(f.id)}', 'responder', this.value)"
+              class="w-full mt-1 p-1.5 rounded bg-slate-900 border border-slate-600 text-xs focus:border-indigo-400 outline-none">
+          </div>
+          <div>
+            <label class="text-[10px] text-slate-400 uppercase">${t('responder_role')}</label>
+            <input type="text" value="${escapeHTML(mr.responderRole || '')}" onchange="updateResponseField('${escapeHTML(f.id)}', 'responderRole', this.value)"
+              class="w-full mt-1 p-1.5 rounded bg-slate-900 border border-slate-600 text-xs focus:border-indigo-400 outline-none">
+          </div>
+          <div>
+            <label class="text-[10px] text-slate-400 uppercase">${t('response_date')}</label>
+            <input type="date" value="${escapeHTML(mr.responseDate || '')}" onchange="updateResponseField('${escapeHTML(f.id)}', 'responseDate', this.value)"
+              class="w-full mt-1 p-1.5 rounded bg-slate-900 border border-slate-600 text-xs focus:border-indigo-400 outline-none">
+          </div>
+          <div>
+            <label class="text-[10px] text-slate-400 uppercase">${t('received_via')}</label>
+            <input type="text" value="${escapeHTML(mr.receivedVia || '')}" placeholder="email, meeting…" onchange="updateResponseField('${escapeHTML(f.id)}', 'receivedVia', this.value)"
+              class="w-full mt-1 p-1.5 rounded bg-slate-900 border border-slate-600 text-xs focus:border-indigo-400 outline-none">
+          </div>
+        </div>
+        <label class="text-[10px] text-slate-400 uppercase">${t('response_comments')}</label>
+        <textarea rows="2" onchange="updateResponseField('${escapeHTML(f.id)}', 'comments', this.value)"
+          class="w-full mt-1 p-2 rounded bg-slate-900 border border-slate-600 text-xs focus:border-indigo-400 outline-none">${escapeHTML(mr.comments || '')}</textarea>
+        <p class="text-[9px] text-slate-500 mt-1">${t('source')}: ${escapeHTML(mr.source || 'manual_entry')}</p>
       </div>
+      `; })()}
 
       <div class="mb-4">
         <label class="text-[10px] text-slate-400 uppercase">${t('remediation_notes')}</label>
@@ -2190,6 +2231,43 @@ function updateFinding(id, field, value) {
   renderCharts();
   renderPriorityMatrix();
   renderFindings();
+  renderDetail(id);
+}
+
+// Decision changes route through here so choosing "Risk Accepted" forces the
+// formal Risk Acceptance Form (approver + review date) rather than silently
+// accepting a risk with no justification on record.
+function onDecisionChange(id, value) {
+  if (value === 'risk_accepted') {
+    updateFinding(id, 'decision', 'risk_accepted');
+    openRiskModal();
+    return;
+  }
+  updateFinding(id, 'decision', value);
+}
+
+// Writes a field inside the finding's managementResponse object (who at the
+// audited company responded, when, and how it reached us). Kept as its own
+// helper because updateFinding only sets top-level fields. History is logged
+// the same way so provenance edits appear in the timeline.
+function updateResponseField(id, field, value) {
+  const f = state.findings.find(x => x.id === id);
+  if (!f) return;
+  if (!f.managementResponse) f.managementResponse = { source: 'manual_entry' };
+  const mr = f.managementResponse;
+  const oldValue = mr[field];
+  if (oldValue === value) return;
+
+  mr[field] = value;
+  mr.source = mr.source || 'manual_entry';
+  f.updatedAt = Date.now();
+  if (!f.history) f.history = [];
+  f.history.push({
+    ts: Date.now(), actor: 'user', field: 'managementResponse',
+    from: oldValue, to: value, note: `response.${field} updated`
+  });
+
+  saveState();
   renderDetail(id);
 }
 
@@ -2422,7 +2500,8 @@ function generateHubPDF() {
     doc.text('Severity', margin + 80, y + 11);
     doc.text('Control', margin + 130, y + 11);
     doc.text('Owner', margin + 280, y + 11);
-    doc.text('Status', margin + 380, y + 11);
+    doc.text(t('decision'), margin + 380, y + 11);
+    doc.text(t('status'), margin + 460, y + 11);
     doc.text('Days', pageWidth - margin - 30, y + 11);
     y += 20;
 
@@ -2442,13 +2521,30 @@ function generateHubPDF() {
       doc.setFontSize(8);
       doc.text(f.controlCode || f.id, margin + 4, y + 10);
       doc.text(sev.toUpperCase(), margin + 80, y + 10);
-      const ctrlName = (f.controlName || '').substring(0, 40);
+      const ctrlName = (f.controlName || '').substring(0, 34);
       doc.text(ctrlName, margin + 130, y + 10);
       doc.text(f.owner || '—', margin + 280, y + 10);
-      doc.text((f.status || 'open').replace('_', ' '), margin + 380, y + 10);
+      doc.text((f.decision || 'mitigate').replace('_', ' '), margin + 380, y + 10);
+      doc.text((f.status || 'open').replace('_', ' '), margin + 460, y + 10);
       doc.text(String(daysOpen(f)), pageWidth - margin - 30, y + 10);
-      
+
       y += 26;
+
+      // Management-response provenance sub-line: who responded and how it
+      // reached us. Only rendered when a response has actually been recorded,
+      // so most rows stay single-line.
+      const mr = f.managementResponse || {};
+      if (mr.responder || mr.receivedVia || mr.responseDate) {
+        if (y > pageHeight - 60) { doc.addPage(); y = margin; }
+        const who = [mr.responder, mr.responderRole && `(${mr.responderRole})`].filter(Boolean).join(' ');
+        const via = [mr.receivedVia, mr.responseDate].filter(Boolean).join(', ');
+        doc.setTextColor(100, 116, 139);
+        doc.setFontSize(7);
+        doc.text(`↳ ${t('mgmt_response')}: ${who || '—'}${via ? ' · ' + via : ''}`, margin + 12, y + 6);
+        doc.setFontSize(8);
+        doc.setTextColor(30, 41, 59);
+        y += 14;
+      }
     });
 
     const totalPages = doc.internal.getNumberOfPages();

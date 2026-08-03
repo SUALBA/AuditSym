@@ -2481,13 +2481,20 @@ function buildFinding(control, auditId) {
         effort: effort,                      // low/medium/high
         cost: effort,                        // cost band key; the Hub renders it as $/$$/$$$
         score: score,                        // Impact ÷ Effort
-        // ── MANAGEMENT RESPONSE STUB (M2) ──
-        decision: 'mitigate',                // ✅ minúsculas
+        // ── MANAGEMENT RESPONSE (M2) ──
+        decision: 'mitigate',                // avoid|mitigate|transfer|risk_accepted|false_positive
         owner: '',
-        timeframe: `${days} days`,           // ✅ Formato "X days"
-        status: 'open',                      // ✅ minúsculas
+        timeframe: `${days} days`,           // "X days"
+        status: 'open',
         notes: '',
-        recommendation: ''
+        recommendation: '',
+        // Provenance of the auditee's response — seeded empty so the shape is
+        // consistent from creation. source stays 'manual_entry' (auditor as
+        // scribe) until an integration feeds responses in.
+        managementResponse: {
+            responder: '', responderRole: '', responseDate: '',
+            receivedVia: '', comments: '', source: 'manual_entry'
+        }
     };
 }
 
