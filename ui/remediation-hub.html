@@ -52,6 +52,19 @@ tailwind.config = {
   }
   .quick-wins-glow { box-shadow: 0 0 20px rgba(16, 185, 129, 0.15); }
   .critical-glow { box-shadow: 0 0 20px rgba(239, 68, 68, 0.15); }
+  /* Native date/time pickers default to a light popup on Chromium, which is
+     nearly unreadable against this dark theme (dark input, light calendar
+     icon and popup with poor contrast). color-scheme tells the browser to
+     render its own native widgets — the calendar popup, the little icon —
+     in dark mode to match, without us having to fight browser-internal
+     shadow DOM that can't be styled with regular CSS. */
+  input[type="date"] { color-scheme: dark; }
+  /* Brief, non-disruptive confirmation flash for provenance fields that no
+     longer trigger a full panel re-render on every edit (see
+     updateResponseField) — the field itself blinks green for a moment
+     instead of the whole detail panel reloading and stealing focus. */
+  @keyframes fieldSaved { 0% { border-color: #10b981; } 100% { border-color: #475569; } }
+  .field-saved-flash { animation: fieldSaved 0.6s ease-out; }
 </style>
 </head>
 <body class="bg-hub-bg text-slate-200 min-h-screen">
@@ -74,6 +87,10 @@ tailwind.config = {
         </div>
       </div>
       <div class="flex items-center gap-2 flex-wrap">
+        <button id="role-toggle" onclick="toggleRole()" title="Cambia entre la vista del auditor y la vista del cliente auditado"
+          class="px-3 py-1.5 rounded text-xs font-bold transition flex items-center gap-1.5 border">
+          <span id="role-toggle-icon"></span> <span id="role-toggle-label"></span>
+        </button>
         <select id="lang-select" onchange="setLanguage(this.value)" class="px-2 py-1.5 bg-slate-800 text-slate-200 rounded text-xs border border-slate-600 hover:border-indigo-400 transition">
           <option value="es"> ES</option>
           <option value="en">EN</option>
@@ -415,6 +432,10 @@ tailwind.config = {
         <input id="risk-approver" type="text" placeholder="CISO / CIO name" class="w-full mt-1 p-2 rounded bg-slate-800 border border-slate-600 text-sm">
       </div>
       <div>
+        <label class="text-xs font-bold text-slate-400 uppercase" data-i18n="approver_role">Approver Role</label>
+        <input id="risk-approver-role" type="text" placeholder="CISO, CIO, CEO…" class="w-full mt-1 p-2 rounded bg-slate-800 border border-slate-600 text-sm">
+      </div>
+      <div>
         <label class="text-xs font-bold text-slate-400 uppercase" data-i18n="justification">Justification</label>
         <textarea id="risk-justification" rows="3" placeholder="Business reason, compensating control..." class="w-full mt-1 p-2 rounded bg-slate-800 border border-slate-600 text-sm"></textarea>
       </div>
@@ -429,6 +450,50 @@ tailwind.config = {
       <button onclick="confirmRiskAcceptance()" class="w-full py-2 bg-yellow-600 hover:bg-yellow-500 rounded font-bold text-sm transition">
         ✅ <span data-i18n="confirm_acceptance">Confirm Risk Acceptance</span>
       </button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- DISPUTE FORM MODAL                                                      -->
+<!-- The finding cannot be saved as "Disputed" without a documented reason. -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<div id="dispute-modal" class="fixed inset-0 bg-black/80 z-50 hidden items-center justify-center p-4">
+  <div class="bg-slate-900 border border-orange-600 rounded-xl w-full max-w-md shadow-2xl">
+    <div class="p-5 border-b border-slate-700 flex justify-between items-center">
+      <h2 class="text-lg font-bold text-orange-400">📋 <span data-i18n="dispute_form_title">Dispute Form</span></h2>
+      <button onclick="closeDisputeModal()" class="text-slate-400 hover:text-white text-2xl">&times;</button>
+    </div>
+    <div class="p-5 space-y-3">
+      <p class="text-xs text-slate-400" data-i18n="dispute_form_desc">You must document the reason for the disagreement before saving.</p>
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <label class="text-xs font-bold text-slate-400 uppercase" data-i18n="dispute_by_name">Your name</label>
+          <input id="dispute-name-input" type="text" class="w-full mt-1 p-2 rounded bg-slate-800 border border-slate-600 text-sm focus:border-orange-400 outline-none">
+        </div>
+        <div>
+          <label class="text-xs font-bold text-slate-400 uppercase" data-i18n="dispute_by_role">Your role</label>
+          <input id="dispute-role-input" type="text" placeholder="CISO, CIO…" class="w-full mt-1 p-2 rounded bg-slate-800 border border-slate-600 text-sm focus:border-orange-400 outline-none">
+        </div>
+      </div>
+      <div>
+        <label class="text-xs font-bold text-slate-400 uppercase" data-i18n="dispute_reason">Reason for the dispute</label>
+        <textarea id="dispute-reason-input" rows="3" data-i18n-placeholder="dispute_reason_ph" placeholder="E.g. This control already exists in another department…"
+          class="w-full mt-1 p-2 rounded bg-slate-800 border border-slate-600 text-sm focus:border-orange-400 outline-none"></textarea>
+      </div>
+      <div>
+        <label class="text-xs font-bold text-slate-400 uppercase" data-i18n="dispute_evidence">Supporting evidence (optional)</label>
+        <input id="dispute-evidence-input" type="text" data-i18n-placeholder="dispute_evidence_ph" placeholder="Link, file path or reference…"
+          class="w-full mt-1 p-2 rounded bg-slate-800 border border-slate-600 text-sm focus:border-orange-400 outline-none">
+      </div>
+      <div class="grid grid-cols-2 gap-2 pt-1">
+        <button onclick="closeDisputeModal()" class="w-full py-2 bg-slate-700 hover:bg-slate-600 rounded font-bold text-sm transition">
+          <span data-i18n="cancel">Cancel</span>
+        </button>
+        <button onclick="confirmDispute()" class="w-full py-2 bg-orange-600 hover:bg-orange-500 rounded font-bold text-sm transition">
+          ⚠️ <span data-i18n="submit_dispute">Record Dispute</span>
+        </button>
+      </div>
     </div>
   </div>
 </div>
@@ -467,6 +532,12 @@ let state = {
   selectedId: null,
   viewMode: 'table',
   lang: 'es',
+  // 'auditor' has final adjudication power over disputed findings; 'client'
+  // is the audited company's view and never sees the adjudication control.
+  role: localStorage.getItem('hub_role') || 'auditor',
+  // Finding id whose treatment select is temporarily unlocked for editing
+  // after an explicit "reopen" action — cleared once a new choice is saved.
+  treatmentUnlockedId: null,
   history: JSON.parse(localStorage.getItem('hub_history') || '[]')
 };
 
@@ -504,13 +575,14 @@ const I18N = {
     select_finding: 'Selecciona un hallazgo para ver detalles',
     risk_acceptance_title_modal: 'Formulario de Aceptación de Riesgo',
     approver: 'Aprobador', justification: 'Justificación', review_date: 'Fecha de Revisión',
+    approver_role: 'Cargo del Aprobador',
     compensating_control: 'Control Compensatorio (opcional)',
     confirm_acceptance: 'Confirmar Aceptación de Riesgo',
     footer_text: 'Todos los datos se guardan localmente en tu navegador',
     description: 'Descripción', ai_recommendation: 'Recomendación IA', evidence_suggestion: 'Sugerencia de Evidencia',
     complexity: 'Complejidad / Esfuerzo', remediation_notes: 'Notas de Remediación',
     upload_evidence: '📎 Subir Evidencia', request_extension: '⏳ Pedir Extensión',
-    mark_pending: '📤 Marcar Pendiente Validación', close_finding: '✅ Cerrar Hallazgo',
+    mark_pending: '📤 Enviar a Revisión del Auditor', close_finding: '✅ Cerrar Hallazgo',
     ai_copilot: '🤖 AI Remediation Copilot', generate_recommendation: 'Generar Recomendación',
     suggest_evidence: 'Sugerir Evidencia', history: 'Historial de Cambios',
     owner: 'Responsable', deadline: 'Plazo', decision: 'Decisión', status: 'Estado',
@@ -526,7 +598,48 @@ const I18N = {
     effort: 'Esfuerzo', time: 'Tiempo', cost: 'Coste', score: 'Score',
     effort_low: 'Bajo', effort_medium: 'Medio', effort_high: 'Alto',
     cost_low: '$', cost_medium: '$$', cost_high: '$$$',
-    days: 'días', impact: 'Impacto'
+    days: 'días', impact: 'Impacto',
+    // ── Management Response 2.0: validation vs. treatment ──
+    role_auditor: 'Modo Auditor', role_client: 'Modo Cliente',
+    step1_validation: 'Paso 1 · Validación del Hallazgo',
+    step2_treatment: 'Paso 2 · Tratamiento del Riesgo',
+    validation_confirmed: '✅ Confirmado', validation_disputed: '⚠️ Discrepante',
+    validation_closed_disputed: '🗂️ Discrepancia Aceptada (excluido)',
+    treatment_locked_hint: 'El tratamiento del riesgo solo está disponible cuando el hallazgo ha sido confirmado por la dirección.',
+    dispute_form_title: 'Ficha de Disputa',
+    dispute_form_desc: 'Debes documentar el motivo de la discrepancia antes de guardar. La evidencia adjunta refuerza tu posición.',
+    dispute_reason: 'Motivo de la discrepancia', dispute_reason_ph: 'Ej: El control ya existe en otro departamento…',
+    dispute_evidence: 'Evidencia adjunta (opcional)', dispute_evidence_ph: 'Enlace, ruta de archivo o referencia…',
+    submit_dispute: 'Registrar Discrepancia', cancel: 'Cancelar',
+    auditor_adjudication: 'Adjudicación del Auditor', auditor_adjudication_desc: 'Como auditora, tienes la última palabra sobre esta discrepancia.',
+    adjudication_pending_label: 'Pendiente de adjudicación',
+    adjudication_override: 'Override — El riesgo es real, el hallazgo se mantiene',
+    adjudication_accepted: 'Aceptado — El cliente tiene razón, se excluye del informe',
+    adjudication_auditor_only: 'Solo visible/editable por el auditor',
+    dispute_reason_label: 'Motivo', dispute_evidence_label: 'Evidencia',
+    disputed_on: 'Discrepado el', excluded_from_report: 'Excluido del informe PDF final',
+    risk_treatment: 'Tratamiento de Riesgo',
+    confirm_finding_btn: '✅ Confirmar Hallazgo', dispute_finding_btn: '⚠️ Marcar como Discrepante',
+    validation_required_first: 'Primero valida el hallazgo (confirmado/discrepante) arriba.',
+    dispute_pending_hint: 'Discrepancia enviada. Solo el auditor puede resolverla mediante adjudicación — no se puede volver a rellenar la ficha mientras esté pendiente.',
+    reopen_treatment: 'Modificar tratamiento',
+    reopen_treatment_prompt: 'Motivo del cambio de tratamiento (obligatorio):',
+    reopen_treatment_reason_required: 'Debes indicar un motivo para modificar el tratamiento ya registrado.',
+    treatment_recorded_hint: 'Tratamiento registrado como un único acto de remediación. Usa "Modificar tratamiento" para cambiarlo, con motivo.',
+    mark_pending_hint: 'La remediación ya se aplicó y hay evidencia subida: pasa el hallazgo a revisión del auditor para que verifique la eficacia antes de cerrarlo. (No confundir con el Paso 1 de Validación del Hallazgo, arriba.)',
+    actor_name_prompt: '¿Quién toma esta decisión? Nombre',
+    actor_role_prompt: 'Cargo (ej. CISO, CEO, CIO)',
+    actor_name_required: 'Debes indicar el nombre de quien toma esta decisión — es obligatorio para el rigor de la auditoría.',
+    decided_by: 'Decidido por',
+    close_finding_hint: 'Cierra el hallazgo tras verificar que la evidencia de remediación es suficiente y efectiva. Solo el auditor puede hacerlo.',
+    close_finding_auditor_only: 'Cerrar el hallazgo es una verificación independiente — solo el auditor puede hacerlo, no quien lo soluciona.',
+    close_finding_requires_review: 'Este hallazgo aún no está listo para cerrar. Debe pasar antes por "Enviar a Revisión del Auditor" (con evidencia) o quedar formalmente como Riesgo Aceptado.',
+    close_finding_confirm: '¿Confirmas que la evidencia es suficiente y quieres cerrar este hallazgo?',
+    closed_by: 'Cerrado por',
+    submitted_by: 'Enviado a revisión por',
+    dispute_by_name: 'Tu nombre',
+    dispute_by_role: 'Tu cargo',
+    provenance_hint: 'Estos campos son el contacto de quién valida el hallazgo (Paso 1). Quién decide el tratamiento (Paso 2) puede ser otra persona distinta y se pregunta aparte al elegirlo. Cada decisión concreta queda firmada de forma permanente en su propio historial, abajo.'
   },
   en: {
     header_subtitle: 'Priority-driven findings management with historical evolution',
@@ -556,13 +669,14 @@ const I18N = {
     select_finding: 'Select a finding to see details',
     risk_acceptance_title_modal: 'Risk Acceptance Form',
     approver: 'Approver', justification: 'Justification', review_date: 'Review Date',
+    approver_role: 'Approver Role',
     compensating_control: 'Compensating Control (optional)',
     confirm_acceptance: 'Confirm Risk Acceptance',
     footer_text: 'All data saved locally in your browser',
     description: 'Description', ai_recommendation: 'AI Recommendation', evidence_suggestion: 'Evidence Suggestion',
     complexity: 'Complexity / Effort', remediation_notes: 'Remediation Notes',
     upload_evidence: '📎 Upload Evidence', request_extension: '⏳ Request Extension',
-    mark_pending: '📤 Mark Pending Validation', close_finding: '✅ Close Finding',
+    mark_pending: '📤 Send for Auditor Review', close_finding: '✅ Close Finding',
     ai_copilot: '🤖 AI Remediation Copilot', generate_recommendation: 'Generate Recommendation',
     suggest_evidence: 'Suggest Evidence', history: 'Change History',
     owner: 'Owner', deadline: 'Deadline', decision: 'Decision', status: 'Status',
@@ -578,7 +692,47 @@ const I18N = {
     effort: 'Effort', time: 'Time', cost: 'Cost', score: 'Score',
     effort_low: 'Low', effort_medium: 'Medium', effort_high: 'High',
     cost_low: '$', cost_medium: '$$', cost_high: '$$$',
-    days: 'days', impact: 'Impact'
+    days: 'days', impact: 'Impact',
+    role_auditor: 'Auditor Mode', role_client: 'Client Mode',
+    step1_validation: 'Step 1 · Finding Validation',
+    step2_treatment: 'Step 2 · Risk Treatment',
+    validation_confirmed: '✅ Confirmed', validation_disputed: '⚠️ Disputed',
+    validation_closed_disputed: '🗂️ Dispute Accepted (excluded)',
+    treatment_locked_hint: 'Risk treatment is only available once management has confirmed the finding.',
+    dispute_form_title: 'Dispute Form',
+    dispute_form_desc: 'You must document the reason for the disagreement before saving. Attached evidence strengthens your position.',
+    dispute_reason: 'Reason for the dispute', dispute_reason_ph: 'E.g. This control already exists in another department…',
+    dispute_evidence: 'Supporting evidence (optional)', dispute_evidence_ph: 'Link, file path or reference…',
+    submit_dispute: 'Record Dispute', cancel: 'Cancel',
+    auditor_adjudication: 'Auditor Adjudication', auditor_adjudication_desc: 'As the auditor, you have the final say on this dispute.',
+    adjudication_pending_label: 'Awaiting adjudication',
+    adjudication_override: 'Override — The risk is real, the finding stands',
+    adjudication_accepted: 'Accepted — The client is right, exclude from the report',
+    adjudication_auditor_only: 'Visible/editable by the auditor only',
+    dispute_reason_label: 'Reason', dispute_evidence_label: 'Evidence',
+    disputed_on: 'Disputed on', excluded_from_report: 'Excluded from the final PDF report',
+    risk_treatment: 'Risk Treatment',
+    confirm_finding_btn: '✅ Confirm Finding', dispute_finding_btn: '⚠️ Mark as Disputed',
+    validation_required_first: 'Validate the finding (confirmed/disputed) above first.',
+    dispute_pending_hint: 'Dispute submitted. Only the auditor can resolve it via adjudication — the form cannot be re-filed while it is pending.',
+    reopen_treatment: 'Change treatment',
+    reopen_treatment_prompt: 'Reason for changing the treatment (required):',
+    reopen_treatment_reason_required: 'You must state a reason to change the already-recorded treatment.',
+    treatment_recorded_hint: 'Treatment recorded as a single remediation act. Use "Change treatment" to change it, with a reason.',
+    mark_pending_hint: "Remediation has been applied and evidence uploaded: send the finding to the auditor's review to verify effectiveness before closing it. (Not to be confused with Step 1 Finding Validation above.)",
+    actor_name_prompt: 'Who is making this decision? Name',
+    actor_role_prompt: 'Role (e.g. CISO, CEO, CIO)',
+    actor_name_required: 'You must state the name of who is making this decision — required for audit rigor.',
+    decided_by: 'Decided by',
+    close_finding_hint: 'Closes the finding after verifying the remediation evidence is sufficient and effective. Only the auditor can do this.',
+    close_finding_auditor_only: 'Closing a finding is an independent verification — only the auditor can do it, not whoever remediated it.',
+    close_finding_requires_review: 'This finding isn\'t ready to close yet. It must first go through "Send for Auditor Review" (with evidence) or be formally Risk Accepted.',
+    close_finding_confirm: 'Confirm the evidence is sufficient and you want to close this finding?',
+    closed_by: 'Closed by',
+    submitted_by: 'Submitted for review by',
+    dispute_by_name: 'Your name',
+    dispute_by_role: 'Your role',
+    provenance_hint: "These fields are the contact for whoever validates the finding (Step 1). Whoever decides the treatment (Step 2) can be a different person and is asked separately when chosen. Each specific decision is permanently signed onto its own history entry below."
   },
               // ═══════════════════════════════════════════════════════════════
             // 🌐 FRANCÉS (FR)
@@ -1278,11 +1432,45 @@ function setLanguage(lang) {
     const key = el.getAttribute('data-i18n');
     if (I18N[lang] && I18N[lang][key]) el.textContent = I18N[lang][key];
   });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    const key = el.getAttribute('data-i18n-placeholder');
+    if (I18N[lang] && I18N[lang][key]) el.placeholder = I18N[lang][key];
+  });
   document.getElementById('lang-select').value = lang;
+  renderRoleToggle();
   renderFindings();
   if (state.selectedId) renderDetail(state.selectedId);
   renderPriorityMatrix();
   renderHistoricalEvolution();
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// ROLE SWITCH — Auditor vs Client
+// ══════════════════════════════════════════════════════════════════════════
+// The tool is used by both the audit firm and the audited company from the
+// same static page, so role is a client-side view toggle rather than a real
+// auth boundary. It exists to enforce the UX rule that only the auditor may
+// see/edit the final adjudication on a disputed finding — the client can
+// dispute, but cannot grant themselves the last word.
+function toggleRole() {
+  state.role = state.role === 'auditor' ? 'client' : 'auditor';
+  localStorage.setItem('hub_role', state.role);
+  renderRoleToggle();
+  if (state.selectedId) renderDetail(state.selectedId);
+}
+
+function renderRoleToggle() {
+  const btn = document.getElementById('role-toggle');
+  const icon = document.getElementById('role-toggle-icon');
+  const label = document.getElementById('role-toggle-label');
+  if (!btn) return;
+  const isAuditor = state.role === 'auditor';
+  icon.textContent = isAuditor ? '🧑‍⚖️' : '🏢';
+  label.textContent = isAuditor ? t('role_auditor') : t('role_client');
+  btn.className = 'px-3 py-1.5 rounded text-xs font-bold transition flex items-center gap-1.5 border ' +
+    (isAuditor
+      ? 'bg-indigo-600/20 border-indigo-500 text-indigo-300 hover:bg-indigo-600/30'
+      : 'bg-slate-800 border-slate-600 text-slate-300 hover:border-indigo-400');
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -1358,6 +1546,118 @@ function buildFindingId(control, framework) {
   return `FND-${(key + '-' + fw).replace(/[^a-zA-Z0-9]/g, '_').toUpperCase()}`;
 }
 
+// Ensures a single finding has the full, current shape the renderers expect —
+// including the M2 managementResponse contract — regardless of whether it
+// came from a fresh import, a merge with localStorage, or a plain page reload
+// via loadState(). Mutates and returns f so it can be used in .forEach/.map.
+function normalizeFinding(f) {
+  const sev   = (f.severity || f.riskLevel || 'medium').toLowerCase();
+  f.severity  = sev;
+  f.riskLevel = f.riskLevel || sev;
+  f.effort    = f.effort || estimateEffort(f);
+  f.cost      = f.cost || f.effort;
+  f.score     = calculateScore(f);
+  f.timeframe = f.timeframe || `${DEFAULT_TIMEFRAMES[sev] || 60} days`;
+  f.status    = f.status || 'open';
+
+  // Capture whether a *real* decision existed before we apply the display
+  // default below. 'mitigate' as a fallback only exists so legacy surfaces
+  // that still read the top-level f.decision (table view, Kanban, PDF) have
+  // something sane to print — it must never be mistaken for an actual human
+  // choice, or a brand-new, never-touched finding gets silently "confirmed"
+  // with treatment "Mitigate" the instant it's imported, before anyone has
+  // looked at it. That was a real bug in an earlier version of this function.
+  const hadRealDecision = !!f.decision && f.decision !== 'accept';
+  f.decision  = f.decision || 'mitigate';
+  // Migrate the legacy 'accept' value (from the old duplicate dropdown) to
+  // the 'risk_accepted' the status enum and Risk Acceptance Form already use.
+  if (f.decision === 'accept') f.decision = 'risk_accepted';
+
+  // ── Management Response 2.0 (M2 data model) ──────────────────────────
+  // Two management decisions, kept separate on purpose:
+  //   1. validationStatus — does management agree the finding is valid?
+  //   2. treatment        — only meaningful once validationStatus==='confirmed'.
+  // Seeded so the detail panel always has a full shape, even for findings
+  // imported from an older audit engine payload that predates this model.
+  if (!f.managementResponse || typeof f.managementResponse !== 'object') {
+    f.managementResponse = {};
+  }
+  const mr = f.managementResponse;
+  mr.validationStatus    = mr.validationStatus || null;       // 'confirmed' | 'disputed' | 'closed_disputed' | null
+  mr.disputeReason       = mr.disputeReason || '';
+  mr.disputeEvidence     = mr.disputeEvidence || '';
+  mr.auditorAdjudication = mr.auditorAdjudication || '';      // '' | 'override' | 'accepted'
+  mr.responder           = mr.responder || '';
+  mr.responderRole       = mr.responderRole || '';
+  mr.responseDate        = mr.responseDate || '';
+  mr.source              = mr.source || 'manual_entry';
+  mr.receivedVia         = mr.receivedVia || '';
+  mr.comments            = mr.comments || '';
+  mr.treatment           = mr.treatment || null;               // 'avoid'|'mitigate'|'transfer'|'risk_accepted'|null
+  // Deliberately separate from responder/responderRole (Step 1's validator)
+  // — the person who decides HOW to remediate a confirmed finding is often
+  // a different role entirely, and must never be defaulted to whoever
+  // confirmed it.
+  mr.treatmentOwner       = mr.treatmentOwner || '';
+  mr.treatmentOwnerRole   = mr.treatmentOwnerRole || '';
+
+  // The migrations below exist ONLY to interpret genuinely pre-M2 data (a
+  // finding that already had a real decision recorded before this model
+  // existed). They must never run against a finding whose f.decision is
+  // merely today's default fallback — hence the hadRealDecision guard.
+  if (hadRealDecision) {
+    // Legacy 'false_positive' decisions predate the validation/treatment
+    // split and described disagreement with the finding itself, not a risk
+    // treatment — fold them into the dispute vocabulary instead of losing them.
+    if (!mr.validationStatus && f.decision === 'false_positive') {
+      mr.validationStatus = 'disputed';
+      mr.disputeReason = mr.disputeReason || 'Migrated from legacy "False Positive" decision.';
+    }
+    // A finding with no explicit validation yet but an existing treatment
+    // decision (from before this model existed) is implicitly confirmed —
+    // management can't have chosen mitigate/avoid/etc. on a finding it disputes.
+    if (!mr.validationStatus && ['avoid','mitigate','transfer','risk_accepted'].includes(f.decision)) {
+      mr.validationStatus = 'confirmed';
+    }
+    if (!mr.treatment && mr.validationStatus === 'confirmed' && f.decision !== 'false_positive') {
+      mr.treatment = f.decision;
+    }
+  }
+
+  // Risk Acceptance now lives nested under managementResponse per the M2
+  // contract; migrate any pre-M2 top-level f.riskAcceptance in place.
+  if (!mr.riskAcceptance && f.riskAcceptance) {
+    mr.riskAcceptance = f.riskAcceptance;
+  }
+  mr.riskAcceptance = mr.riskAcceptance || null;
+
+  f.history   = Array.isArray(f.history) ? f.history : [];
+
+  // ── One-time repair for data already affected by the bug fixed above ──
+  // If this finding somehow ended up "confirmed" + treatment "mitigate"
+  // with NO history entry ever recording a real validationStatus/treatment
+  // decision, and no provenance was ever filled in, nobody actually made
+  // that call — it was auto-derived. Reset it so the finding correctly
+  // starts unvalidated and a person has to make the call for real.
+  const hasRealDecisionHistory = f.history.some(h =>
+    h.field === 'validationStatus' || h.field === 'treatment' || h.field === 'riskAcceptance'
+  );
+  if (!hasRealDecisionHistory && mr.validationStatus === 'confirmed' && mr.treatment === 'mitigate'
+      && !mr.responder && !mr.comments && !mr.responseDate) {
+    mr.validationStatus = null;
+    mr.treatment = null;
+  }
+
+  f.closedBy     = f.closedBy || '';
+  f.closedByRole = f.closedByRole || '';
+  f.submittedBy     = f.submittedBy || '';
+  f.submittedByRole = f.submittedByRole || '';
+
+  f.createdAt = f.createdAt || Date.now();
+  f.updatedAt = f.updatedAt || Date.now();
+  return f;
+}
+
 function processImportedData(data) {
   let incomingFindings = [];
   if (data.findings && Array.isArray(data.findings) && data.findings.length > 0) {
@@ -1379,7 +1679,10 @@ function processImportedData(data) {
           riskLevel: severity,
           reason: c.evidencia || c.notes || '',
           evidence: c.evidencia || '',
-          decision: 'mitigate',
+          // No decision/treatment here on purpose — a freshly-derived finding
+          // must start unvalidated (see normalizeFinding's hadRealDecision
+          // guard). Baking in 'mitigate' here used to silently pre-confirm
+          // every imported finding before anyone had looked at it.
           owner: '',
           timeframe: `${days} days`,
           status: 'open',
@@ -1397,32 +1700,7 @@ function processImportedData(data) {
   // taken straight from the imported file, so an older or hand-edited payload
   // can omit fields the renderers assume exist — a missing timeframe used to
   // throw and abort the whole import, leaving the Hub blank.
-  incomingFindings.forEach(f => {
-    const sev   = (f.severity || f.riskLevel || 'medium').toLowerCase();
-    f.severity  = sev;
-    f.riskLevel = f.riskLevel || sev;
-    f.effort    = f.effort || estimateEffort(f);
-    f.cost      = f.cost || f.effort;
-    f.score     = calculateScore(f);
-    f.timeframe = f.timeframe || `${DEFAULT_TIMEFRAMES[sev] || 60} days`;
-    f.status    = f.status || 'open';
-    f.decision  = f.decision || 'mitigate';
-    // Migrate the legacy 'accept' value (from the old duplicate dropdown) to
-    // the 'risk_accepted' the status enum and Risk Acceptance Form already use.
-    if (f.decision === 'accept') f.decision = 'risk_accepted';
-    // Management-response provenance: who at the audited company responded, and
-    // how it reached us. source stays 'manual_entry' until an integration feeds
-    // responses in; the object is seeded so the detail panel always has a shape.
-    if (!f.managementResponse || typeof f.managementResponse !== 'object') {
-      f.managementResponse = { responder: '', responderRole: '', responseDate: '',
-                               receivedVia: '', comments: '', source: 'manual_entry' };
-    } else {
-      f.managementResponse.source = f.managementResponse.source || 'manual_entry';
-    }
-    f.history   = Array.isArray(f.history) ? f.history : [];
-    f.createdAt = f.createdAt || Date.now();
-    f.updatedAt = f.updatedAt || Date.now();
-  });
+  incomingFindings.forEach(normalizeFinding);
 
   const localFindings = JSON.parse(localStorage.getItem('hub_findings') || '[]');
   const mergedFindings = incomingFindings.map(newF => {
@@ -1454,6 +1732,10 @@ function processImportedData(data) {
     }
     return newF;
   });
+  // A merged finding can inherit an old-shaped managementResponse straight
+  // from localStorage (existing.managementResponse above) — normalize once
+  // more so this session's render never sees a partial M2 object.
+  mergedFindings.forEach(normalizeFinding);
 
   state.auditData = {
     id: data.id || 'unknown',
@@ -1512,6 +1794,10 @@ function loadState() {
   const findings = JSON.parse(localStorage.getItem('hub_findings') || '[]');
   const audit = JSON.parse(localStorage.getItem('hub_audit') || 'null');
   if (findings.length > 0) {
+    // Re-run the same normalization used on import so findings saved by an
+    // older version of the Hub (pre-M2 managementResponse model) pick up the
+    // new shape on a plain page reload, not just on the next re-import.
+    findings.forEach(normalizeFinding);
     state.findings = findings;
     state.auditData = audit;
     showWorkspace();
@@ -1936,6 +2222,8 @@ function renderTable(findings) {
         <td class="p-3">
           <span class="px-2 py-0.5 rounded text-[10px] font-bold ${statusBadge(f.status)}">${(f.status || 'open').replace('_',' ').toUpperCase()}</span>
           ${overdue ? '<span class="ml-1 text-[9px] text-red-400 font-bold pulse-overdue">⚠ OVERDUE</span>' : ''}
+          ${f.managementResponse?.validationStatus === 'disputed' ? `<span class="ml-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-orange-500/20 text-orange-300 border border-orange-500/50">⚠️ ${t('validation_disputed')}</span>` : ''}
+          ${f.managementResponse?.validationStatus === 'closed_disputed' ? `<span class="ml-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-600/40 text-slate-300 border border-slate-500/50">🗂️ ${t('validation_closed_disputed')}</span>` : ''}
         </td>
       </tr>
     `;
@@ -2022,6 +2310,9 @@ function renderKanban(findings) {
 // ══════════════════════════════════════════════════════════════════════════
 function selectFinding(id) {
   state.selectedId = id;
+  // Any pending treatment "reopen" only applies to the finding it was
+  // opened for — never leak an unlocked select onto a different finding.
+  if (state.treatmentUnlockedId !== id) state.treatmentUnlockedId = null;
   
   // ✅ Si estamos en Kanban, cambiar a vista Tabla para mostrar el detalle
   if (state.viewMode === 'kanban') {
@@ -2082,56 +2373,13 @@ function renderDetail(id) {
         <p class="text-xs text-slate-300 bg-slate-900/50 rounded p-2 leading-relaxed min-h-[40px]">${f.recommendation ? escapeHTML(f.recommendation) : '<span class="text-slate-500 italic">Click to generate</span>'}</p>
       </div>
 
-      <div class="grid grid-cols-2 gap-2 mb-4">
-        <div>
-          <label class="text-[10px] text-slate-400 uppercase">${t('owner')}</label>
-          <input type="text" value="${escapeHTML(f.owner || '')}" onchange="updateFinding('${escapeHTML(f.id)}', 'owner', this.value)"
-            class="w-full mt-1 p-1.5 rounded bg-slate-900 border border-slate-600 text-xs focus:border-indigo-400 outline-none">
-        </div>
-        <div>
-          <label class="text-[10px] text-slate-400 uppercase">${t('decision')}</label>
-          <select onchange="onDecisionChange('${escapeHTML(f.id)}', this.value)"
-            class="w-full mt-1 p-1.5 rounded bg-slate-900 border border-slate-600 text-xs focus:border-indigo-400 outline-none">
-            <option value="avoid" ${f.decision==='avoid'?'selected':''}>🚫 ${t('decision_avoid')}</option>
-            <option value="mitigate" ${f.decision==='mitigate'?'selected':''}>🛠️ ${t('decision_mitigate')}</option>
-            <option value="transfer" ${f.decision==='transfer'?'selected':''}>📤 ${t('decision_transfer')}</option>
-            <option value="risk_accepted" ${f.decision==='risk_accepted'?'selected':''}>⚠️ ${t('decision_risk_accepted')}</option>
-            <option value="false_positive" ${f.decision==='false_positive'?'selected':''}>❌ ${t('decision_false_positive')}</option>
-          </select>
-        </div>
+      <div class="mb-4">
+        <label class="text-[10px] text-slate-400 uppercase">${t('owner')}</label>
+        <input type="text" value="${escapeHTML(f.owner || '')}" onchange="updateFinding('${escapeHTML(f.id)}', 'owner', this.value)"
+          class="w-full mt-1 p-1.5 rounded bg-slate-900 border border-slate-600 text-xs focus:border-indigo-400 outline-none">
       </div>
 
-      ${(() => { const mr = f.managementResponse || {}; return `
-      <div class="mb-4 border border-slate-700 rounded p-2.5 bg-slate-900/40">
-        <p class="text-[10px] text-indigo-300 uppercase tracking-wider mb-2 font-bold">🗣️ ${t('mgmt_response')}</p>
-        <div class="grid grid-cols-2 gap-2 mb-2">
-          <div>
-            <label class="text-[10px] text-slate-400 uppercase">${t('responder')}</label>
-            <input type="text" value="${escapeHTML(mr.responder || '')}" onchange="updateResponseField('${escapeHTML(f.id)}', 'responder', this.value)"
-              class="w-full mt-1 p-1.5 rounded bg-slate-900 border border-slate-600 text-xs focus:border-indigo-400 outline-none">
-          </div>
-          <div>
-            <label class="text-[10px] text-slate-400 uppercase">${t('responder_role')}</label>
-            <input type="text" value="${escapeHTML(mr.responderRole || '')}" onchange="updateResponseField('${escapeHTML(f.id)}', 'responderRole', this.value)"
-              class="w-full mt-1 p-1.5 rounded bg-slate-900 border border-slate-600 text-xs focus:border-indigo-400 outline-none">
-          </div>
-          <div>
-            <label class="text-[10px] text-slate-400 uppercase">${t('response_date')}</label>
-            <input type="date" value="${escapeHTML(mr.responseDate || '')}" onchange="updateResponseField('${escapeHTML(f.id)}', 'responseDate', this.value)"
-              class="w-full mt-1 p-1.5 rounded bg-slate-900 border border-slate-600 text-xs focus:border-indigo-400 outline-none">
-          </div>
-          <div>
-            <label class="text-[10px] text-slate-400 uppercase">${t('received_via')}</label>
-            <input type="text" value="${escapeHTML(mr.receivedVia || '')}" placeholder="email, meeting…" onchange="updateResponseField('${escapeHTML(f.id)}', 'receivedVia', this.value)"
-              class="w-full mt-1 p-1.5 rounded bg-slate-900 border border-slate-600 text-xs focus:border-indigo-400 outline-none">
-          </div>
-        </div>
-        <label class="text-[10px] text-slate-400 uppercase">${t('response_comments')}</label>
-        <textarea rows="2" onchange="updateResponseField('${escapeHTML(f.id)}', 'comments', this.value)"
-          class="w-full mt-1 p-2 rounded bg-slate-900 border border-slate-600 text-xs focus:border-indigo-400 outline-none">${escapeHTML(mr.comments || '')}</textarea>
-        <p class="text-[9px] text-slate-500 mt-1">${t('source')}: ${escapeHTML(mr.source || 'manual_entry')}</p>
-      </div>
-      `; })()}
+      ${renderManagementResponsePanel(f)}
 
       <div class="mb-4">
         <label class="text-[10px] text-slate-400 uppercase">${t('remediation_notes')}</label>
@@ -2148,9 +2396,17 @@ function renderDetail(id) {
 
       <div class="grid grid-cols-2 gap-2 mb-4">
         <button onclick="requestExtension('${escapeHTML(f.id)}')" class="px-2 py-1.5 bg-slate-700 hover:bg-slate-600 rounded text-[11px] transition">${t('request_extension')}</button>
-        <button onclick="markPending('${escapeHTML(f.id)}')" class="px-2 py-1.5 bg-yellow-700 hover:bg-yellow-600 rounded text-[11px] transition">${t('mark_pending')}</button>
-        <button onclick="closeFinding('${escapeHTML(f.id)}')" class="col-span-2 px-2 py-1.5 bg-green-700 hover:bg-green-600 rounded text-[11px] transition font-bold">${t('close_finding')}</button>
+        <button onclick="markPending('${escapeHTML(f.id)}')" title="${t('mark_pending_hint')}" class="px-2 py-1.5 bg-yellow-700 hover:bg-yellow-600 rounded text-[11px] transition">${t('mark_pending')}</button>
+        ${state.role === 'auditor' ? `
+        <button onclick="closeFinding('${escapeHTML(f.id)}')" title="${t('close_finding_hint')}" class="col-span-2 px-2 py-1.5 bg-green-700 hover:bg-green-600 rounded text-[11px] transition font-bold">${t('close_finding')}</button>
+        ` : `
+        <div class="col-span-2 px-2 py-1.5 bg-slate-800/60 border border-slate-700 rounded text-[10px] text-slate-500 italic text-center">
+          🔒 ${t('close_finding_auditor_only')}
+        </div>
+        `}
       </div>
+      ${(f.status === 'pending_validation' || f.status === 'closed') && f.submittedBy ? `<p class="text-[9px] text-slate-500 -mt-2 ${f.status === 'closed' && f.closedBy ? '' : 'mb-4'}">📤 ${t('submitted_by')}: ${escapeHTML(f.submittedBy)}${f.submittedByRole ? ' (' + escapeHTML(f.submittedByRole) + ')' : ''}</p>` : ''}
+      ${f.status === 'closed' && f.closedBy ? `<p class="text-[9px] text-slate-500 mb-4 -mt-2">✅ ${t('closed_by')}: ${escapeHTML(f.closedBy)}${f.closedByRole ? ' (' + escapeHTML(f.closedByRole) + ')' : ''}</p>` : ''}
 
       <div class="border-t border-slate-700 pt-3">
         <p class="text-[10px] text-slate-400 uppercase tracking-wider mb-2"> ${t('history')}</p>
@@ -2159,16 +2415,202 @@ function renderDetail(id) {
         </div>
       </div>
 
-      ${f.riskAcceptance ? `
+      ${f.managementResponse && f.managementResponse.riskAcceptance ? `
         <div class="mt-4 p-3 bg-yellow-900/20 border border-yellow-700/50 rounded">
           <p class="text-[10px] text-yellow-400 font-bold uppercase mb-1">⚠️ ${t('risk_accepted')}</p>
-          <p class="text-[11px] text-slate-300"><strong>Approver:</strong> ${escapeHTML(f.riskAcceptance.approver)}</p>
-          <p class="text-[11px] text-slate-300"><strong>Justification:</strong> ${escapeHTML(f.riskAcceptance.justification)}</p>
-          <p class="text-[11px] text-slate-300"><strong>Review:</strong> ${escapeHTML(f.riskAcceptance.reviewDate)}</p>
-          ${f.riskAcceptance.compensatingControl ? `<p class="text-[11px] text-slate-300"><strong>Compensating:</strong> ${escapeHTML(f.riskAcceptance.compensatingControl)}</p>` : ''}
+          <p class="text-[11px] text-slate-300"><strong>Approver:</strong> ${escapeHTML(f.managementResponse.riskAcceptance.approver)}${f.managementResponse.riskAcceptance.approverRole ? ' (' + escapeHTML(f.managementResponse.riskAcceptance.approverRole) + ')' : ''}</p>
+          <p class="text-[11px] text-slate-300"><strong>Justification:</strong> ${escapeHTML(f.managementResponse.riskAcceptance.justification)}</p>
+          <p class="text-[11px] text-slate-300"><strong>Review:</strong> ${escapeHTML(f.managementResponse.riskAcceptance.reviewDate)}</p>
+          ${f.managementResponse.riskAcceptance.compensatingControl ? `<p class="text-[11px] text-slate-300"><strong>Compensating:</strong> ${escapeHTML(f.managementResponse.riskAcceptance.compensatingControl)}</p>` : ''}
         </div>
       ` : ''}
     </div>
+  `;
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// MANAGEMENT RESPONSE PANEL — 2-step model (Validation → Treatment)
+// ══════════════════════════════════════════════════════════════════════════
+// Renders the full managementResponse block used inside renderDetail(): the
+// validation step, the dispute record (once disputed), the auditor-only
+// adjudication control, the gated risk-treatment step, and the provenance
+// fields (who responded, when, how it reached us).
+// Finds the most recent history entry for a given field that carries an
+// actor name snapshot — used to show "who decided THIS, currently active,
+// thing" when the finding is reopened, without relying on the shared
+// mutable mr.responder (which may have been overwritten since by someone
+// making a later, different decision).
+function lastActorFor(f, field) {
+  const hist = f.history || [];
+  for (let i = hist.length - 1; i >= 0; i--) {
+    if (hist[i].field === field && hist[i].actorName) return hist[i];
+  }
+  return null;
+}
+
+function actorLine(entry) {
+  if (!entry) return '';
+  const who = entry.actorRole ? `${escapeHTML(entry.actorName)} (${escapeHTML(entry.actorRole)})` : escapeHTML(entry.actorName);
+  const when = entry.ts ? new Date(entry.ts).toLocaleDateString() : '';
+  return `<p class="text-[9px] text-slate-500 mt-1">👤 ${t('decided_by')}: ${who}${when ? ' · ' + when : ''}</p>`;
+}
+
+function renderManagementResponsePanel(f) {
+  const mr = f.managementResponse || {};
+  const isAuditor = state.role === 'auditor';
+  const vs = mr.validationStatus; // null | 'confirmed' | 'disputed' | 'closed_disputed'
+
+  const validationBadge = {
+    confirmed: 'bg-green-900/40 text-green-300 border-green-700',
+    disputed: 'bg-orange-900/40 text-orange-300 border-orange-700',
+    closed_disputed: 'bg-slate-700/40 text-slate-300 border-slate-600'
+  }[vs] || 'bg-slate-800 text-slate-400 border-slate-600';
+
+  // Who confirmed/disputed THIS finding's current validation state — pulled
+  // from that specific decision's own history entry, never from a shared
+  // field another, later decision may have overwritten.
+  const validationActor = lastActorFor(f, 'validationStatus');
+
+  const disputeBlock = (vs === 'disputed' || vs === 'closed_disputed') ? `
+    <div class="mt-2 p-2 rounded bg-orange-950/30 border border-orange-800/50">
+      <p class="text-[10px] text-orange-300 font-bold uppercase mb-1">📋 ${t('dispute_form_title')}</p>
+      <p class="text-[11px] text-slate-300"><strong>${t('dispute_reason_label')}:</strong> ${escapeHTML(mr.disputeReason || '—')}</p>
+      ${mr.disputeEvidence ? `<p class="text-[11px] text-slate-300"><strong>${t('dispute_evidence_label')}:</strong> ${escapeHTML(mr.disputeEvidence)}</p>` : ''}
+      ${vs === 'closed_disputed' ? `<p class="text-[10px] text-slate-400 italic mt-1">🗂️ ${t('excluded_from_report')}</p>` : ''}
+    </div>
+  ` : '';
+
+  // Who made the adjudication call — the AUDITOR's own identity, which is a
+  // separate person/role from mr.responder (the client-side contact). This
+  // used to have nowhere to be recorded at all, which is exactly why an
+  // "Accepted"/"Override" call left no name anywhere.
+  const adjudicationActor = lastActorFor(f, 'auditorAdjudication');
+
+  // Auditor-only final call on a dispute. Rendered only in auditor role, and
+  // only while there is a dispute to adjudicate — the client never sees this
+  // control, per the CEO-adjudication requirement.
+  const adjudicationBlock = (vs === 'disputed' || vs === 'closed_disputed') ? (
+    isAuditor ? `
+    <div class="mt-2 p-2 rounded bg-indigo-950/30 border border-indigo-800/50">
+      <p class="text-[10px] text-indigo-300 font-bold uppercase mb-1">⚖️ ${t('auditor_adjudication')}</p>
+      <p class="text-[10px] text-slate-400 mb-1.5">${t('auditor_adjudication_desc')}</p>
+      <select onchange="onAdjudicationChange('${escapeHTML(f.id)}', this.value, this)"
+        class="w-full p-1.5 rounded bg-slate-900 border border-indigo-700 text-xs focus:border-indigo-400 outline-none">
+        <option value="" ${!mr.auditorAdjudication ? 'selected' : ''}>⏳ ${t('adjudication_pending_label')}</option>
+        <option value="override" ${mr.auditorAdjudication==='override' ? 'selected' : ''}>🛡️ ${t('adjudication_override')}</option>
+        <option value="accepted" ${mr.auditorAdjudication==='accepted' ? 'selected' : ''}>🤝 ${t('adjudication_accepted')}</option>
+      </select>
+      ${actorLine(adjudicationActor)}
+    </div>
+    ` : `
+    <div class="mt-2 p-2 rounded bg-slate-800/60 border border-slate-700 text-[10px] text-slate-500 italic">
+      🔒 ${t('adjudication_auditor_only')}
+    </div>
+    `
+  ) : '';
+
+  // Both Step-1 buttons lock once a dispute is filed and awaiting the
+  // auditor's call — from here the ONLY way forward is the adjudication
+  // control below. Without this, anyone could re-file a fresh dispute (or
+  // silently self-confirm) and bypass the auditor's final word entirely.
+  const pendingAdjudication = vs === 'disputed';
+  const isTerminal = vs === 'closed_disputed';
+  const step1Locked = pendingAdjudication || isTerminal;
+
+  const treatmentEnabled = vs === 'confirmed';
+  const treatmentOptions = [
+    ['avoid', '🚫', 'decision_avoid'],
+    ['mitigate', '🛠️', 'decision_mitigate'],
+    ['transfer', '📤', 'decision_transfer'],
+    ['risk_accepted', '⚠️', 'decision_risk_accepted']
+  ].map(([val, icon, key]) =>
+    `<option value="${val}" ${mr.treatment===val?'selected':''}>${icon} ${t(key)}</option>`
+  ).join('');
+
+  // Once a treatment has been chosen for a confirmed finding, it is one
+  // remediation act — not a field to casually flip between mitigate/avoid/
+  // transfer/risk_accepted. It stays locked (read-only) until someone
+  // explicitly reopens it and states why, which is itself logged.
+  const treatmentChosen = treatmentEnabled && !!mr.treatment;
+  const treatmentEditable = treatmentEnabled && (!mr.treatment || state.treatmentUnlockedId === f.id);
+  // Who decided the CURRENT treatment — for risk_accepted this is the Risk
+  // Acceptance Form's approver (its own dedicated capture); for the other
+  // three, it's whoever answered the name/role prompt at decision time.
+  const treatmentActor = mr.treatment === 'risk_accepted' && mr.riskAcceptance
+    ? { actorName: mr.riskAcceptance.approver, actorRole: mr.riskAcceptance.approverRole || '', ts: mr.riskAcceptance.decidedAt }
+    : lastActorFor(f, 'treatment');
+
+  return `
+  <div class="mb-4 border border-slate-700 rounded p-2.5 bg-slate-900/40">
+    <p class="text-[10px] text-indigo-300 uppercase tracking-wider mb-2 font-bold">🗣️ ${t('mgmt_response')}</p>
+
+    <!-- STEP 1 — Finding Validation -->
+    <div class="mb-3 pb-3 border-b border-slate-700/70">
+      <div class="flex items-center justify-between mb-1.5">
+        <p class="text-[10px] text-slate-400 uppercase tracking-wider font-bold">${t('step1_validation')}</p>
+        ${vs ? `<span class="text-[9px] px-1.5 py-0.5 rounded border ${validationBadge}">${t('validation_' + vs)}</span>` : ''}
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <button onclick="onValidationChange('${escapeHTML(f.id)}', 'confirmed')" ${step1Locked ? 'disabled' : ''}
+          class="px-2 py-1.5 rounded text-[11px] font-medium transition border ${vs==='confirmed' ? 'bg-green-700 border-green-600 text-white' : 'bg-slate-800 border-slate-600 text-slate-300 hover:border-green-600'} ${step1Locked ? 'opacity-40 cursor-not-allowed hover:border-slate-600' : ''}">
+          ${t('confirm_finding_btn')}
+        </button>
+        <button onclick="onValidationChange('${escapeHTML(f.id)}', 'disputed')" ${step1Locked ? 'disabled' : ''}
+          class="px-2 py-1.5 rounded text-[11px] font-medium transition border ${vs==='disputed' || vs==='closed_disputed' ? 'bg-orange-700 border-orange-600 text-white' : 'bg-slate-800 border-slate-600 text-slate-300 hover:border-orange-600'} ${step1Locked ? 'opacity-40 cursor-not-allowed hover:border-slate-600' : ''}">
+          ${t('dispute_finding_btn')}
+        </button>
+      </div>
+      ${actorLine(validationActor)}
+      ${pendingAdjudication && !isAuditor ? `<p class="text-[9px] text-slate-500 italic mt-1">${t('dispute_pending_hint')}</p>` : ''}
+      ${disputeBlock}
+      ${adjudicationBlock}
+    </div>
+
+    <!-- STEP 2 — Risk Treatment (gated on confirmed; locked once chosen) -->
+    <div class="mb-3 pb-3 border-b border-slate-700/70">
+      <div class="flex items-center justify-between mb-1.5">
+        <p class="text-[10px] text-slate-400 uppercase tracking-wider font-bold">${t('step2_treatment')}</p>
+        ${treatmentChosen && !treatmentEditable ? `<button onclick="onReopenTreatment('${escapeHTML(f.id)}')" class="text-[9px] text-indigo-400 hover:text-indigo-300">🔓 ${t('reopen_treatment')}</button>` : ''}
+      </div>
+      <select onchange="onTreatmentChange('${escapeHTML(f.id)}', this.value, this)" ${treatmentEditable ? '' : 'disabled'}
+        class="w-full p-1.5 rounded bg-slate-900 border border-slate-600 text-xs focus:border-indigo-400 outline-none ${treatmentEditable ? '' : 'opacity-70 cursor-not-allowed'}">
+        <option value="" ${!mr.treatment ? 'selected' : ''}>—</option>
+        ${treatmentOptions}
+      </select>
+      ${!treatmentEnabled ? `<p class="text-[9px] text-slate-500 italic mt-1">${t('treatment_locked_hint')}</p>` : ''}
+      ${treatmentChosen && !treatmentEditable ? `<p class="text-[9px] text-slate-500 italic mt-1">🔒 ${t('treatment_recorded_hint')}</p>` : ''}
+      ${treatmentChosen ? actorLine(treatmentActor) : ''}
+    </div>
+
+    <!-- Provenance -->
+    <div class="grid grid-cols-2 gap-2 mb-2">
+      <div>
+        <label class="text-[10px] text-slate-400 uppercase">${t('responder')}</label>
+        <input type="text" value="${escapeHTML(mr.responder || '')}" onchange="updateResponseField('${escapeHTML(f.id)}', 'responder', this.value, this)"
+          class="w-full mt-1 p-1.5 rounded bg-slate-900 border border-slate-600 text-xs focus:border-indigo-400 outline-none">
+      </div>
+      <div>
+        <label class="text-[10px] text-slate-400 uppercase">${t('responder_role')}</label>
+        <input type="text" value="${escapeHTML(mr.responderRole || '')}" onchange="updateResponseField('${escapeHTML(f.id)}', 'responderRole', this.value, this)"
+          class="w-full mt-1 p-1.5 rounded bg-slate-900 border border-slate-600 text-xs focus:border-indigo-400 outline-none">
+      </div>
+      <div>
+        <label class="text-[10px] text-slate-400 uppercase">${t('response_date')}</label>
+        <input type="date" value="${escapeHTML(mr.responseDate || '')}" onchange="updateResponseField('${escapeHTML(f.id)}', 'responseDate', this.value, this)"
+          class="w-full mt-1 p-1.5 rounded bg-slate-900 border border-slate-600 text-xs focus:border-indigo-400 outline-none">
+      </div>
+      <div>
+        <label class="text-[10px] text-slate-400 uppercase">${t('received_via')}</label>
+        <input type="text" value="${escapeHTML(mr.receivedVia || '')}" placeholder="email, meeting…" onchange="updateResponseField('${escapeHTML(f.id)}', 'receivedVia', this.value, this)"
+          class="w-full mt-1 p-1.5 rounded bg-slate-900 border border-slate-600 text-xs focus:border-indigo-400 outline-none">
+      </div>
+    </div>
+    <label class="text-[10px] text-slate-400 uppercase">${t('response_comments')}</label>
+    <textarea rows="2" onchange="updateResponseField('${escapeHTML(f.id)}', 'comments', this.value, this)"
+      class="w-full mt-1 p-2 rounded bg-slate-900 border border-slate-600 text-xs focus:border-indigo-400 outline-none">${escapeHTML(mr.comments || '')}</textarea>
+    <p class="text-[9px] text-slate-500 mt-1">${t('source')}: ${escapeHTML(mr.source || 'manual_entry')}</p>
+    <p class="text-[9px] text-slate-600 mt-1 italic">${t('provenance_hint')}</p>
+  </div>
   `;
 }
 
@@ -2178,12 +2620,14 @@ function renderTimeline(history) {
   const sorted = [...history].sort((a, b) => (b.ts || 0) - (a.ts || 0));
   const iconMap = {
     status: '🔄', owner: '', decision: '⚖️', evidence: '📎', 
-    recommendation: '', remediationNotes: '📝', riskAcceptance: '⚠️'
+    recommendation: '', remediationNotes: '📝', riskAcceptance: '⚠️',
+    validationStatus: '🧭', treatment: '⚖️', auditorAdjudication: '👩‍⚖️', managementResponse: '🗣️'
   };
   const colorMap = {
     status: 'bg-blue-500', owner: 'bg-purple-500', decision: 'bg-amber-500',
     evidence: 'bg-green-500', recommendation: 'bg-indigo-500', remediationNotes: 'bg-slate-500',
-    riskAcceptance: 'bg-yellow-500'
+    riskAcceptance: 'bg-yellow-500',
+    validationStatus: 'bg-orange-500', treatment: 'bg-amber-500', auditorAdjudication: 'bg-indigo-500', managementResponse: 'bg-teal-500'
   };
 
   return sorted.map((h, i) => {
@@ -2196,7 +2640,7 @@ function renderTimeline(history) {
         ${i < sorted.length - 1 ? '<div class="timeline-line"></div>' : ''}
         <div class="timeline-dot ${color}"></div>
         <div class="text-[10px]">
-          <p class="text-slate-200"><span class="font-bold">${icon} ${escapeHTML(h.field || 'change')}</span> <span class="text-slate-400">by ${escapeHTML(h.actor || 'system')}</span></p>
+          <p class="text-slate-200"><span class="font-bold">${icon} ${escapeHTML(h.field || 'change')}</span> <span class="text-slate-400">by ${h.actorName ? escapeHTML(h.actorName) + (h.actorRole ? ' (' + escapeHTML(h.actorRole) + ')' : '') : escapeHTML(h.actor || 'system')}</span></p>
           <p class="text-slate-400 text-[9px]">${escapeHTML(note)}</p>
           <p class="text-slate-500 text-[9px] mt-0.5">${date}</p>
         </div>
@@ -2217,13 +2661,19 @@ function updateFinding(id, field, value) {
   f[field] = value;
   f.updatedAt = Date.now();
   if (!f.history) f.history = [];
+  // Show the actual value, not just "<field> updated" — the timeline should
+  // be readable at a glance (who's the owner, what did status become)
+  // without having to inspect the raw history entry.
+  const note = field === 'owner'
+    ? `${t('owner')}: ${value || '—'}`
+    : `${field}: ${(oldValue ?? '—') || '—'} → ${value}`;
   f.history.push({
     ts: Date.now(),
     actor: 'user',
     field: field,
     from: oldValue,
     to: value,
-    note: `${field} updated`
+    note
   });
   
   saveState();
@@ -2234,41 +2684,334 @@ function updateFinding(id, field, value) {
   renderDetail(id);
 }
 
-// Decision changes route through here so choosing "Risk Accepted" forces the
-// formal Risk Acceptance Form (approver + review date) rather than silently
-// accepting a risk with no justification on record.
-function onDecisionChange(id, value) {
+// ══════════════════════════════════════════════════════════════════════════
+// MANAGEMENT RESPONSE 2.0 — Validation → Treatment → Adjudication
+// ══════════════════════════════════════════════════════════════════════════
+
+// Every decision-producing action (confirm, adjudicate, choose a treatment)
+// asks who is making THIS specific call, right now — defaulting to whatever
+// is already in the provenance box so the same person isn't re-typed every
+// time, but never assuming it silently. This is what lets the timeline show
+// several different people deciding several different things over time,
+// instead of only ever remembering the last name anyone typed anywhere.
+// Returns {name, role} or null if the person cancels or leaves the name
+// blank (a decision without a named author is refused, same rigor as a
+// dispute without a reason).
+function promptForActor(defaultName, defaultRole, actionLabel) {
+  const name = prompt(`${t('actor_name_prompt')} — ${actionLabel}`, defaultName || '');
+  if (name === null) return null;
+  if (!name.trim()) { alert(t('actor_name_required')); return null; }
+  const role = prompt(t('actor_role_prompt'), defaultRole || '');
+  if (role === null) return null;
+  return { name: name.trim(), role: role.trim() };
+}
+
+// STEP 1 — Finding Validation. Confirming is a direct write; disputing is
+// never a direct write — it always routes through the mandatory Dispute
+// Form so a finding can't be marked disputed without a recorded reason.
+function onValidationChange(id, value) {
+  const f = state.findings.find(x => x.id === id);
+  if (!f) return;
+  const mr = f.managementResponse;
+
+  // Defense in depth: the buttons are already disabled in the DOM while a
+  // dispute is pending adjudication or the case is closed, but re-check
+  // here too — a stale render or a direct call must not bypass the lock.
+  // From here forward, only the auditor's adjudication can move things on.
+  if (mr.validationStatus === 'disputed' || mr.validationStatus === 'closed_disputed') {
+    return;
+  }
+
+  if (value === 'disputed') {
+    openDisputeModal(id);
+    return;
+  }
+
+  if (value === 'confirmed') {
+    const oldValue = mr.validationStatus;
+    if (oldValue === 'confirmed') return;
+
+    const actor = promptForActor(mr.responder, mr.responderRole, t('confirm_finding_btn'));
+    if (!actor) return;
+    mr.responder = actor.name;
+    mr.responderRole = actor.role;
+
+    mr.validationStatus = 'confirmed';
+    // Re-confirming after a dispute clears the adjudication — it no longer
+    // applies once the client itself confirms the finding.
+    mr.auditorAdjudication = '';
+    f.updatedAt = Date.now();
+    if (!f.history) f.history = [];
+    f.history.push({
+      ts: Date.now(), actor: 'user', actorName: actor.name, actorRole: actor.role, field: 'validationStatus',
+      from: oldValue, to: 'confirmed',
+      note: `${t('validation_confirmed')} — ${actor.name}${actor.role ? ' (' + actor.role + ')' : ''}`
+    });
+    saveState();
+    renderAll();
+    renderDetail(id);
+  }
+}
+
+function openDisputeModal(id) {
+  state.disputeTargetId = id;
+  const f = state.findings.find(x => x.id === id);
+  const mr = f ? f.managementResponse : {};
+  // Pre-fill with the last known contact as a convenience default — the
+  // person filing THIS dispute must still confirm/overwrite it, never
+  // assumed silently.
+  document.getElementById('dispute-name-input').value = (mr && mr.responder) || '';
+  document.getElementById('dispute-role-input').value = (mr && mr.responderRole) || '';
+  document.getElementById('dispute-reason-input').value = '';
+  document.getElementById('dispute-evidence-input').value = '';
+  document.getElementById('dispute-modal').classList.remove('hidden');
+  document.getElementById('dispute-modal').classList.add('flex');
+}
+// `rerenderDetail` is false when called right after a successful submit,
+// since confirmDispute() already re-renders the detail panel with the new
+// state — re-rendering again here would just redo the same work.
+function closeDisputeModal(rerenderDetail = true) {
+  document.getElementById('dispute-modal').classList.add('hidden');
+  document.getElementById('dispute-modal').classList.remove('flex');
+  state.disputeTargetId = null;
+  // Cancelling a dispute has no pending state to persist — re-render so the
+  // "Disputed" button doesn't look selected after a cancelled attempt.
+  if (rerenderDetail && state.selectedId) renderDetail(state.selectedId);
+}
+
+// Submits the Dispute Form. Both the name of who's disputing and the reason
+// are hard-required — a dispute with no named author is exactly the kind of
+// gap that made "who decided this" unrecoverable later.
+function confirmDispute() {
+  const name     = document.getElementById('dispute-name-input').value.trim();
+  const role     = document.getElementById('dispute-role-input').value.trim();
+  const reason   = document.getElementById('dispute-reason-input').value.trim();
+  const evidence = document.getElementById('dispute-evidence-input').value.trim();
+  if (!name) {
+    alert(t('actor_name_required'));
+    return;
+  }
+  if (!reason) {
+    alert(t('dispute_reason'));
+    return;
+  }
+  const f = state.findings.find(x => x.id === state.disputeTargetId);
+  if (!f) return;
+  const mr = f.managementResponse;
+  const oldValue = mr.validationStatus;
+
+  mr.responder = name;
+  mr.responderRole = role;
+  mr.validationStatus = 'disputed';
+  mr.disputeReason = reason;
+  mr.disputeEvidence = evidence;
+  // A fresh dispute always needs a fresh adjudication — clear any stale call
+  // from a previous dispute cycle on this same finding.
+  mr.auditorAdjudication = '';
+  // Disputing removes any risk treatment that was previously selected: you
+  // cannot both dispute a finding and be treating its risk at the same time.
+  mr.treatment = null;
+  f.decision = 'mitigate';
+
+  f.updatedAt = Date.now();
+  if (!f.history) f.history = [];
+  f.history.push({
+    ts: Date.now(), actor: 'user', actorName: name, actorRole: role, field: 'validationStatus',
+    from: oldValue, to: 'disputed',
+    note: `${t('dispute_reason_label')}: ${reason} — ${name}${role ? ' (' + role + ')' : ''}`
+  });
+
+  saveState();
+  closeDisputeModal(false);
+  renderAll();
+  renderDetail(f.id);
+}
+
+// Auditor's final call on a disputed finding. Only rendered/reachable in
+// Auditor Mode (see renderManagementResponsePanel) — this function itself
+// also re-checks the role so a stale button reference can't bypass it. The
+// auditor's own name/role is a DIFFERENT person from mr.responder (the
+// audited company's contact) — conflating the two used to mean an
+// adjudication call left no name anywhere at all.
+function onAdjudicationChange(id, value, el) {
+  if (state.role !== 'auditor') return;
+  const f = state.findings.find(x => x.id === id);
+  if (!f) return;
+  const mr = f.managementResponse;
+
+  if (!value) return; // selecting the blank "pending" option is a no-op, not a decision to log
+
+  const actor = promptForActor(mr.lastAuditorName, mr.lastAuditorRole, t('auditor_adjudication'));
+  if (!actor) {
+    if (el) el.value = mr.auditorAdjudication || ''; // revert the visible select on cancel
+    return;
+  }
+  // Remembered ONLY to pre-fill the next prompt for convenience — the actual
+  // record of who adjudicated THIS call lives in the history entry below,
+  // not in this field, so it can never be silently overwritten by someone
+  // else's later decision.
+  mr.lastAuditorName = actor.name;
+  mr.lastAuditorRole = actor.role;
+
+  const oldValue = mr.auditorAdjudication;
+  mr.auditorAdjudication = value;
+
+  const who = ` — ${actor.name}${actor.role ? ' (' + actor.role + ')' : ''}`;
+  let note = t('adjudication_pending_label');
+  if (value === 'override') {
+    // Override: the auditor stands by the finding — it goes back to
+    // confirmed and re-enters the normal risk-treatment flow.
+    mr.validationStatus = 'confirmed';
+    note = t('adjudication_override') + who;
+  } else if (value === 'accepted') {
+    // Accepted: the client was right — the finding is closed as disputed
+    // and excluded from the final PDF report.
+    mr.validationStatus = 'closed_disputed';
+    note = t('adjudication_accepted') + who;
+  }
+
+  f.updatedAt = Date.now();
+  if (!f.history) f.history = [];
+  f.history.push({
+    ts: Date.now(), actor: 'auditor', actorName: actor.name, actorRole: actor.role, field: 'auditorAdjudication',
+    from: oldValue, to: value, note
+  });
+
+  saveState();
+  renderAll();
+  renderDetail(id);
+}
+
+// STEP 2 — Risk Treatment. Only reachable once validationStatus==='confirmed'
+// (the <select> is disabled otherwise, and this is re-checked here too), AND
+// only while the select is actually unlocked (either no treatment set yet,
+// or the user went through onReopenTreatment()). Once a choice is saved it
+// re-locks itself automatically — see treatmentEditable in
+// renderManagementResponsePanel(). Kept in sync with the legacy top-level
+// f.decision field so the table view, Kanban board and PDF export — none of
+// which know about managementResponse — keep working unchanged.
+function onTreatmentChange(id, value, el) {
+  const f = state.findings.find(x => x.id === id);
+  if (!f) return;
+  const mr = f.managementResponse;
+  if (mr.validationStatus !== 'confirmed') return;
+  if (mr.treatment && state.treatmentUnlockedId !== id) return;
+  if (!value) return;
+
+  // Deliberately its OWN identity — mr.treatmentOwner/treatmentOwnerRole —
+  // never mr.responder/responderRole. Whoever confirmed the finding (Step 1)
+  // is often a different person/role from whoever decides HOW to remediate
+  // it (Step 2): a CISO might validate that a finding is real, while an IT
+  // lead or a different CISO altogether picks mitigate/transfer/avoid.
+  // Defaulting to and overwriting the Step-1 responder here used to make
+  // the confirmer the presumed owner of the remediation decision too.
+  // risk_accepted has its own dedicated capture (the Risk Acceptance Form:
+  // approver + justification + review date) — asking for a name here too
+  // would just be a redundant, more annoying version of the same question.
+  let actor = null;
+  if (value !== 'risk_accepted') {
+    actor = promptForActor(mr.treatmentOwner, mr.treatmentOwnerRole, t(`decision_${value}`));
+    if (!actor) {
+      if (el) el.value = mr.treatment || ''; // revert the visible select on cancel
+      return;
+    }
+    mr.treatmentOwner = actor.name;
+    mr.treatmentOwnerRole = actor.role;
+  }
+
+  const oldValue = mr.treatment;
+  mr.treatment = value;
+  f.decision = value;
+  f.updatedAt = Date.now();
+  if (!f.history) f.history = [];
+  const whoText = actor ? ` — ${actor.name}${actor.role ? ' (' + actor.role + ')' : ''}` : '';
+  f.history.push({
+    ts: Date.now(), actor: 'user',
+    actorName: actor ? actor.name : undefined, actorRole: actor ? actor.role : undefined,
+    field: 'treatment',
+    from: oldValue, to: value, note: `${t('step2_treatment')}: ${t('decision_' + value)}${whoText}`
+  });
+  // The choice is now saved — re-lock immediately, whether or not this was
+  // a reopen. A fresh reopen is required for any further change.
+  state.treatmentUnlockedId = null;
+  saveState();
+
   if (value === 'risk_accepted') {
-    updateFinding(id, 'decision', 'risk_accepted');
     openRiskModal();
     return;
   }
-  updateFinding(id, 'decision', value);
+  renderAll();
+  renderDetail(id);
+}
+
+// Explicit, auditable act to change an already-recorded treatment. Requires
+// BOTH a reason and a named author — reopening a decision is itself a
+// decision (maybe by the same person who chose it, maybe by someone else
+// overriding them), and it must be attributable exactly like every other
+// decision in this panel, not fall back to a generic "by user".
+function onReopenTreatment(id) {
+  const f = state.findings.find(x => x.id === id);
+  if (!f) return;
+  const mr = f.managementResponse;
+  if (mr.validationStatus !== 'confirmed') return;
+
+  const reason = prompt(t('reopen_treatment_prompt'));
+  if (reason === null) return;           // cancelled
+  if (!reason.trim()) {                  // empty reason — refuse, same rigor as a dispute
+    alert(t('reopen_treatment_reason_required'));
+    return;
+  }
+
+  const actor = promptForActor(mr.treatmentOwner, mr.treatmentOwnerRole, t('reopen_treatment'));
+  if (!actor) return;
+
+  const oldValue = mr.treatment;
+  f.updatedAt = Date.now();
+  if (!f.history) f.history = [];
+  f.history.push({
+    ts: Date.now(), actor: 'user', actorName: actor.name, actorRole: actor.role, field: 'treatment',
+    from: oldValue, to: null,
+    note: `${t('reopen_treatment')}: ${reason.trim()} — ${actor.name}${actor.role ? ' (' + actor.role + ')' : ''}`
+  });
+  saveState();
+
+  state.treatmentUnlockedId = id;
+  renderDetail(id);
 }
 
 // Writes a field inside the finding's managementResponse object (who at the
 // audited company responded, when, and how it reached us). Kept as its own
 // helper because updateFinding only sets top-level fields. History is logged
 // the same way so provenance edits appear in the timeline.
-function updateResponseField(id, field, value) {
+// Writes a field inside the finding's managementResponse object (who at the
+// audited company responded, when, and how it reached us). These are
+// provenance/metadata fields, not decisions — they're always visible live
+// in the panel itself, so editing them (including fixing a typo while
+// filling the form) does NOT create a timeline entry, AND does NOT
+// re-render the whole detail panel. Re-rendering used to destroy and
+// rebuild the <input> on every change — which for a native date picker
+// meant the screen visibly "jumped" and the calendar popup snapped shut
+// mid-edit. A brief border flash on the field itself is enough feedback.
+function updateResponseField(id, field, value, el) {
   const f = state.findings.find(x => x.id === id);
   if (!f) return;
   if (!f.managementResponse) f.managementResponse = { source: 'manual_entry' };
   const mr = f.managementResponse;
-  const oldValue = mr[field];
-  if (oldValue === value) return;
+  if (mr[field] === value) return;
 
   mr[field] = value;
   mr.source = mr.source || 'manual_entry';
   f.updatedAt = Date.now();
-  if (!f.history) f.history = [];
-  f.history.push({
-    ts: Date.now(), actor: 'user', field: 'managementResponse',
-    from: oldValue, to: value, note: `response.${field} updated`
-  });
 
   saveState();
-  renderDetail(id);
+
+  if (el) {
+    el.classList.remove('field-saved-flash');
+    // Force reflow so the animation can restart if the field is edited
+    // again quickly, instead of silently no-op'ing on a repeated class add.
+    void el.offsetWidth;
+    el.classList.add('field-saved-flash');
+  }
 }
 
 function uploadEvidence(id, input) {
@@ -2317,19 +3060,97 @@ function requestExtension(id) {
   renderDetail(id);
 }
 
+// Sending a finding for auditor review is an accountability assertion —
+// "I did the fix, please verify" — not a passive status flip. Whoever
+// submits it must be named, the same way whoever later closes it (see
+// closeFinding) or decides its treatment must be. Defaults to the
+// treatment owner as a convenience (very often the same person who
+// implemented the fix they chose), but always confirmable/overwritable.
 function markPending(id) {
-  updateFinding(id, 'status', 'pending_validation');
+  const f = state.findings.find(x => x.id === id);
+  if (!f) return;
+  const mr = f.managementResponse || {};
+
+  const actor = promptForActor(f.submittedBy || mr.treatmentOwner, f.submittedByRole || mr.treatmentOwnerRole, t('mark_pending'));
+  if (!actor) return;
+
+  const oldValue = f.status;
+  f.status = 'pending_validation';
+  f.submittedBy = actor.name;
+  f.submittedByRole = actor.role;
+  f.updatedAt = Date.now();
+  if (!f.history) f.history = [];
+  f.history.push({
+    ts: Date.now(), actor: 'user', actorName: actor.name, actorRole: actor.role, field: 'status',
+    from: oldValue, to: 'pending_validation',
+    note: `${t('mark_pending')}: ${actor.name}${actor.role ? ' (' + actor.role + ')' : ''}`
+  });
+
+  saveState();
+  renderKPIs();
+  renderCharts();
+  renderPriorityMatrix();
+  renderFindings();
+  renderDetail(id);
 }
 
+// Closing a finding is the auditor's independent verification act — it must
+// NOT be the same person who fixed it self-certifying their own work, which
+// would defeat the whole point of an audit. Reachable only in Auditor Mode
+// (the button itself is hidden otherwise, and this re-checks the role too),
+// and only once there's actually something to verify: either evidence was
+// submitted for review, or the risk was formally accepted instead of fixed.
 function closeFinding(id) {
-  if (!confirm('Mark this finding as closed?')) return;
-  updateFinding(id, 'status', 'closed');
+  if (state.role !== 'auditor') return;
+  const f = state.findings.find(x => x.id === id);
+  if (!f) return;
+
+  const canClose = f.status === 'pending_validation' || f.status === 'risk_accepted';
+  if (!canClose) {
+    alert(t('close_finding_requires_review'));
+    return;
+  }
+
+  const actor = promptForActor(f.closedBy, f.closedByRole, t('close_finding'));
+  if (!actor) return;
+
+  if (!confirm(t('close_finding_confirm'))) return;
+
+  const oldValue = f.status;
+  f.status = 'closed';
+  f.closedBy = actor.name;
+  f.closedByRole = actor.role;
+  f.updatedAt = Date.now();
+  if (!f.history) f.history = [];
+  f.history.push({
+    ts: Date.now(), actor: 'auditor', actorName: actor.name, actorRole: actor.role, field: 'status',
+    from: oldValue, to: 'closed',
+    note: `${t('closed_by')}: ${actor.name}${actor.role ? ' (' + actor.role + ')' : ''}`
+  });
+
+  saveState();
+  renderKPIs();
+  renderCharts();
+  renderPriorityMatrix();
+  renderFindings();
+  renderDetail(id);
 }
 
 // ══════════════════════════════════════════════════════════════════════════
 // RISK ACCEPTANCE MODAL
 // ══════════════════════════════════════════════════════════════════════════
 function openRiskModal() {
+  // Pre-fill with the treatment owner (Step 2's own identity), NOT the
+  // Step-1 validator — accepting a risk is a treatment decision, same
+  // category as mitigate/transfer/avoid, and must not default to whoever
+  // merely confirmed the finding was real. Still freely overwritable.
+  const f = state.findings.find(x => x.id === state.selectedId);
+  const mr = f ? f.managementResponse : {};
+  document.getElementById('risk-approver').value = (mr && mr.treatmentOwner) || '';
+  document.getElementById('risk-approver-role').value = (mr && mr.treatmentOwnerRole) || '';
+  document.getElementById('risk-justification').value = '';
+  document.getElementById('risk-review-date').value = '';
+  document.getElementById('risk-compensating').value = '';
   document.getElementById('risk-modal').classList.remove('hidden');
   document.getElementById('risk-modal').classList.add('flex');
 }
@@ -2339,6 +3160,7 @@ function closeRiskModal() {
 }
 function confirmRiskAcceptance() {
   const approver = document.getElementById('risk-approver').value.trim();
+  const approverRole = document.getElementById('risk-approver-role').value.trim();
   const justification = document.getElementById('risk-justification').value.trim();
   const reviewDate = document.getElementById('risk-review-date').value;
   const compensating = document.getElementById('risk-compensating').value.trim();
@@ -2348,8 +3170,21 @@ function confirmRiskAcceptance() {
   }
   const f = state.findings.find(x => x.id === state.selectedId);
   if (!f) return;
-  
-  f.riskAcceptance = { approver, justification, reviewDate, compensatingControl: compensating };
+  const mr = f.managementResponse;
+
+  // Risk Acceptance lives nested under managementResponse per the M2 data
+  // model — it is the acceptance record for the treatment decision made in
+  // Step 2, not a separate top-level concept. decidedAt + approverRole let
+  // the panel show "who decided the current treatment" the same way the
+  // other three treatments do, without a redundant second name prompt.
+  mr.riskAcceptance = { approver, approverRole, justification, reviewDate, compensatingControl: compensating, decidedAt: Date.now() };
+  mr.treatment = 'risk_accepted';
+  // Keep Step 2's own identity in sync (for pre-filling a future reopen),
+  // scoped to treatmentOwner — never mr.responder, which belongs to
+  // whoever confirmed the finding in Step 1. Those are different
+  // responsibilities and, very often, different people.
+  mr.treatmentOwner = approver;
+  mr.treatmentOwnerRole = approverRole;
   f.status = 'risk_accepted';
   f.decision = 'risk_accepted';
   f.updatedAt = Date.now();
@@ -2357,9 +3192,11 @@ function confirmRiskAcceptance() {
   f.history.push({
     ts: Date.now(),
     actor: 'user',
+    actorName: approver,
+    actorRole: approverRole,
     field: 'riskAcceptance',
     to: 'accepted',
-    note: `Risk accepted by ${approver}, review by ${reviewDate}`
+    note: `${t('step2_treatment')}: ${t('decision_risk_accepted')} — ${approver}${approverRole ? ' (' + approverRole + ')' : ''}, ${t('review_date')}: ${reviewDate}`
   });
   
   saveState();
@@ -2478,14 +3315,27 @@ function generateHubPDF() {
     y += 16;
 
     const total = state.findings.length;
-    const open = state.findings.filter(f => f.status === 'open' || f.status === 'assigned').length;
-    const closed = state.findings.filter(f => f.status === 'closed').length;
-    const overdue = state.findings.filter(f => isOverdue(f)).length;
+    // Findings the CEO/auditor has adjudicated as accepted disputes are
+    // excluded from the final report entirely — the client was right, so it
+    // never should have appeared as a finding in the first place.
+    const reportFindings = state.findings.filter(f => f.managementResponse?.validationStatus !== 'closed_disputed');
+    const excludedCount = total - reportFindings.length;
+    const open = reportFindings.filter(f => f.status === 'open' || f.status === 'assigned').length;
+    const closed = reportFindings.filter(f => f.status === 'closed').length;
+    const overdue = reportFindings.filter(f => isOverdue(f)).length;
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
-    doc.text(`Total Findings: ${total}  |  Open: ${open}  |  Closed: ${closed}  |  Overdue: ${overdue}`, margin, y);
-    y += 20;
+    doc.text(`Total Findings: ${reportFindings.length}  |  Open: ${open}  |  Closed: ${closed}  |  Overdue: ${overdue}`, margin, y);
+    y += 14;
+    if (excludedCount > 0) {
+      doc.setFontSize(7.5);
+      doc.setTextColor(148, 163, 184);
+      doc.text(`${excludedCount} finding(s) excluded — dispute accepted by auditor (${t('validation_closed_disputed')}).`, margin, y);
+      doc.setTextColor(30, 41, 59);
+      y += 12;
+    }
+    y += 6;
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
@@ -2505,7 +3355,7 @@ function generateHubPDF() {
     doc.text('Days', pageWidth - margin - 30, y + 11);
     y += 20;
 
-    state.findings.forEach(f => {
+    reportFindings.forEach(f => {
       if (y > pageHeight - 60) {
         doc.addPage();
         y = margin;
@@ -2524,7 +3374,8 @@ function generateHubPDF() {
       const ctrlName = (f.controlName || '').substring(0, 34);
       doc.text(ctrlName, margin + 130, y + 10);
       doc.text(f.owner || '—', margin + 280, y + 10);
-      doc.text((f.decision || 'mitigate').replace('_', ' '), margin + 380, y + 10);
+      const treatmentLabel = f.managementResponse?.treatment || f.decision || 'mitigate';
+      doc.text(treatmentLabel.replace('_', ' '), margin + 380, y + 10);
       doc.text((f.status || 'open').replace('_', ' '), margin + 460, y + 10);
       doc.text(String(daysOpen(f)), pageWidth - margin - 30, y + 10);
 
@@ -2541,6 +3392,21 @@ function generateHubPDF() {
         doc.setTextColor(100, 116, 139);
         doc.setFontSize(7);
         doc.text(`↳ ${t('mgmt_response')}: ${who || '—'}${via ? ' · ' + via : ''}`, margin + 12, y + 6);
+        doc.setFontSize(8);
+        doc.setTextColor(30, 41, 59);
+        y += 14;
+      }
+
+      // Dispute sub-line: a finding can reach the report while still marked
+      // 'disputed' if the auditor hasn't adjudicated yet, or overrode and
+      // stood by the finding — either way, the client's stated disagreement
+      // stays visible in the report rather than silently disappearing.
+      if (mr.validationStatus === 'disputed') {
+        if (y > pageHeight - 60) { doc.addPage(); y = margin; }
+        doc.setTextColor(194, 120, 3);
+        doc.setFontSize(7);
+        const reasonPreview = (mr.disputeReason || '').substring(0, 90);
+        doc.text(`↳ ${t('validation_disputed')}: ${reasonPreview || '—'}`, margin + 12, y + 6);
         doc.setFontSize(8);
         doc.setTextColor(30, 41, 59);
         y += 14;
@@ -2567,6 +3433,7 @@ function generateHubPDF() {
 document.addEventListener('DOMContentLoaded', () => {
   const savedLang = localStorage.getItem('hub_lang') || 'es';
   setLanguage(savedLang);
+  renderRoleToggle();
   loadState();
 });
 </script>

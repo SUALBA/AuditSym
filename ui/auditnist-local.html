@@ -2849,7 +2849,7 @@ function closeAutoAnalyze() {
   modal.classList.remove('flex');
   // Free RAG session memory
   if (ragSessionId) {
-    fetch(`http://localhost:8765/session/${ragSessionId}`, { method: 'DELETE' }).catch(()=>{});
+    fetch(`http://localhost:8765/session/${ragSessionId}`, { method: 'DELETE', headers: { 'X-AuditSym-Client': 'auditsym-ui' } }).catch(()=>{});
     ragSessionId = null;
   }
 }
@@ -2894,7 +2894,13 @@ async function uploadDocsToRag() {
   pendingFiles.forEach(f => form.append('files', f, f.name));
   if (ragSessionId) form.append('session_id', ragSessionId);
 
-  const r    = await fetch('http://localhost:8765/upload', { method: 'POST', body: form });
+  // Custom header forces a CORS preflight and identifies this as the real
+  // UI to the RAG server's origin/header checks — see rag/server.py.
+  const r    = await fetch('http://localhost:8765/upload', {
+    method : 'POST',
+    headers: { 'X-AuditSym-Client': 'auditsym-ui' },
+    body   : form
+  });
   const data = await r.json();
   ragSessionId = data.session_id;
   return data; // {session_id, doc_count, chunk_count}
@@ -3070,7 +3076,7 @@ async function runAutoAnalysis() {
       };
       const qr   = await fetch('http://localhost:8765/query', {
         method : 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-AuditSym-Client': 'auditsym-ui' },
         body   : JSON.stringify(qBody)
       });
       const qd   = await qr.json();
