@@ -380,7 +380,9 @@ Return ONLY valid JSON with no markdown, no code fences, no text outside the JSO
             <option value="zh">ZH — 中文</option>
         </select>
         
-        <!-- Botón Limpiar -->
+        <!-- Botón Nueva Auditoría — a full, explicit reset. Renamed from "Limpiar
+     datos" to make its actual purpose unmistakable, and now asks for
+     confirmation first since it destroys the current workspace. -->
 <button onclick="clearData()"
         class="group relative px-4 py-2 bg-gradient-to-br from-red-950/80 to-red-900/60 text-white rounded-lg hover:from-cyberevil hover:to-red-600 transition-all duration-300 text-sm font-medium shadow-lg shadow-red-900/30 border border-red-700/50 hover:border-red-500 flex items-center gap-2 overflow-hidden">
   
@@ -388,14 +390,14 @@ Return ONLY valid JSON with no markdown, no code fences, no text outside the JSO
   <span class="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></span>
   
   <!-- Icono -->
-  <span class="relative text-base group-hover:scale-110 transition-transform duration-200">🗑️</span>
+  <span class="relative text-base group-hover:scale-110 transition-transform duration-200">🆕</span>
   
   <!-- Texto -->
-  <span data-i18n="clear_data" class="relative hidden sm:inline">Limpiar datos</span>
+  <span data-i18n="new_audit_btn" class="relative hidden sm:inline">Nueva Auditoría</span>
   
   <!-- Tooltip en móvil -->
   <span class="absolute -bottom-8 left-1/2 -translate-x-1/2 text-[10px] bg-gray-800 text-gray-300 px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap sm:hidden">
-    Limpiar
+    Nueva
   </span>
 </button>
       </div>
@@ -439,6 +441,17 @@ data-i18n="template_library_btn">📚 Biblioteca</button>
 <button onclick="openEvaluationHistory()"
 class="px-3 py-1 bg-indigo-600 text-white font-bold rounded text-sm hover:bg-indigo-500"
 data-i18n="history_btn">📜 Historial
+</button>
+
+<!-- Vista Dashboard / Vista de Trabajo — the dashboard view is great for a
+     visual overview, but it's a lot of scrolling and visual noise for
+     someone spending hours actually filling in controls one by one. Work
+     View collapses the dashboards and swaps the stacked control list for a
+     compact index + a single large focused panel. -->
+<button id="work-view-toggle-btn" onclick="toggleWorkView()"
+class="px-3 py-1 bg-gray-700 text-cyberaccent font-bold rounded text-sm hover:bg-gray-600 border border-cyberaccent/40"
+title="Alternar entre la vista de dashboard y una vista compacta para trabajar control a control">
+<span data-i18n="work_view_btn">📝 Vista de Trabajo</span>
 </button>
 </div>
 
@@ -528,7 +541,7 @@ class="absolute w-full bg-gray-800 border border-gray-600 rounded-lg mt-1 max-h-
 </div>
 
 <!-- Framework Progress  -->
-<div class="container mx-auto mt-4 bg-gradient-to-br from-slate-900/80 to-cyberpanel border border-cyberaccent rounded-lg p-4">
+<div id="framework-progress-panel" class="container mx-auto mt-4 bg-gradient-to-br from-slate-900/80 to-cyberpanel border border-cyberaccent rounded-lg p-4">
   <div class="flex items-center justify-between mb-4">
     <h2 class="text-lg text-cyberaccent font-bold flex items-center gap-2">
      
@@ -782,6 +795,28 @@ placeholder="Ej: INF-2025-001" class="w-full mt-1 p-2 rounded bg-gray-700 text-g
 </div>
 </section>
 
+<!-- Work View: a compact control index (left) + a single large focused
+     panel (right). Hidden by default. toggleWorkView() physically moves
+     the WHOLE #controls container (never its individual children) into
+     work-view-panel-slot and back out to controls-anchor on toggle — this
+     way every .control element's structure, attributes, and event
+     listeners stay completely untouched, and every existing function that
+     reads document.querySelectorAll('.control') keeps working unmodified
+     regardless of which view is active. Only ONE of #work-view-wrapper /
+     the plain stacked position is visible at a time. -->
+<div id="work-view-wrapper" class="hidden mt-6 flex gap-4 items-start">
+  <div id="work-view-sidebar" class="w-64 flex-shrink-0 bg-gray-800 border border-gray-700 rounded-lg p-2 space-y-1 max-h-[75vh] overflow-y-auto sticky top-4"></div>
+  <div class="flex-1 min-w-0">
+    <div class="flex items-center justify-between mb-2 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2">
+      <button onclick="workViewNav(-1)" class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm">◀ Anterior</button>
+      <span id="work-view-position" class="text-sm text-gray-400"></span>
+      <button onclick="workViewNav(1)" class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm">Siguiente ▶</button>
+    </div>
+    <div id="work-view-panel-slot"></div>
+  </div>
+</div>
+
+<div id="controls-anchor"></div>
 <div id="controls" class="mt-6 space-y-4"></div>
 
 <div class="mt-6 flex flex-wrap gap-4">
@@ -809,8 +844,8 @@ data-i18n="generate_pdf_btn">📄 PDF</button>
 <button onclick="exportToJSON()"
 class="px-4 py-2 bg-cyberwarn text-black rounded hover:bg-yellow-500"
 data-i18n="export_json_btn">💾 Exportar JSON</button>
-<label class="px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-600 cursor-pointer"
-data-i18n="import_json_btn">📂 Importar JSON
+<label class="px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-600 cursor-pointer">
+<span data-i18n="import_json_btn">📂 Importar JSON</span>
 <input type="file" onchange="importFromJSON(this)" class="hidden" accept=".json">
 </label>
  <button onclick="issueFinalReport()"
@@ -830,7 +865,7 @@ data-i18n="import_json_btn">📂 Importar JSON
       <span class="w-4 h-4 rounded bg-gradient-to-br from-cyberok to-green-400 flex items-center justify-center shadow-sm shadow-green-500/30">
         <span class="text-[8px]">🎯</span>
       </span>
-      <span data-i18n="Cumplimiento">Cumplimiento</span>
+      <span data-i18n="panel_compliance_title">Cumplimiento</span>
     </h2>
     <!-- PORCENTAJE AQUÍ (esquina superior derecha) -->
     <span id="compliance-percentage" class="text-lg font-bold text-cyberok drop-shadow-[0_0_6px_#22c55e]">0%</span>
@@ -846,16 +881,16 @@ data-i18n="import_json_btn">📂 Importar JSON
     <span class="w-4 h-4 rounded bg-gradient-to-br from-cyberevil to-red-400 flex items-center justify-center shadow-sm shadow-red-500/30">
       <span class="text-[8px]">⚠️</span>
     </span>
-    <span data-i18n="Riesgos">Riesgos</span>
+    <span data-i18n="panel_risks_title">Riesgos</span>
   </h2>
   <div class="h-28 w-full px-1">
     <canvas id="chartRisk"></canvas>
   </div>
   <div class="flex justify-center gap-3 mt-2 text-[9px]">
-    <span class="flex items-center gap-1"><span class="text-red-700 text-[12px]">●</span><span class="text-gray-400">Crítico</span></span>
-    <span class="flex items-center gap-1"><span class="text-cyberevil text-[12px]">●</span><span class="text-gray-400">Alto</span></span>
-    <span class="flex items-center gap-1"><span class="text-cyberwarn text-[12px]">●</span><span class="text-gray-400">Medio</span></span>
-    <span class="flex items-center gap-1"><span class="text-cyberok text-[12px]">●</span><span class="text-gray-400">Bajo</span></span>
+    <span class="flex items-center gap-1"><span class="text-red-700 text-[12px]">●</span><span class="text-gray-400" data-i18n="critical">Crítico</span></span>
+    <span class="flex items-center gap-1"><span class="text-cyberevil text-[12px]">●</span><span class="text-gray-400" data-i18n="high">Alto</span></span>
+    <span class="flex items-center gap-1"><span class="text-cyberwarn text-[12px]">●</span><span class="text-gray-400" data-i18n="medium">Medio</span></span>
+    <span class="flex items-center gap-1"><span class="text-cyberok text-[12px]">●</span><span class="text-gray-400" data-i18n="low">Bajo</span></span>
   </div>
 </div>
 
@@ -865,7 +900,7 @@ data-i18n="import_json_btn">📂 Importar JSON
       <span class="w-4 h-4 rounded bg-gradient-to-br from-cyberaccent to-blue-500 flex items-center justify-center shadow-sm shadow-blue-500/30">
         <span class="text-[8px]">📈</span>
       </span>
-      <span data-i18n="Evaluaciones">Evaluaciones</span>
+      <span data-i18n="panel_evaluations_title">Evaluaciones</span>
     </h2>
     <div class="h-28 w-full px-1">
       <canvas id="chartFramework"></canvas>
@@ -1096,7 +1131,7 @@ async function suggestControls() {
   const btn = document.getElementById("suggest-controls");
   try {
     btn.disabled = true;
-    document.getElementById('suggest-status').textContent = T('generating');
+    setSuggestStatus('generating');
 
     if (!scfData) {
       await loadScfDataAndCountControls();
@@ -1174,7 +1209,7 @@ async function suggestControls() {
   } catch (e) {
     alert(T('err_suggestions') + e.message);
   } finally {
-    document.getElementById('suggest-status').textContent = '';
+    setSuggestStatus('');
     btn.disabled = false;
   }
 }
@@ -1401,7 +1436,9 @@ function loadAuditById(key) {
     wrapper.querySelector('.riesgo').value = c.riesgo || '';
     wrapper.querySelector('.evidencia').value = c.evidencia || '';
     toggleValidateBtn(wrapper.querySelector('.evidencia'));
+    autoGrowTextarea(wrapper.querySelector('.evidencia'));
     wrapper.querySelector('.notes').value = c.notes || '';
+    autoGrowTextarea(wrapper.querySelector('.notes'));
     // Setting .value directly doesn't fire 'change', so the styling that
     // normally happens live in onComplianceChange has to be applied here
     // explicitly — otherwise a reloaded audit shows every control in the
@@ -1636,7 +1673,7 @@ async function loadScfDataAndCountControls() {
     scfData = await response.json();
     scfLoadError = false;
     // Optionally update a status element
-    document.getElementById('suggest-status').textContent = '✅ Biblioteca cargada';
+    setSuggestStatus('library_loaded');
     return true;
   } catch (e) {
     console.error('Error cargando scf-controls.json:', e.message);
@@ -1655,7 +1692,7 @@ async function suggestControls() {
   const btn = document.getElementById("suggest-controls");
   try {
     btn.disabled = true;
-    document.getElementById('suggest-status').textContent = T('generating');
+    setSuggestStatus('generating');
 
     if (!scfData) {
       await loadScfDataAndCountControls();
@@ -1733,7 +1770,7 @@ async function suggestControls() {
   } catch (e) {
     alert(T('err_suggestions') + e.message);
   } finally {
-    document.getElementById('suggest-status').textContent = '';
+    setSuggestStatus('');
     btn.disabled = false;
   }
 }
@@ -1830,32 +1867,38 @@ ${question ? `
 </div>
 ` : ''}
 
-<div>
+<div class="field-group">
+<div class="flex items-center justify-between mb-1">
 <label class="text-[10px] uppercase tracking-wide text-gray-400 font-bold">${T('auditor_notes_label')}</label>
-<textarea class="notes w-full mt-1.5 p-2.5 rounded bg-gray-900/40 border border-gray-700 text-gray-300 text-sm focus:outline-none focus:border-cyberaccent/60"
-rows="2" spellcheck="true" lang="es" placeholder="${T('notes_ph')}"></textarea>
+<button type="button" onclick="openFocusMode(this)" title="Modo Enfoque — editor a pantalla completa"
+class="text-gray-400 hover:text-cyberaccent text-sm px-2 py-0.5 rounded hover:bg-gray-700/50 leading-none">⛶</button>
+</div>
+<textarea class="notes w-full mt-1 p-3 rounded bg-gray-900/40 border border-gray-700 text-gray-300 text-base leading-relaxed resize-y focus:outline-none focus:border-cyberaccent/60"
+rows="3" style="min-height:76px;" spellcheck="true" lang="es" placeholder="${T('notes_ph')}" oninput="autoGrowTextarea(this)"></textarea>
 </div>
 
 <!-- Evidence gets the most visual weight of the three fields — it is the
      actual audit deliverable for this control, not a working note. -->
-<div class="p-3.5 bg-gray-900/70 rounded-lg border border-cyberaccent/30">
+<div class="field-group p-3.5 bg-gray-900/70 rounded-lg border border-cyberaccent/30">
 <div class="flex items-center justify-between mb-1.5">
 <label class="text-[10px] uppercase tracking-wide text-cyberaccent font-bold">${T('evidence_label')}</label>
 <div class="flex items-center gap-2">
+<button type="button" onclick="openFocusMode(this)" title="Modo Enfoque — editor a pantalla completa"
+class="text-gray-400 hover:text-cyberaccent text-sm px-2 py-0.5 rounded hover:bg-gray-700/50 leading-none">⛶</button>
 <button type="button"
 onclick="validateAIDraft(this)"
 class="ai-validate-btn hidden px-2.5 py-1 bg-cyberok text-black rounded hover:bg-green-400 text-xs font-medium flex items-center gap-1.5">
-<span>✓</span> Validar Borrador
+<span>✓</span> <span data-i18n="validate_draft_btn">${T('validate_draft_btn')}</span>
 </button>
 <button type="button"
 onclick="generarEvidenciaIA(this)"
 class="px-2.5 py-1 bg-cyberwarn text-black rounded hover:bg-yellow-400 text-xs font-medium flex items-center gap-1.5">
-<span>✍️</span> IA Evidencia
+<span>✍️</span> <span data-i18n="ia_evidence_btn">${T('ia_evidence_btn')}</span>
 </button>
 </div>
 </div>
-<textarea class="evidencia w-full p-2.5 rounded bg-gray-800 border border-gray-600 text-gray-100 text-sm focus:outline-none focus:border-cyberaccent"
-rows="3" spellcheck="true" lang="es" placeholder="${T('evidence_ph')}" oninput="toggleValidateBtn(this)"></textarea>
+<textarea class="evidencia w-full p-3 rounded bg-gray-800 border border-gray-600 text-gray-100 text-base leading-relaxed resize-y focus:outline-none focus:border-cyberaccent"
+rows="4" style="min-height:100px;" spellcheck="true" lang="es" placeholder="${T('evidence_ph')}" oninput="toggleValidateBtn(this); autoGrowTextarea(this);"></textarea>
 </div>
 </div>
 `;
@@ -1867,6 +1910,7 @@ wrapper.querySelector('.riesgo').addEventListener('change', (e) => {
 onRiskChange(e.target);
 });
 updateAll();
+if (workViewActive) renderWorkViewSidebar();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1876,6 +1920,57 @@ updateAll();
 // field currently carries the AI-draft marker — the button is the explicit,
 // intentional act of an auditor saying "I reviewed this," rather than
 // silently clearing the marker on any incidental edit.
+// Textareas start compact (so a control with nothing written yet doesn't
+// look bloated) but grow to fit whatever's typed or pasted in — an auditor
+// pasting three paragraphs of evidence shouldn't have to fight a 3-line
+// box with an internal scrollbar to see what they just wrote.
+function autoGrowTextarea(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 520) + 'px';
+}
+
+// Modo Enfoque — a near-fullscreen editor for Notas/Evidencia. Long
+// sessions of data entry in a 3-line box (especially when pasting content)
+// are genuinely uncomfortable; this gives the same field room to breathe
+// without restructuring the whole page. Content syncs back to the real
+// textarea on every keystroke, not just on close, so nothing is lost if
+// the tab is closed while the modal is open.
+let focusModeSourceTextarea = null;
+
+function openFocusMode(btn) {
+  const fieldGroup = btn.closest('.field-group');
+  const ta = fieldGroup?.querySelector('textarea');
+  if (!ta) return;
+  focusModeSourceTextarea = ta;
+  const controlBlock = btn.closest('.control');
+  const code = controlBlock?.querySelector('.ctrl')?.value || '';
+  const isEvidence = ta.classList.contains('evidencia');
+  document.getElementById('focus-mode-title').textContent =
+    `${code}  ·  ${isEvidence ? T('evidence_label') : T('auditor_notes_label')}`;
+  const modalTa = document.getElementById('focus-mode-textarea');
+  modalTa.value = ta.value;
+  modalTa.className = isEvidence
+    ? 'w-full h-full p-4 rounded bg-gray-800 border border-cyberaccent text-gray-100 text-base leading-relaxed focus:outline-none resize-none'
+    : 'w-full h-full p-4 rounded bg-gray-900/60 border border-gray-600 text-gray-200 text-base leading-relaxed focus:outline-none resize-none';
+  document.getElementById('focus-mode-overlay').classList.remove('hidden');
+  modalTa.focus();
+}
+
+function closeFocusMode() {
+  document.getElementById('focus-mode-overlay').classList.add('hidden');
+  focusModeSourceTextarea = null;
+}
+
+function syncFocusModeBack() {
+  if (!focusModeSourceTextarea) return;
+  focusModeSourceTextarea.value = document.getElementById('focus-mode-textarea').value;
+  autoGrowTextarea(focusModeSourceTextarea);
+  isDirty = true;
+  if (focusModeSourceTextarea.classList.contains('evidencia')) {
+    toggleValidateBtn(focusModeSourceTextarea);
+  }
+}
+
 function toggleValidateBtn(textarea) {
   const btn = textarea.closest('.control')?.querySelector('.ai-validate-btn');
   if (!btn) return;
@@ -2002,9 +2097,11 @@ if (scfId) {
 delete evaluatedControls[scfId];
 }
 
+if (workViewSelectedControl === controlBlock) workViewSelectedControl = null;
 controlBlock.remove();
 updateAll();
 renderControlGrid();
+if (workViewActive) renderWorkViewSidebar();
 }
 
 // Single source of truth for how a control's evaluation state is reflected
@@ -2029,6 +2126,115 @@ function applyComplianceStyling(controlBlock, value) {
   if (dot) dot.style.backgroundColor = color;
   const ctrlInput = controlBlock.querySelector('.ctrl');
   if (ctrlInput) ctrlInput.style.color = value ? color : '';
+  // Keep the Work View sidebar's own status dots in sync — this is the
+  // single common point every compliance-visual update already passes
+  // through (live changes, loading a saved audit, importing JSON), so it's
+  // the one place that reliably catches all of them.
+  if (workViewActive) renderWorkViewSidebar();
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Work View — a compact control index (left) + one large focused panel
+// (right), as an alternative to scrolling through every control stacked
+// on top of each other. Built by physically moving the WHOLE #controls
+// container (never its individual children) between its normal position
+// and the work-view panel slot, so every .control element's internal
+// structure, attributes, and event listeners are completely untouched —
+// every existing function that reads document.querySelectorAll('.control')
+// keeps working exactly as before, in either view.
+// ─────────────────────────────────────────────────────────────────────────
+let workViewActive = false;
+let workViewSelectedControl = null;
+
+function toggleWorkView() {
+  workViewActive = !workViewActive;
+  const controlsEl = document.getElementById('controls');
+  const wrapper = document.getElementById('work-view-wrapper');
+  const btn = document.getElementById('work-view-toggle-btn');
+  const dashboardPanel = document.getElementById('dashboard-panel');
+  const frameworkPanel = document.getElementById('framework-progress-panel');
+
+  if (workViewActive) {
+    dashboardPanel?.classList.add('hidden');
+    frameworkPanel?.classList.add('hidden');
+    document.getElementById('work-view-panel-slot').appendChild(controlsEl);
+    wrapper.classList.remove('hidden');
+    btn.querySelector('span').textContent = T('work_view_btn_dashboard');
+    btn.querySelector('span').setAttribute('data-i18n', 'work_view_btn_dashboard');
+    btn.classList.add('bg-cyberaccent', 'text-black');
+    btn.classList.remove('bg-gray-700', 'text-cyberaccent');
+    const allControls = Array.from(controlsEl.querySelectorAll('.control'));
+    if (!workViewSelectedControl || !allControls.includes(workViewSelectedControl)) {
+      workViewSelectedControl = allControls[0] || null;
+    }
+    renderWorkViewSidebar();
+  } else {
+    const anchor = document.getElementById('controls-anchor');
+    anchor.after(controlsEl);
+    wrapper.classList.add('hidden');
+    dashboardPanel?.classList.remove('hidden');
+    frameworkPanel?.classList.remove('hidden');
+    btn.querySelector('span').textContent = T('work_view_btn');
+    btn.querySelector('span').setAttribute('data-i18n', 'work_view_btn');
+    btn.classList.remove('bg-cyberaccent', 'text-black');
+    btn.classList.add('bg-gray-700', 'text-cyberaccent');
+    // Leaving work view: every control should be visible again in the
+    // normal stacked layout, regardless of which one was selected.
+    controlsEl.querySelectorAll('.control').forEach(c => { c.style.display = ''; });
+  }
+}
+
+// A short, readable label for the sidebar row and the "N de M" counter —
+// just the code, not the full "CODE – Name" value the raw input holds.
+function workViewControlLabel(controlEl) {
+  const raw = controlEl.querySelector('.ctrl')?.value || '';
+  return raw.includes(' – ') ? raw.split(' – ')[0] : (raw || 'N/A');
+}
+
+function renderWorkViewSidebar() {
+  const controlsEl = document.getElementById('controls');
+  const allControls = Array.from(controlsEl.querySelectorAll('.control'));
+  const sidebar = document.getElementById('work-view-sidebar');
+  const posEl = document.getElementById('work-view-position');
+  if (!allControls.includes(workViewSelectedControl)) {
+    workViewSelectedControl = allControls[0] || null;
+  }
+  const selectedIdx = allControls.indexOf(workViewSelectedControl);
+
+  sidebar.innerHTML = allControls.map((c, i) => {
+    const code = escapeHTML(workViewControlLabel(c));
+    const compliance = c.querySelector('.cumple')?.value || '';
+    const dotColor = COMPLIANCE_STATE_COLORS[compliance] || COMPLIANCE_STATE_COLORS[''];
+    const isSelected = c === workViewSelectedControl;
+    return `<button type="button" onclick="selectWorkViewControl(${i})"
+      class="w-full text-left px-2 py-1.5 rounded text-sm flex items-center gap-2 ${isSelected ? 'bg-cyberaccent/20 border border-cyberaccent text-white' : 'hover:bg-gray-700/60 text-gray-300 border border-transparent'}">
+      <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color:${dotColor}"></span>
+      <span class="truncate">${code}</span>
+    </button>`;
+  }).join('') || '<p class="text-xs text-gray-500 p-2">Sin controles añadidos todavía.</p>';
+
+  allControls.forEach(c => {
+    const selected = c === workViewSelectedControl;
+    c.style.display = selected ? '' : 'none';
+    if (selected) c.querySelector('.control-body')?.classList.remove('hidden');
+  });
+
+  posEl.textContent = allControls.length ? `${selectedIdx + 1} de ${allControls.length}` : '0 de 0';
+}
+
+function selectWorkViewControl(index) {
+  const allControls = Array.from(document.getElementById('controls').querySelectorAll('.control'));
+  workViewSelectedControl = allControls[index] || null;
+  renderWorkViewSidebar();
+  document.getElementById('work-view-panel-slot').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function workViewNav(delta) {
+  const allControls = Array.from(document.getElementById('controls').querySelectorAll('.control'));
+  if (!allControls.length) return;
+  const currentIdx = Math.max(0, allControls.indexOf(workViewSelectedControl));
+  const nextIdx = Math.min(allControls.length - 1, Math.max(0, currentIdx + delta));
+  selectWorkViewControl(nextIdx);
 }
 
 function onComplianceChange(select) {
@@ -2320,8 +2526,10 @@ function initCharts() {
 // 🔹 CLEAR DATA
 // ─────────────────────────────────────────────────────────────────────────────
 function clearData() {
-  ['empresa_auditada','empresa_auditora','auditor','alcance','id_informe','fecha']
-    .forEach(id => document.getElementById(id).value = '');
+  if (!confirm(T('new_audit_confirm'))) return;
+
+  ['empresa_auditada','empresa_auditora','auditor','alcance','id_informe']
+    .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
 
   applyEngagement({});    // reset Audit Plan panel to defaults
   applyPublishState({});  // a cleared workspace is a fresh draft, not an issued audit
@@ -2333,6 +2541,11 @@ function clearData() {
 
   EvaluationRegistry.store = {};
   localStorage.removeItem('auditnist_evaluations');
+
+  // A new audit is never mid-review of a specific control from before.
+  if (typeof workViewActive !== 'undefined' && workViewActive) toggleWorkView();
+  workViewSelectedControl = null;
+  isDirty = false;
 
   // Reset dashboard - EXISTENTE
   document.getElementById('dash-total-controls').textContent = 0;
@@ -2371,6 +2584,14 @@ function clearData() {
   }
 
   addControl();
+  // Explicit, not just relying on addControl()'s own updateAll() call — the
+  // control library grid (colored squares) and the Framework Progress
+  // cards are exactly the two panels that were reported as still showing
+  // stale colors/counts after clearing, so they're refreshed here directly
+  // rather than trusting an indirect side effect to reach them.
+  renderControlGrid();
+  updateFrameworkProgressBars();
+  isDirty = false;
 }
 // ─────────────────────────────────────────────────────────────────────────────
 // 🔹 SAVE / LOAD PROGRESS
@@ -3888,6 +4109,16 @@ function generatePDF() {
     };
 
     const eng = collectEngagement();
+    // Golden rule from here on: mapping discrepancies between SCF sub-
+    // controls (e.g. "GOV-04 (Parcial), GOV-04.1 (No Cumple)") are internal
+    // rigor an auditor and reviewer benefit from seeing WHILE the audit is
+    // still being built — but they are not something a client-facing CISO
+    // needs to see once the report moves toward being final: to them, the
+    // single consolidated ID and its worst-case status is the answer.
+    // Draft / En Progreso → show them. Listo para Informe / Emitido → hide
+    // them, everywhere they appear (domain table rows and the annex's
+    // sibling note boxes).
+    const showInternalDiscrepancyNotes = (eng.status === 'draft' || eng.status === 'in_progress');
     const auditData = {
       id: document.getElementById('id_informe')?.value || `ANP-${Date.now()}`,
       company: document.getElementById('empresa_auditada')?.value,
@@ -4309,11 +4540,26 @@ function generatePDF() {
     doc.text(classLabel, pageWidth/2, pageHeight - 15, { align: 'center' });
 
     // ═══════════════════════════════════════════════════════════════════
+    // TABLE OF CONTENTS — reserved as a blank page here; actual page
+    // numbers for each section aren't known until everything below has
+    // been rendered, so this page is drawn LAST (jumping back to it with
+    // doc.setPage()) once every entry's real page number has been
+    // recorded via markToc() below.
+    // ═══════════════════════════════════════════════════════════════════
+    doc.addPage();
+    const tocPageNumber = doc.internal.getCurrentPageInfo().pageNumber;
+    const tocEntries = [];
+    function markToc(label, indent) {
+      tocEntries.push({ label, indent: indent || 0, page: doc.internal.getCurrentPageInfo().pageNumber });
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
     // PAGE 1 — Executive Summary (for the CEO/board — no tables, no raw
     // technical text: a pie chart, a risk bar chart, and three callouts).
     // ═══════════════════════════════════════════════════════════════════
     doc.addPage();
     drawHeader('Informe de Auditoría de Ciberseguridad');
+    markToc('1. Resumen Ejecutivo');
     y = 100;
 
     doc.setTextColor(COLORS.text[0], COLORS.text[1], COLORS.text[2]);
@@ -4486,6 +4732,7 @@ function generatePDF() {
     // ═══════════════════════════════════════════════════════════════════
     doc.addPage();
     y = drawContinuationHeader('Alcance, Metodología y Limitaciones');
+    markToc('2. Alcance, Metodología y Limitaciones');
     y += 16;
 
     function scopeSection(title, body, color) {
@@ -4567,6 +4814,7 @@ function generatePDF() {
     // ═══════════════════════════════════════════════════════════════════
     doc.addPage();
     y = drawContinuationHeader('Evaluación Final');
+    markToc('3. Evaluación Final');
     y += 16;
 
     drawGradientRect(margin, y, pageWidth - 2*margin, 32, [20, 20, 38], [35, 32, 62], 'horizontal');
@@ -4725,6 +4973,7 @@ function generatePDF() {
     doc.addPage();
     y = margin;
     drawHeader('Detalle Técnico por Dominio');
+    markToc('4. Detalle Técnico por Dominio');
     y = 100;
 
     doc.setFont('Roboto', 'bold').setFontSize(9).setTextColor(COLORS.text[0], COLORS.text[1], COLORS.text[2]);
@@ -4815,7 +5064,7 @@ function generatePDF() {
         // point is leftover from the previous row/header, not the italic-7
         // font this line is actually drawn in below.
         doc.setFont('Roboto', 'italic').setFontSize(7);
-        const discLines = c.hasDiscrepancy
+        const discLines = (c.hasDiscrepancy && showInternalDiscrepancyNotes)
           ? doc.splitTextToSize(pdfSafe(`⚠ Discrepancia: ${c.discrepancyDetail}`), contentWidth - 12)
           : [];
         const rowH = 18 + (discLines.length ? discLines.length * 9 + 4 : 0);
@@ -4914,6 +5163,7 @@ function generatePDF() {
       doc.addPage();
       y = margin;
       drawHeader('Anexo · Evidencia Detallada');
+      markToc('5. Anexo I — Evidencia Detallada de Hallazgos');
       y = 100;
       doc.setFont('Roboto', 'italic').setFontSize(8.5);
       doc.setTextColor(COLORS.textLight[0], COLORS.textLight[1], COLORS.textLight[2]);
@@ -4923,9 +5173,10 @@ function generatePDF() {
       // A colored section banner — full-width, with a left accent tab and
       // a rule beneath — is the "fehaciente" (unmistakable) visual break
       // between the two groups that a plain heading didn't provide.
-      function renderSectionBanner(title, color, bgColor, count) {
+      function renderSectionBanner(title, color, bgColor, count, tocLabel) {
         if (count === 0) return;
         if (y > pageHeight - 100) { doc.addPage(); y = drawContinuationHeader('Anexo · Evidencia Detallada'); }
+        if (tocLabel) markToc(tocLabel, 1);
         doc.setFillColor(bgColor[0], bgColor[1], bgColor[2]);
         doc.rect(margin, y, contentWidth, 24, 'F');
         doc.setFillColor(color[0], color[1], color[2]);
@@ -4990,7 +5241,7 @@ function generatePDF() {
         // understand.
         const siblings = (siblingsByCode[c.code] || []).filter(s => s.scfId !== c.scfId);
         const differingSiblings = siblings.filter(s => s.compliance !== c.compliance);
-        if (differingSiblings.length) {
+        if (differingSiblings.length && showInternalDiscrepancyNotes) {
           const siblingList = differingSiblings
             .map(s => `${s.scfId} (${s.name}) tiene un estado "${COMPLIANCE_LABEL_ES_ANNEX[s.compliance] || 'Sin Evaluar'}"`)
             .join('; ');
@@ -5053,7 +5304,8 @@ function generatePDF() {
 
       renderSectionBanner(
         `HALLAZGOS — CONTROLES NO CONFORMES O PARCIALES (${narrativeControls.length})`,
-        COLORS.danger, [254, 242, 242], narrativeControls.length
+        COLORS.danger, [254, 242, 242], narrativeControls.length,
+        '5.1 Controles No Conformes y Parciales'
       );
       const byDomainNarrative = groupByDomainOrdered(narrativeControls);
       Object.keys(byDomainNarrative).sort().forEach(domainKey => {
@@ -5069,7 +5321,8 @@ function generatePDF() {
         else { y += 12; }
         renderSectionBanner(
           `EVIDENCIA — CONTROLES CONFORMES (${compliantWithEvidence.length})`,
-          COLORS.success, [240, 253, 244], compliantWithEvidence.length
+          COLORS.success, [240, 253, 244], compliantWithEvidence.length,
+          '5.2 Controles Conformes'
         );
         const byDomainCompliant = groupByDomainOrdered(compliantWithEvidence);
         Object.keys(byDomainCompliant).sort().forEach(domainKey => {
@@ -5096,6 +5349,40 @@ function generatePDF() {
     doc.setFont('Roboto', 'normal').setFontSize(7.5);
     txt(`AuditSym · Auditoría ${auditData.id} · Documento generado el ${new Date().toLocaleString('es-ES')}`, pageWidth/2, y, { align: 'center' });
 
+    // ── Draw the Table of Contents now that every section's real page
+    // number has been recorded — jump back to the reserved TOC page and
+    // draw it there, then return to wherever we were (doesn't actually
+    // matter since only the footer loop runs after this, and that visits
+    // every page explicitly anyway).
+    doc.setPage(tocPageNumber);
+    let tocY = 100;
+    drawHeader('Índice de Contenidos');
+    doc.setFont('Roboto', 'bold').setFontSize(15).setTextColor(COLORS.text[0], COLORS.text[1], COLORS.text[2]);
+    txt('Índice de Contenidos', margin, tocY);
+    tocY += 28;
+    tocEntries.forEach(entry => {
+      const isSub = entry.indent > 0;
+      doc.setFont('Roboto', isSub ? 'normal' : 'bold').setFontSize(isSub ? 9.5 : 10.5);
+      doc.setTextColor(COLORS.text[0], COLORS.text[1], COLORS.text[2]);
+      const labelX = margin + (isSub ? 18 : 0);
+      const pageStr = String(entry.page);
+      const labelW = doc.getTextWidth(pdfSafe(entry.label));
+      const pageW = doc.getTextWidth(pageStr);
+      txt(entry.label, labelX, tocY);
+      // Dot leaders — the classic "table of contents" visual connecting a
+      // section title to its page number across the gap between them.
+      doc.setTextColor(COLORS.textLight[0], COLORS.textLight[1], COLORS.textLight[2]);
+      const dotsStartX = labelX + labelW + 6;
+      const dotsEndX = margin + contentWidth - pageW - 6;
+      if (dotsEndX > dotsStartX) {
+        const dotSpacing = 4;
+        let dx = dotsStartX;
+        while (dx < dotsEndX) { doc.text('.', dx, tocY); dx += dotSpacing; }
+      }
+      doc.setTextColor(COLORS.text[0], COLORS.text[1], COLORS.text[2]);
+      txt(pageStr, margin + contentWidth, tocY, { align: 'right' });
+      tocY += isSub ? 16 : 20;
+    });
 
     // ── Footer on every page except the cover (page 1) ──────────────────
     // The cover page has its own bottom classification banner acting as
@@ -5569,6 +5856,8 @@ function updateAll() {
 const TRANSLATIONS = {
 es: {
 clear_data:'Limpiar datos', nist_function_label:'Dominio',
+new_audit_btn:'Nueva Auditoría',
+new_audit_confirm:'⚠️ Esto borrará por completo el espacio de trabajo actual: empresa, auditor, controles, evaluaciones y paneles — sin posibilidad de deshacer. Si tienes cambios sin guardar, expórtalos primero. ¿Continuar con una nueva auditoría en blanco?',
 ia_suggest_btn:'🤖 IA Suggest', generating:'Generando...',
 suggest_btn:'🔍 Sugerir',
 audited_company:'Empresa auditada', audited_company_ph:'Nombre de la empresa',
@@ -5592,6 +5881,10 @@ save_progress_btn:'💾 Guardar', view_saved_btn:'📋 Ver Informes',
 chart_compliance:'Cumplimiento', chart_risk:'Riesgos',
 yes:'Sí', no:'No', partial:'Parcial',
 critical:'Crítico', high:'Alto', medium:'Medio', low:'Bajo',
+panel_compliance_title:'Cumplimiento', panel_risks_title:'Riesgos', panel_evaluations_title:'Evaluaciones',
+work_view_btn:'📝 Vista de Trabajo', work_view_btn_dashboard:'📊 Vista Dashboard',
+library_loaded:'Biblioteca cargada',
+validate_draft_btn:'Validar Borrador', ia_evidence_btn:'IA Evidencia',
 template_library_btn:'📚 Biblioteca',
 template_loading:'Cargando...',
 template_server_err:'Requiere servidor local: python -m http.server 8080',
@@ -5675,6 +5968,8 @@ issue_blocked_ai_drafts:'No se puede emitir el informe: los siguientes controles
 },
 en: {
 clear_data:'Clear Data', nist_function_label:'Domain',
+new_audit_btn:'New Audit',
+new_audit_confirm:'⚠️ This will completely erase the current workspace: company, auditor, controls, evaluations, and dashboards — with no way to undo it. If you have unsaved changes, export them first. Continue with a new, blank audit?',
 ia_suggest_btn:'🤖 AI Suggest', generating:'Generating...',
 suggest_btn:'🔍 Suggest',
 audited_company:'Audited Company', audited_company_ph:'Company name',
@@ -5698,6 +5993,10 @@ save_progress_btn:'💾 Save', view_saved_btn:'📋 Reports',
 chart_compliance:'Compliance', chart_risk:'Risks',
 yes:'Yes', no:'No', partial:'Partial',
 critical:'Critical', high:'High', medium:'Medium', low:'Low',
+panel_compliance_title:'Compliance', panel_risks_title:'Risks', panel_evaluations_title:'Evaluations',
+work_view_btn:'📝 Work View', work_view_btn_dashboard:'📊 Dashboard View',
+library_loaded:'Library loaded',
+validate_draft_btn:'Validate Draft', ia_evidence_btn:'AI Evidence',
 template_library_btn:'📚 Library',
 template_loading:'Loading...',
 template_server_err:'Requires local server: python -m http.server 8080',
@@ -6035,6 +6334,21 @@ strategic_label:'🔵 战略建议', close_btn:'关闭'
 
 function T(key) { return (TRANSLATIONS[currentLang] || {})[key] || TRANSLATIONS.en[key] || TRANSLATIONS.es[key] || key; }
 
+// A handful of status messages (suggest-status) are set directly via JS
+// as things happen (loading, generating, done) rather than being static
+// markup — so a plain data-i18n attribute alone can't refresh them, since
+// nothing re-applies it after the initial set. This remembers which
+// message key is CURRENTLY showing (via data-i18n-dynamic) so setLanguage()
+// can re-translate it too if the user changes language while it's visible.
+function setSuggestStatus(key, prefix) {
+  const el = document.getElementById('suggest-status');
+  if (!el) return;
+  if (!key) { el.textContent = ''; el.removeAttribute('data-i18n-dynamic'); return; }
+  el.setAttribute('data-i18n-dynamic', key);
+  const autoPrefix = prefix !== undefined ? prefix : (key === 'library_loaded' ? '✅ ' : '');
+  el.textContent = autoPrefix + T(key);
+}
+
 function setLanguage(lang) {
 currentLang = lang;
 localStorage.setItem('auditnist_lang', lang);
@@ -6046,6 +6360,9 @@ el.textContent = T(el.getAttribute('data-i18n'));
 });
 document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
 el.placeholder = T(el.getAttribute('data-i18n-placeholder'));
+});
+document.querySelectorAll('[data-i18n-dynamic]').forEach(el => {
+setSuggestStatus(el.getAttribute('data-i18n-dynamic'));
 });
 
 if (chartComp) { chartComp.data.labels = [T('yes'), T('no'), T('partial')]; chartComp.update(); }
@@ -6062,9 +6379,29 @@ updateSummary();
 // ─────────────────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', async () => {
-  EvaluationRegistry.init();
+  // Deliberately NOT calling EvaluationRegistry.init() here. That function
+  // reads the permanent, cross-session localStorage history and marks
+  // every control ever evaluated in ANY past audit as "evaluated" — which
+  // meant a brand new page load (no audit chosen, no data loaded) still
+  // showed old compliance colors in the control library and non-zero
+  // dashboard numbers. A fresh session must start completely empty;
+  // EvaluationRegistry.store still gets populated normally as the user
+  // works in THIS session (via EvaluationRegistry.save() on every
+  // compliance change), and gets correctly rebuilt from scratch when a
+  // specific saved audit is explicitly loaded (loadAuditById / importFromJSON
+  // already wipe and rebuild it from that audit's own controls) — this
+  // only removes the automatic, silent restore of unrelated past history
+  // into a workspace the user hasn't asked to load anything into.
   initCharts();
   updateAISettingsBtn();
+
+  // Escape closes Modo Enfoque — a modal without an escape hatch that
+  // works the way people expect feels broken, not just inconvenient.
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !document.getElementById('focus-mode-overlay').classList.contains('hidden')) {
+      closeFocusMode();
+    }
+  });
 
   const savedLang = localStorage.getItem('auditnist_lang') || 'es';
   setLanguage(savedLang);
@@ -6425,6 +6762,24 @@ window.addEventListener('beforeunload', function (e) {
     <!-- Footer -->
     <div class="p-4 border-t border-gray-700 flex justify-end">
       <button onclick="closeAIAssessment()" class="px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-600 text-sm" data-i18n="close_btn">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modo Enfoque — near-fullscreen editor for Notas/Evidencia ────────── -->
+<div id="focus-mode-overlay" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 md:p-10">
+  <div class="bg-gray-800 rounded-lg border border-gray-600 w-full h-full max-w-5xl flex flex-col shadow-2xl">
+    <div class="flex items-center justify-between px-5 py-3 border-b border-gray-700">
+      <h3 id="focus-mode-title" class="font-bold text-cyberaccent text-sm truncate pr-4">Modo Enfoque</h3>
+      <button onclick="closeFocusMode()" class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm font-medium flex-shrink-0">
+        ✕ Cerrar
+      </button>
+    </div>
+    <div class="flex-1 p-4 overflow-hidden">
+      <textarea id="focus-mode-textarea" oninput="syncFocusModeBack()" class="w-full h-full p-4 rounded bg-gray-800 border border-cyberaccent text-gray-100 text-base leading-relaxed focus:outline-none resize-none"></textarea>
+    </div>
+    <div class="px-5 py-2.5 border-t border-gray-700 text-xs text-gray-400">
+      Los cambios se guardan automáticamente al escribir — puedes cerrar en cualquier momento.
     </div>
   </div>
 </div>
