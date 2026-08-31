@@ -115,11 +115,37 @@ The main workspace is built around practical control handling: compliance, risk,
 
 ---
 
-### Reporting View
+### 🗂️ Two Ways to Work: Dashboard View & Work View
 
-![Reporting View](screenshots/SCREENSHOT1.jpg)
+AuditSym now offers two interchangeable ways to work on the same audit, toggled with a single button — nothing about the underlying data changes between them, only how it's presented.
 
-AuditSym is designed to support structured reporting and a cleaner audit output workflow.
+![Dashboard View](screenshots/vistaDashboard.jpg)
+
+**Dashboard View** is built for a visual, at-a-glance overview — KPI cards, framework progress, and a color-coded control grid showing compliance status across everything evaluated so far. It also surfaces quick audit search/load right from the toolbar.
+
+![Work View - control overview](screenshots/vistaTrabajo1.jpg)
+
+**Work View** is where you land when it's time to actually fill controls in — it still gives you a full grid overview of every control and its current status when you need it, ready to jump into any of them.
+
+![Work View - single control panel](screenshots/vistaTrabajo2.jpg)
+
+From there, selecting a control switches to a compact list on the left and one large, focused panel on the right — question, auditor notes, and evidence all visible at once, with Previous/Next navigation to move through controls without scrolling through a long stacked page. Built for the reality of spending hours entering data, not just reviewing a summary.
+
+---
+
+### 📄 Professional Audit Report (PDF)
+
+![Executive Summary](screenshots/informeAuditoria1.jpg)
+
+The generated PDF opens with a CEO-ready executive summary: compliance and criticality charts, a plain-language posture statement, and the top critical findings named explicitly — no raw control tables on the first page.
+
+![Technical Detail by Domain](screenshots/informeAuditoria2.jpg)
+
+Full technical detail is grouped by NIST CSF function/domain, with SCF sub-controls that map to the same framework requirement merged into a single row — and flagged transparently when they disagree with each other, rather than silently picking one.
+
+![Detailed Evidence Annex](screenshots/informeAuditoria3.jpg)
+
+A detailed evidence annex gives every non-conformant, partial, **and** compliant control its own findings/gaps/evidence/recommendations write-up, alongside a document control cover page, table of contents, and a scope & methodology section — the full structure a client-facing audit report needs, not just a data dump.
 
 ---
 
@@ -254,6 +280,64 @@ python rag/server.py
 ```
 
 Then use the "Auto Analyze" feature in the Audit Engine.
+
+---
+
+## 🧪 Regression Testing
+
+> **This section is for whoever is touching the code , not for regular users.** If you just want to use AuditSym, the
+> "Running the Project" steps above are all you need — nothing below this
+> point is required to open or use the app.
+
+A Playwright-based regression suite covers the real bugs found and fixed
+during development — stale cross-session data leaking into a fresh audit,
+a broken JSON import, silent data loss on save/reload, incorrect NIST CSF
+code resolution, and a handful of others — so a future change can't
+silently reintroduce any of them. Run it before pushing a change that
+touches `auditnist-local.html`.
+
+**Prerequisites:** [Node.js](https://nodejs.org) 18 or later.
+
+**Setup (one time):**
+
+```bash
+npm install --save-dev playwright
+npx playwright install chromium
+```
+
+**Run it:**
+
+```bash
+node tests/e2e/regression_suite.mjs
+```
+
+This runs headless — no browser window will open, that's expected. The
+suite reads the app's own `data/scf-controls.json` directly (never a
+separate copy), spins up its own local server for the duration of the run,
+and prints a PASS/FAIL line per check, e.g.:
+
+```
+▶ 1. Fresh session must not leak data from previous audits
+  ✅ Dashboard total starts at 0 on a fresh session
+  ✅ Control library grid is not pre-colored from a past session
+...
+RESULT: 23 passed, 0 failed
+```
+
+**If you see a ❌:** don't push yet. Re-run the suite once to rule out a
+flaky run, then check whether your change genuinely affects that behavior.
+If it's a real regression, fix it before pushing; if the test itself seems
+wrong for a legitimate new behavior, update the test rather than deleting
+or skipping it, and mention the change in your commit message.
+
+If your repo layout differs from the default `tests/` + `ui/` + `data/`
+sibling structure (which already matches this repo), override either path:
+
+```bash
+AUDITSYM_HTML=path/to/auditnist-local.html \
+AUDITSYM_SCF_DATA=path/to/scf-controls.json \
+node tests/e2e/regression_suite.mjs
+```
 
 ---
 

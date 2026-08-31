@@ -1,6 +1,6 @@
 /**
  * Minimal test harness for pure lifecycle logic (M0).
- * Run with:  node tests/run.mjs
+ * Run with:  node tests/unit/run.mjs
  *
  * No framework — just runnable assertions. Exits non-zero on failure
  * so it can gate a future CI step.
@@ -8,7 +8,7 @@
 
 import {
   genId, nowTs, newRecord, recordChange, applyChanges
-} from '../core/lifecycle.js';
+} from '../../core/lifecycle.js';
 
 let passed = 0;
 let failed = 0;
