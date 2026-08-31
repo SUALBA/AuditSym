@@ -27,7 +27,7 @@ cyberevil: '#ef4444', cyberwarn: '#facc15', cyberok: '#22c55e'
 // Control Data Models — validation layer (mirrors models/control.js etc.)
 // ─────────────────────────────────────────────────────────────────────────────
 class Control {
-  static VALID_COMPLIANCE = ['yes', 'no', 'partial', ''];
+  static VALID_COMPLIANCE = ['yes', 'no', 'partial', 'na', ''];
   static VALID_RISK       = ['critical', 'high', 'medium', 'low', ''];
 
   constructor({ scfId='', fwCode='', name='', question='', vertical='', guidance='' } = {}) {
@@ -49,7 +49,7 @@ class Control {
 }
 
 class Evaluation {
-  static VALID_COMPLIANCE = ['yes', 'no', 'partial'];
+  static VALID_COMPLIANCE = ['yes', 'no', 'partial', 'na'];
   static VALID_RISK       = ['critical', 'high', 'medium', 'low', ''];
 
   constructor({ scfId, auditId, compliance, risk='', evidence='', notes='', company='', auditor='', vertical='' }={}) {
@@ -156,6 +156,15 @@ class AssessmentEngine {
     let totalAchieved=0, totalPossible=0, criticalRiskNonCompliant=0, highRiskNonCompliant=0;
     const domainStats={};
     controls.forEach(ctrl => {
+      // "No Aplicable" is a deliberate scoping decision, not a finding — it
+      // must be excluded entirely from the weighted score (never scored as
+      // 0, which would unfairly penalize the posture for something that
+      // was never supposed to apply) and from domain weak/strong ratios.
+      // Only controls with a real, applicable assessment belong in the
+      // weighted posture score. Both N/A and unanswered controls are outside
+      // the denominator; treating an unanswered control as a zero would turn
+      // unfinished fieldwork into an apparent compliance failure.
+      if (!['yes', 'partial', 'no'].includes(ctrl.compliance)) return;
       const ss = this.STATUS_SCORES[ctrl.compliance] ?? 0;
       const rm = this.RISK_MULTIPLIERS[ctrl.risk] ?? 1.0;
       totalAchieved += ss * rm * fwWeight;
@@ -189,7 +198,9 @@ class AssessmentEngine {
   static buildAIPrompt(assessment, auditData, stats, lang='en') {
     const langs={en:'English',es:'Spanish (Español)',fr:'French (Français)',de:'German (Deutsch)',pt:'Portuguese (Português)',ar:'Arabic (العربية)',zh:'Mandarin Chinese (中文)'};
     const language=langs[lang]||'English';
-    const total=stats.total||0, compliant=stats.compliant||0, partial=stats.partial||0,
+    // "No Aplicable" controls are a deliberate scoping decision, not a
+    // finding — they must never affect this narrative's percentages.
+    const total=stats.applicableTotal||0, compliant=stats.compliant||0, partial=stats.partial||0,
           nonComp=stats.nonCompliant||0, criticalRisk=stats.criticalRisk||0, highRisk=stats.highRisk||0,
           medRisk=stats.mediumRisk||0, lowRisk=stats.lowRisk||0;
     const pct=n=>total>0?`${Math.round((n/total)*100)}%`:'0%';
@@ -259,7 +270,9 @@ Return ONLY valid JSON with no markdown, no code fences, no text outside the JSO
   }
 
   static buildFallbackNarrative(assessment, auditData, stats, lang='en') {
-    const total=stats.total||0, compliant=stats.compliant||0, nonComp=stats.nonCompliant||0,
+    // Same reasoning as buildAIPrompt() above: "No Aplicable" must never
+    // affect these percentages or the "de N controles evaluados" count.
+    const total=stats.applicableTotal||0, compliant=stats.compliant||0, nonComp=stats.nonCompliant||0,
           partial=stats.partial||0, nextLevel=this.nextMaturity(assessment.maturity);
 
     // This deterministic template is what the PDF export and the "AI
@@ -483,8 +496,8 @@ class="absolute w-full bg-gray-800 border border-gray-600 rounded-lg mt-1 max-h-
     <span class="text-xs text-gray-400" id="dashboard-timestamp"></span>
   </div>
   
-  <!-- Fila 1: KPIs Principales (5 columnas balanceadas) -->
-  <div class="grid grid-cols-6 gap-3">
+  <!-- Fila 1: KPIs Principales (7 columnas balanceadas) -->
+  <div class="grid grid-cols-7 gap-3">
     <!-- Total Evaluados -->
     <div class="bg-gradient-to-br from-gray-800 to-gray-700/50 border border-gray-600 rounded-lg p-3 text-center hover:border-cyberaccent transition-colors">
       <div class="text-2xl font-bold text-cyberaccent" id="dash-total-controls">0</div>
@@ -508,6 +521,14 @@ class="absolute w-full bg-gray-800 border border-gray-600 rounded-lg mt-1 max-h-
     <div class="bg-gradient-to-br from-red-900/30 to-red-800/20 border border-red-600/50 rounded-lg p-3 text-center hover:border-red-400 transition-colors">
       <div class="text-2xl font-bold text-cyberevil" id="dash-noncompliant">0</div>
       <div class="text-xs text-red-300" data-i18n="dash_noncompliant">No Cumplidos ❌</div>
+    </div>
+
+    <!-- No Aplicable — a deliberate scoping decision, not a finding: its own
+         neutral (violet) color so it's never mistaken for a compliance gap
+         or for "not yet evaluated". Excluded from the compliance rate. -->
+    <div class="bg-gradient-to-br from-violet-900/30 to-violet-800/20 border border-violet-500/50 rounded-lg p-3 text-center hover:border-violet-400 transition-colors">
+      <div class="text-2xl font-bold text-violet-400" id="dash-not-applicable">0</div>
+      <div class="text-xs text-violet-300" data-i18n="dash_not_applicable">No Aplicable 🚫</div>
     </div>
 
     <!-- Riesgos Críticos -->
@@ -684,35 +705,64 @@ placeholder="Ej: INF-2025-001" class="w-full mt-1 p-2 rounded bg-gray-700 text-g
 </div>
 
 <label class="block text-xs font-bold text-gray-300" data-i18n="eng_execution_label">Ejecución</label>
-<div class="grid md:grid-cols-3 gap-3 mt-1 mb-3">
+<div class="grid md:grid-cols-3 gap-3 mt-1 mb-1">
 <div>
 <span class="text-xs text-gray-400" data-i18n="eng_kickoff_label">Inicio del Encargo</span>
 <input id="eng_kickoff" type="date" class="w-full p-2 rounded bg-gray-700 text-gray-100"/>
 <p class="text-[10px] text-gray-500 mt-0.5" data-i18n="eng_kickoff_help">Apertura formal de la auditoría (reunión de apertura o aprobación del plan).</p>
 </div>
 <div>
-<span class="text-xs text-gray-400" data-i18n="eng_fieldwork_start_label">Inicio del Trabajo de Campo</span>
+<span class="text-xs text-gray-400" data-i18n="eng_fieldwork_start_label">Inicio del Trabajo de Campo — Previsto</span>
 <input id="eng_fieldwork_start" type="date" class="w-full p-2 rounded bg-gray-700 text-gray-100"/>
 <p class="text-[10px] text-gray-500 mt-0.5" data-i18n="eng_fieldwork_start_help">Primer día de entrevistas, pruebas y recopilación de evidencias.</p>
 </div>
 <div>
-<span class="text-xs text-gray-400" data-i18n="eng_fieldwork_end_label">Fin del Trabajo de Campo</span>
+<span class="text-xs text-gray-400" data-i18n="eng_fieldwork_end_label">Fin del Trabajo de Campo — Previsto</span>
 <input id="eng_fieldwork_end" type="date" class="w-full p-2 rounded bg-gray-700 text-gray-100"/>
 <p class="text-[10px] text-gray-500 mt-0.5" data-i18n="eng_fieldwork_end_help">Último día de pruebas ordinarias; después se consolidan resultados.</p>
 </div>
 </div>
+<!-- Real (actual) fieldwork dates — filled in as work actually happens, not
+     at planning time. Comparing these against the "Previsto" pair above is
+     what lets the audit measure a genuine delay instead of only ever
+     recording what was hoped for. -->
+<div class="grid md:grid-cols-3 gap-3 mb-3">
+<div></div>
+<div>
+<span class="text-xs text-gray-400" data-i18n="eng_fieldwork_start_actual_label">Inicio del Trabajo de Campo — Real</span>
+<input id="eng_fieldwork_start_actual" type="date" class="w-full p-2 rounded bg-gray-700 text-gray-100"/>
+<p class="text-[10px] mt-0.5" id="eng_fieldwork_start_delay"></p>
+</div>
+<div>
+<span class="text-xs text-gray-400" data-i18n="eng_fieldwork_end_actual_label">Fin del Trabajo de Campo — Real</span>
+<input id="eng_fieldwork_end_actual" type="date" class="w-full p-2 rounded bg-gray-700 text-gray-100"/>
+<p class="text-[10px] mt-0.5" id="eng_fieldwork_end_delay"></p>
+</div>
+</div>
 
 <label class="block text-xs font-bold text-gray-300" data-i18n="eng_communication_label">Comunicación</label>
-<div class="grid md:grid-cols-2 gap-3 mt-1 mb-3">
+<div class="grid md:grid-cols-2 gap-3 mt-1 mb-1">
 <div>
-<span class="text-xs text-gray-400" data-i18n="eng_draft_report_label">Informe Preliminar Previsto</span>
+<span class="text-xs text-gray-400" data-i18n="eng_draft_report_label">Informe Preliminar — Previsto</span>
 <input id="eng_draft_report" type="date" class="w-full p-2 rounded bg-gray-700 text-gray-100"/>
 <p class="text-[10px] text-gray-500 mt-0.5" data-i18n="eng_draft_report_help">Fecha prevista para entregar el borrador y solicitar respuesta a los hallazgos.</p>
 </div>
 <div>
-<span class="text-xs text-gray-400" data-i18n="eng_final_report_label">Informe Final Previsto</span>
+<span class="text-xs text-gray-400" data-i18n="eng_final_report_label">Informe Final — Previsto</span>
 <input id="eng_final_report" type="date" class="w-full p-2 rounded bg-gray-700 text-gray-100"/>
 <p class="text-[10px] text-gray-500 mt-0.5" data-i18n="eng_final_report_help">Fecha prevista para emitir el informe definitivo.</p>
+</div>
+</div>
+<div class="grid md:grid-cols-2 gap-3 mb-3">
+<div>
+<span class="text-xs text-gray-400" data-i18n="eng_draft_report_actual_label">Informe Preliminar — Real</span>
+<input id="eng_draft_report_actual" type="date" class="w-full p-2 rounded bg-gray-700 text-gray-100"/>
+<p class="text-[10px] mt-0.5" id="eng_draft_report_delay"></p>
+</div>
+<div>
+<span class="text-xs text-gray-400" data-i18n="eng_final_actual_ref_label">Informe Final — Real</span>
+<input type="date" class="w-full p-2 rounded bg-gray-800 text-gray-500 opacity-70" disabled placeholder="—"/>
+<p class="text-[10px] text-gray-500 mt-0.5" data-i18n="eng_final_actual_ref_help">Ver "Fecha Real de Emisión" en Documento, más abajo — se completa sola al emitir.</p>
 </div>
 </div>
 
@@ -730,7 +780,9 @@ placeholder="Ej: INF-2025-001" class="w-full mt-1 p-2 rounded bg-gray-700 text-g
 <div>
 <span class="text-xs text-gray-400" data-i18n="eng_issued_at_label">Fecha Real de Emisión</span>
 <input id="eng_issued_at" type="date" class="w-full p-2 rounded bg-gray-700 text-gray-100 opacity-70" readonly/>
-<p class="text-[10px] text-gray-500 mt-0.5" data-i18n="eng_issued_at_help">Se completa automáticamente al emitir el informe. No editable.</p>
+<p class="text-[10px] mt-0.5" id="eng_final_report_delay">
+  <span class="text-gray-500" data-i18n="eng_issued_at_help">Se completa automáticamente al emitir el informe. No editable.</span>
+</p>
 </div>
 <div>
 <span class="text-xs text-gray-400" data-i18n="eng_generated_label">Última Copia PDF Generada</span>
@@ -777,6 +829,21 @@ placeholder="Ej: INF-2025-001" class="w-full mt-1 p-2 rounded bg-gray-700 text-g
 <span class="text-xs text-gray-400" data-i18n="doc_recipients_label">Destinatarios Autorizados</span>
 <input id="doc_recipients" type="text" data-i18n-placeholder="doc_recipients_ph" placeholder="Nombres, cargos o departamentos autorizados a recibir este informe" class="w-full p-2 rounded bg-gray-700 text-gray-100"/>
 </div>
+
+<!-- Historial de Versiones — a genuine, in-app log of version changes
+     (version, date, author, what changed), instead of the report pointing
+     to an external document-management system that doesn't exist for this
+     tool. Each entry is added deliberately, WITH a reason, rather than
+     auto-generated on every keystroke in the Versión field — a version
+     bump without a stated reason isn't a useful history entry. -->
+<div class="mt-4 border-t border-gray-700 pt-3">
+<div class="flex items-center justify-between mb-2">
+<span class="text-xs font-bold text-gray-300" data-i18n="doc_version_history_label">Historial de Versiones</span>
+<button type="button" onclick="addVersionHistoryEntry()" class="px-2 py-1 bg-gray-700 text-cyberaccent rounded text-xs hover:bg-gray-600" data-i18n="doc_version_history_add">+ Registrar Nueva Versión</button>
+</div>
+<p class="text-[10px] text-gray-500 mb-2" data-i18n="doc_version_history_help">Cada revisión sustancial del informe debería quedar registrada aquí, con el motivo del cambio — esto es lo que se muestra en la portada del PDF en lugar de remitir a un sistema externo.</p>
+<div id="doc-version-history-rows" class="space-y-1"></div>
+</div>
 </div>
 </div>
 </div>
@@ -811,6 +878,21 @@ placeholder="Ej: INF-2025-001" class="w-full mt-1 p-2 rounded bg-gray-700 text-g
   </div>
 </div>
 
+<!-- Locked-audit banner — shown only once an issued report's edit lock is
+     active. Lives BEFORE controls-anchor on purpose: Work View's toggle
+     moves #controls by inserting it right after controls-anchor, so
+     anything sitting between anchor and #controls would get displaced
+     from its original spot the first time that toggle runs. -->
+<div id="locked-audit-banner" class="hidden container mx-auto mt-4 bg-gradient-to-r from-purple-950/80 to-purple-900/60 border border-purple-500 rounded-lg p-4 flex items-center justify-between gap-4">
+  <div class="flex items-start gap-3">
+    <span class="text-2xl">🔒</span>
+    <div>
+      <p class="font-bold text-purple-200" data-i18n="locked_banner_title">Este informe ya ha sido emitido y está bloqueado</p>
+      <p class="text-xs text-purple-300/80 mt-0.5" id="locked-banner-detail" data-i18n="locked_banner_detail">No se puede modificar un informe emitido. Para corregir o ampliar algo, reábralo para registrar una nueva versión.</p>
+    </div>
+  </div>
+  <button onclick="reopenForNewVersion()" class="flex-shrink-0 px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-500 font-bold text-sm whitespace-nowrap" data-i18n="reopen_btn">🔓 Reabrir para Nueva Versión</button>
+</div>
 <div id="controls-anchor"></div>
 <div id="controls" class="mt-6 space-y-4"></div>
 
@@ -1358,7 +1440,7 @@ audit.auditor.toLowerCase().includes(query)
 );
 
 if (filtered.length === 0) {
-suggestionsContainer.innerHTML = '<div class="p-3 text-gray-400 text-sm">No se encontraron auditorías</div>';
+suggestionsContainer.innerHTML = `<div class="p-3 text-gray-400 text-sm">${T('search_audit_no_results')}</div>`;
 } else {
 suggestionsContainer.innerHTML = filtered.map(audit => `
 <div class="p-3 hover:bg-gray-700 cursor-pointer border-b border-gray-700"
@@ -1371,7 +1453,7 @@ onclick="loadAuditById('${audit.key}')">
 </div>
 <div class="text-xs text-gray-500 mt-1">👤 ${audit.auditor}</div>
 </div>
-<div class="text-cyberok text-sm">▶ Cargar</div>
+<div class="text-cyberok text-sm">▶ ${T('search_audit_load_btn')}</div>
 </div>
 </div>
 `).join('');
@@ -1423,7 +1505,7 @@ function loadAuditById(key) {
   while (ctrlsContainer.firstChild) ctrlsContainer.removeChild(ctrlsContainer.firstChild);
 
   data.controls?.forEach(c => {
-    addControl(false, c.question || '', c.scfId || '', getFrameworkCodeForControl(c.scfId, currentFramework), c.ctrl.split(' – ')[1] || '', '');
+    addControl(false, c.question || '', c.scfId || '', getFrameworkCodeForControl(c.scfId, currentFramework), c.ctrl.split(' – ')[1] || '', '', true);
 
     const wrapper = document.querySelectorAll('.control')[document.querySelectorAll('.control').length - 1];
 
@@ -1458,6 +1540,10 @@ function loadAuditById(key) {
   });
 
 updateAll();
+// The controls just rebuilt above are brand-new DOM elements created AFTER
+// applyEngagement() already applied the lock — they were never disabled.
+// Re-apply now that the real control set exists, closing that gap.
+applyEditLock();
 
 alert(`✅ Auditoría "${data.empresa}" cargada correctamente`);
 isDirty = false;
@@ -1546,25 +1632,29 @@ compliant: compliant
 },
 
 updateDashboard() {
-const stats = { total: 0, compliant: 0, partial: 0, nonCompliant: 0, criticalRisk: 0, highRisk: 0, mediumRisk: 0, lowRisk: 0 };
+const stats = { total: 0, compliant: 0, partial: 0, nonCompliant: 0, notApplicable: 0, criticalRisk: 0, highRisk: 0, mediumRisk: 0, lowRisk: 0 };
 Object.values(this.store).forEach(control => {
 control.evaluations.forEach(ev => {
 stats.total++;
 if (ev.compliance === 'yes')          stats.compliant++;
 else if (ev.compliance === 'no')       stats.nonCompliant++;
 else if (ev.compliance === 'partial')  stats.partial++;
+else if (ev.compliance === 'na')       stats.notApplicable++;
 if (ev.risk === 'critical')    stats.criticalRisk++;
 else if (ev.risk === 'high')   stats.highRisk++;
 else if (ev.risk === 'medium') stats.mediumRisk++;
 else if (ev.risk === 'low')    stats.lowRisk++;
 });
 });
+const applicableTotal = stats.total - stats.notApplicable;
 
 // ¡CORRECCIÓN AQUÍ! Usar las variables 'stats' en lugar de '0'
 document.getElementById('dash-total-controls').textContent = stats.total;
 document.getElementById('dash-compliant').textContent = stats.compliant;
 document.getElementById('dash-partial').textContent = stats.partial;
 document.getElementById('dash-noncompliant').textContent = stats.nonCompliant;
+const naEl = document.getElementById('dash-not-applicable');
+if (naEl) naEl.textContent = stats.notApplicable;
 document.getElementById('dash-critical-risk').textContent = stats.criticalRisk;
 document.getElementById('dash-high-risk').textContent = stats.highRisk;
 
@@ -1574,17 +1664,24 @@ if (pendingEl) {
 pendingEl.textContent = `${pending} pendiente${pending !== 1 ? 's' : ''}`;
 }
 
-const complianceRate = stats.total > 0 ? Math.round((stats.compliant / stats.total) * 100) : 0;
+// "No Aplicable" is a deliberate scoping decision, not a finding — it must
+// never drag down (or inflate) the compliance rate shown here. And when
+// NOTHING applicable has been assessed yet (a brand new audit, or one
+// where everything evaluated so far happens to be "No Aplicable"), "0%"
+// would misleadingly read as "the organization failed everything" rather
+// than "nothing has been judged one way or the other yet."
+const hasApplicable = applicableTotal > 0;
+const complianceRate = hasApplicable ? Math.round((stats.compliant / applicableTotal) * 100) : null;
 const rateEl = document.getElementById('dash-compliance-rate');
 const barEl = document.getElementById('dash-compliance-bar');
 const textEl = document.getElementById('dash-compliance-text');
 
 if (rateEl) {
-rateEl.textContent = `${complianceRate}%`;
-rateEl.className = `text-lg font-bold ${complianceRate >= 80 ? 'text-cyberok' : complianceRate >= 50 ? 'text-cyberwarn' : 'text-cyberevil'}`;
+rateEl.textContent = hasApplicable ? `${complianceRate}%` : '—';
+rateEl.className = `text-lg font-bold ${!hasApplicable ? 'text-gray-500' : complianceRate >= 80 ? 'text-cyberok' : complianceRate >= 50 ? 'text-cyberwarn' : 'text-cyberevil'}`;
 }
-if (barEl) barEl.style.width = `${complianceRate}%`;
-if (textEl) textEl.textContent = `${stats.compliant}/${stats.total} controles`;
+if (barEl) barEl.style.width = `${complianceRate || 0}%`;
+if (textEl) textEl.textContent = hasApplicable ? `${stats.compliant}/${applicableTotal} controles` : T('compliance_not_calculated');
 
 const timestampEl = document.getElementById('dashboard-timestamp');
 if (timestampEl) {
@@ -1639,6 +1736,7 @@ gridTimeout = setTimeout(() => { grid.classList.add('hidden'); }, 15000);
 }
 
 function addControlFromGrid(scfId, fwCode, name) {
+if (isAuditLocked()) { alert('🔒 ' + T('locked_action_blocked')); return; }
 const existing = [...document.querySelectorAll('.ctrl')].find(el => el.dataset.scfId === scfId);
 if (existing) {
 existing.closest('.control').scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -1649,13 +1747,6 @@ const question = scfControl?.question || '';
 const vertical = scfControl?.verticals?.[0] || '';
 addControl(false, question, scfId, fwCode, name, vertical);
 document.getElementById('controls').lastElementChild?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-}
-
-function changeFramework() {
-currentFramework = document.getElementById('framework-select').value;
-localStorage.setItem('auditnist_framework', currentFramework);
-updateFrameworkDomainSelector();
-renderControlGrid();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1773,6 +1864,7 @@ async function suggestControls() {
 // 🔹 ADD CONTROL FROM JSON
 // ─────────────────────────────────────────────────────────────────────────────
 function addControlFromJSON({ scfId, fwCode, name, question, vertical, reuseEvaluation = null }) {
+if (isAuditLocked()) { alert('🔒 ' + T('locked_action_blocked')); return; }
 if (evaluatedControls[scfId] && !reuseEvaluation) {
 alert('⚠️ Este control ya ha sido evaluado. Debes eliminarlo para volver a evaluarlo.');
 return;
@@ -1797,7 +1889,15 @@ isDirty = true;
 // ─────────────────────────────────────────────────────────────────────────────
 // 🔹 CONTROL BLOCKS (CON BOTÓN AMARILLO RESTAURADO)
 // ─────────────────────────────────────────────────────────────────────────────
-function addControl(startCollapsed = false, question = '', scfId = '', fwCode = '', name = '', vertical = '') {
+function addControl(startCollapsed = false, question = '', scfId = '', fwCode = '', name = '', vertical = '', bypassLock = false) {
+// The lock must stop a user (or a stray direct call) from adding a NEW
+// control while an issued audit is locked — but loadAuditById() and
+// importFromJSON() legitimately need to call this to REBUILD an already-
+// issued audit's own control list for display (which then gets disabled
+// right after, once the real elements exist). Those two call sites pass
+// bypassLock=true explicitly; every other caller defaults to false and is
+// correctly blocked.
+if (isAuditLocked() && !bypassLock) { alert('🔒 ' + T('locked_action_blocked')); return; }
 const wrapper = document.createElement('div');
 // border-l-4 is the compliance-status accent — colored dynamically by
 // applyComplianceStyling(), neutral slate until evaluated. rounded-lg +
@@ -1838,6 +1938,7 @@ onclick="event.stopPropagation()" readonly />
 <option value="yes" data-i18n="yes">${T('yes')}</option>
 <option value="no" data-i18n="no">${T('no')}</option>
 <option value="partial" data-i18n="partial">${T('partial')}</option>
+<option value="na" data-i18n="not_applicable">${T('not_applicable')}</option>
 </select>
 </div>
 <div class="flex flex-col items-start">
@@ -1893,7 +1994,8 @@ class="px-2.5 py-1 bg-cyberwarn text-black rounded hover:bg-yellow-400 text-xs f
 </div>
 </div>
 <textarea class="evidencia w-full p-3 rounded bg-gray-800 border border-gray-600 text-gray-100 text-base leading-relaxed resize-y focus:outline-none focus:border-cyberaccent"
-rows="4" style="min-height:100px;" spellcheck="true" lang="es" placeholder="${T('evidence_ph')}" oninput="toggleValidateBtn(this); autoGrowTextarea(this);"></textarea>
+rows="4" style="min-height:100px;" spellcheck="true" lang="es" placeholder="${T('evidence_ph')}" oninput="toggleValidateBtn(this); autoGrowTextarea(this); updateNAEvidenceWarning(this);"></textarea>
+<p class="na-evidence-warning hidden text-xs text-cyberwarn mt-1">⚠ ${T('na_evidence_required')}</p>
 </div>
 </div>
 `;
@@ -2112,6 +2214,9 @@ const COMPLIANCE_STATE_COLORS = {
   yes:     '#22c55e', // cyberok    — compliant
   no:      '#ef4444', // cyberevil  — non-compliant
   partial: '#facc15', // cyberwarn  — partial
+  na:      '#a78bfa', // violet — deliberately not applicable, distinct from
+                       // "not yet evaluated" so nobody reads a violet
+                       // control as an oversight instead of a decision.
   '':      '#475569', // neutral slate — not yet evaluated
 };
 function applyComplianceStyling(controlBlock, value) {
@@ -2121,11 +2226,57 @@ function applyComplianceStyling(controlBlock, value) {
   if (dot) dot.style.backgroundColor = color;
   const ctrlInput = controlBlock.querySelector('.ctrl');
   if (ctrlInput) ctrlInput.style.color = value ? color : '';
+
+  // "No Aplicable" means the control area itself doesn't exist for this
+  // organization — there is no "how important is this" to answer, so
+  // letting the auditor still pick a criticality would be meaningless (and
+  // is exactly what produced the misleading "BAJO" badge in the PDF before
+  // that was fixed). The UI enforces the rule directly here rather than
+  // relying on the auditor to remember not to touch it: disable the risk
+  // selector and clear any value it held. This runs on every live change
+  // AND on every restore (saved audit, JSON import), so it also self-heals
+  // older data saved before this rule existed.
+  const riskSelect = controlBlock.querySelector('.riesgo');
+  if (riskSelect) {
+    if (value === 'na') {
+      riskSelect.value = '';
+      riskSelect.disabled = true;
+      riskSelect.classList.add('opacity-40', 'cursor-not-allowed');
+    } else {
+      riskSelect.disabled = false;
+      riskSelect.classList.remove('opacity-40', 'cursor-not-allowed');
+    }
+  }
+
   // Keep the Work View sidebar's own status dots in sync — this is the
   // single common point every compliance-visual update already passes
   // through (live changes, loading a saved audit, importing JSON), so it's
   // the one place that reliably catches all of them.
   if (workViewActive) renderWorkViewSidebar();
+
+  // The Evidence-required warning depends on the compliance value too
+  // (only relevant at all when it's "na"), so refresh it here as well —
+  // not just from the evidence textarea's own input handler — otherwise
+  // switching a control TO "na" wouldn't show the warning until the
+  // auditor happened to touch the evidence field.
+  const evidenciaEl = controlBlock.querySelector('.evidencia');
+  if (evidenciaEl) updateNAEvidenceWarning(evidenciaEl);
+}
+
+// Live companion to findEmptyEvidenceNAControls() — updates a single
+// control's visual state as the auditor types, instead of only surfacing
+// the problem later at Guardar/Emitir. Both a red-bordered textarea and an
+// explicit warning line, since a border alone is easy to miss and a
+// message alone doesn't draw the eye to which field needs attention.
+function updateNAEvidenceWarning(evidenciaEl) {
+  const controlBlock = evidenciaEl.closest('.control');
+  if (!controlBlock) return;
+  const compliance = controlBlock.querySelector('.cumple')?.value || '';
+  const warningEl = controlBlock.querySelector('.na-evidence-warning');
+  const missing = compliance === 'na' && !evidenciaEl.value.trim();
+  if (warningEl) warningEl.classList.toggle('hidden', !missing);
+  evidenciaEl.classList.toggle('border-cyberwarn', missing);
+  evidenciaEl.classList.toggle('border-2', missing);
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -2313,6 +2464,9 @@ statusIcon = '❌';
 } else if (latest.compliance === 'partial') {
 statusClass = 'bg-cyberwarn text-black';
 statusIcon = '⚠️';
+} else if (latest.compliance === 'na') {
+statusClass = 'bg-violet-400 text-black'; // #a78bfa, same violet as COMPLIANCE_STATE_COLORS.na
+statusIcon = '🚫';
 }
 }
 }
@@ -2547,6 +2701,8 @@ function clearData() {
   document.getElementById('dash-compliant').textContent = 0;
   document.getElementById('dash-partial').textContent = 0;
   document.getElementById('dash-noncompliant').textContent = 0;
+  const naResetEl = document.getElementById('dash-not-applicable');
+  if (naResetEl) naResetEl.textContent = 0;
   document.getElementById('dash-critical-risk').textContent = 0;
   document.getElementById('dash-high-risk').textContent = 0;
   
@@ -2621,6 +2777,81 @@ container.innerHTML = '';
 (team || []).forEach(m => addTeamRow(m.name, m.role));
 }
 
+// Historial de Versiones — a genuine, in-app changelog for the report
+// document itself (version, date, author, reason), read-only once logged
+// (you don't edit history, you only add to it or delete a mistaken entry).
+// This is what the PDF cover page renders instead of pointing to an
+// external document-management system this tool doesn't have.
+let docVersionHistory = [];
+
+function renderVersionHistoryRows() {
+  const container = document.getElementById('doc-version-history-rows');
+  if (!container) return;
+  if (docVersionHistory.length === 0) {
+    container.innerHTML = `<p class="text-[10px] text-gray-600 italic">${T('doc_version_history_empty')}</p>`;
+    return;
+  }
+  container.innerHTML = docVersionHistory.map((entry, i) => `
+    <div class="flex items-start justify-between gap-2 bg-gray-800/60 rounded px-2 py-1.5">
+      <div class="text-xs text-gray-300">
+        <span class="font-bold text-cyberaccent">v${escapeHTML(entry.version)}</span>
+        <span class="text-gray-500"> · ${escapeHTML(entry.date)} · ${escapeHTML(entry.author || '—')}</span>
+        ${entry.issued ? `<span class="ml-1 px-1.5 py-0.5 rounded bg-purple-900/60 text-purple-300 text-[9px] font-bold">${T('doc_version_history_issued_badge')}</span>` : ''}
+        <div class="text-gray-400 mt-0.5">${escapeHTML(entry.note)}</div>
+      </div>
+      ${entry.issued
+        ? `<span title="${T('doc_version_history_remove_issued_blocked')}" class="text-gray-600 text-xs flex-shrink-0">🔒</span>`
+        : `<button type="button" onclick="removeVersionHistoryEntry(${i})" title="${T('doc_version_history_remove_title')}" class="text-red-400 hover:text-red-300 text-xs flex-shrink-0">&times;</button>`}
+    </div>
+  `).join('');
+}
+
+function addVersionHistoryEntry() {
+  if (isAuditLocked()) { alert('🔒 ' + T('locked_action_blocked')); return; }
+  const currentVersion = document.getElementById('doc_version')?.value?.trim() || '';
+  const version = prompt(T('doc_version_history_prompt_version'), currentVersion);
+  if (version === null || !version.trim()) return; // cancelled or left empty
+  const trimmedVersion = version.trim();
+  // A version number that's already in the log — issued or not — would
+  // make the history ambiguous about which entry is which. Each entry
+  // must identify a genuinely distinct revision.
+  if (docVersionHistory.some(e => e.version === trimmedVersion)) {
+    alert('🛑 ' + T('doc_version_history_duplicate').replace('{v}', trimmedVersion));
+    return;
+  }
+  const note = prompt(T('doc_version_history_prompt_note'));
+  if (note === null) return; // cancelled
+  if (!note.trim()) { alert(T('doc_version_history_note_required')); return; }
+
+  docVersionHistory.push({
+    version: trimmedVersion,
+    date: new Date().toISOString().slice(0, 10),
+    author: document.getElementById('doc_author')?.value || '',
+    note: note.trim(),
+    issued: false // becomes true automatically if/when THIS version is the one formally issued
+  });
+  // Logging a new version entry means it's now the current one — keep the
+  // "Versión" field in sync so the cover page and this log never disagree.
+  const versionField = document.getElementById('doc_version');
+  if (versionField) versionField.value = trimmedVersion;
+  renderVersionHistoryRows();
+  isDirty = true;
+}
+
+function removeVersionHistoryEntry(index) {
+  // An entry tied to an actual past issuance is part of the audit's
+  // permanent record — deleting it would let someone quietly erase the
+  // fact that a version was ever formally issued.
+  if (docVersionHistory[index]?.issued) {
+    alert('🛑 ' + T('doc_version_history_remove_issued_blocked'));
+    return;
+  }
+  if (!confirm(T('doc_version_history_remove_confirm'))) return;
+  docVersionHistory.splice(index, 1);
+  renderVersionHistoryRows();
+  isDirty = true;
+}
+
 function collectEngagement() {
 const val = id => document.getElementById(id)?.value || '';
 const team = [];
@@ -2643,7 +2874,10 @@ keyDates: {
 kickoff: val('eng_kickoff'),
 fieldworkStart: val('eng_fieldwork_start'),
 fieldworkEnd: val('eng_fieldwork_end'),
+fieldworkStartActual: val('eng_fieldwork_start_actual'),
+fieldworkEndActual: val('eng_fieldwork_end_actual'),
 draftReport: val('eng_draft_report'),
+draftReportActual: val('eng_draft_report_actual'),
 finalReport: val('eng_final_report')
 },
 issuedAt: val('eng_issued_at'),
@@ -2655,7 +2889,8 @@ owner: val('doc_owner'),
 author: val('doc_author'),
 reviewer: val('doc_reviewer'),
 approver: val('doc_approver'),
-recipients: val('doc_recipients')
+recipients: val('doc_recipients'),
+versionHistory: docVersionHistory
 }
 };
 }
@@ -2674,12 +2909,91 @@ recipients: val('doc_recipients')
  * timestamp are carried forward verbatim. M4 builds the formal
  * locking/revision flow on top of this.
  */
-let publishedSnapshot = null;   // { publishedAt, findings } once issued
+let publishedSnapshot = null;   // { publishedAt, findings, fullData } once issued
 
 function applyPublishState(data) {
+  // NOTE (partial fix, flagged for a bigger follow-up): this captures the
+  // full data object alongside findings/publishedAt so more context
+  // survives within a session than before — but it still isn't a true
+  // per-version historical archive. Every issuance overwrites the SAME
+  // localStorage key (auditnist_<id>), so once a report is reopened and
+  // re-issued, the PREVIOUS version's full state (controls, evidence,
+  // scope, dates, doc control — not just its findings) is not separately
+  // recoverable. A complete fix needs its own immutable storage per
+  // issued version (e.g. a distinct key per version), which is a bigger
+  // piece of work than this pass covers.
   publishedSnapshot = (data && data.publishedAt)
-    ? { publishedAt: data.publishedAt, findings: Array.isArray(data.findings) ? data.findings : [] }
+    ? { publishedAt: data.publishedAt, findings: Array.isArray(data.findings) ? data.findings : [], fullData: data }
     : null;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Real edit lock for issued reports (the "M4 locking" issueFinalReport()'s
+// own comments referenced as a future step, never actually built until
+// now). Once eng_status is 'issued', the audit stops being something you
+// quietly keep editing — the only sanctioned way back in is the explicit
+// "Reabrir para Nueva Versión" action below, which is itself a deliberate,
+// confirmed step, not a silent dropdown flip.
+// ─────────────────────────────────────────────────────────────────────────
+function isAuditLocked() {
+  return document.getElementById('eng_status')?.value === 'issued';
+}
+
+function applyEditLock() {
+  const locked = isAuditLocked();
+  const banner = document.getElementById('locked-audit-banner');
+  if (banner) banner.classList.toggle('hidden', !locked);
+
+  ['empresa_auditada','empresa_auditora','auditor','alcance','id_informe'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = locked;
+  });
+
+  // Everything inside the Audit Plan panel, INCLUDING the status dropdown
+  // itself — reopening must go through reopenForNewVersion(), never a
+  // direct dropdown change, so the "was this ever issued" fact stays
+  // deliberate and auditable rather than something a stray click undoes.
+  document.querySelectorAll('#audit-plan-panel input, #audit-plan-panel select, #audit-plan-panel textarea, #audit-plan-panel button')
+    .forEach(el => { el.disabled = locked; });
+
+  // Every control's own editing surface: compliance/risk selects, evidence
+  // and notes text areas, its remove button, Focus Mode's expand button,
+  // and the AI-assist buttons — all of it, since all of it can change
+  // what the issued report says.
+  document.querySelectorAll('#controls input, #controls select, #controls textarea, #controls button')
+    .forEach(el => { el.disabled = locked; });
+
+  // Toolbar actions that would add or regenerate content. Viewing actions
+  // (Expandir/Colapsar, PDF, Exportar JSON, Importar JSON) deliberately
+  // stay enabled — producing a fresh copy of an already-issued report, or
+  // loading a completely different audit, isn't "editing this one."
+  const suggestBtn = document.getElementById('suggest-controls');
+  if (suggestBtn) suggestBtn.disabled = locked;
+  document.querySelectorAll('button[onclick="addControl()"], button[onclick="openAutoAnalyze()"], button[onclick="issueFinalReport()"]')
+    .forEach(el => { el.disabled = locked; });
+}
+
+// The one deliberate way to resume editing an issued report. Moves the
+// status back to "Listo para Informe" (the data and evaluations are still
+// there; it just needs a new pass) rather than "Borrador", which would
+// misleadingly suggest starting from nothing — and clears the old issuance
+// date, since whatever comes next is heading toward a NEW one.
+function reopenForNewVersion() {
+  if (!confirm(T('reopen_confirm'))) return;
+  const statusEl = document.getElementById('eng_status');
+  if (statusEl) statusEl.value = 'ready_for_report';
+  const issuedAtEl = document.getElementById('eng_issued_at');
+  if (issuedAtEl) issuedAtEl.value = '';
+  // The frozen snapshot belongs to the PREVIOUS issuance — without
+  // clearing it, collectAuditData() kept exporting the old findings and
+  // publishedAt date even after the status moved back to "en curso",
+  // producing a JSON that claimed both "not yet issued" and "issued on
+  // <old date>" at the same time.
+  publishedSnapshot = null;
+  applyEditLock();
+  updateDatesValidation();
+  isDirty = true;
+  alert('🔓 ' + T('reopen_done'));
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -2690,6 +3004,28 @@ function applyPublishState(data) {
 // legitimate (a preliminary report issued before fieldwork officially
 // closes can happen in practice, so it warns rather than blocks).
 // ─────────────────────────────────────────────────────────────────────────
+// Compares a planned date against its real counterpart and writes a
+// colored delay/on-time indicator into targetId. Before there's an actual
+// date to compare, restores fallbackHtml (letting this double as the
+// field's normal help text) rather than leaving it confusingly blank.
+function renderDelayIndicator(plannedVal, actualVal, targetId, fallbackHtml) {
+  const el = document.getElementById(targetId);
+  if (!el) return;
+  if (!actualVal) { el.innerHTML = fallbackHtml || ''; return; }
+  if (!plannedVal) {
+    el.innerHTML = `<span class="text-gray-500">${T('date_delay_no_plan')}</span>`;
+    return;
+  }
+  const days = Math.round((new Date(actualVal) - new Date(plannedVal)) / 86400000);
+  if (days > 0) {
+    el.innerHTML = `<span class="text-red-400">⚠ ${days} ${days === 1 ? T('date_delay_day') : T('date_delay_days')} ${T('date_delay_late')}</span>`;
+  } else if (days < 0) {
+    el.innerHTML = `<span class="text-cyberok">✓ ${Math.abs(days)} ${Math.abs(days) === 1 ? T('date_delay_day') : T('date_delay_days')} ${T('date_delay_early')}</span>`;
+  } else {
+    el.innerHTML = `<span class="text-cyberok">✓ ${T('date_delay_on_time')}</span>`;
+  }
+}
+
 function updateDatesValidation() {
   const box = document.getElementById('dates-validation-msgs');
   if (!box) return;
@@ -2697,6 +3033,14 @@ function updateDatesValidation() {
   const kickoff = val('eng_kickoff'), fwStart = val('eng_fieldwork_start'), fwEnd = val('eng_fieldwork_end'),
         draft = val('eng_draft_report'), final = val('eng_final_report'), periodEnd = val('eng_period_end');
   const today = new Date().toISOString().slice(0, 10);
+
+  // Planned-vs-actual delay indicators — purely informational, never
+  // blocking, shown right under each "Real" field as soon as it's filled.
+  renderDelayIndicator(fwStart, val('eng_fieldwork_start_actual'), 'eng_fieldwork_start_delay');
+  renderDelayIndicator(fwEnd, val('eng_fieldwork_end_actual'), 'eng_fieldwork_end_delay');
+  renderDelayIndicator(draft, val('eng_draft_report_actual'), 'eng_draft_report_delay');
+  renderDelayIndicator(final, val('eng_issued_at'), 'eng_final_report_delay',
+    `<span class="text-gray-500">${T('eng_issued_at_help')}</span>`);
 
   const errors = [];   // blocking
   const warnings = []; // non-blocking
@@ -2748,7 +3092,10 @@ set('eng_technique', eng.auditTechnique);
 set('eng_kickoff', eng.keyDates?.kickoff);
 set('eng_fieldwork_start', eng.keyDates?.fieldworkStart);
 set('eng_fieldwork_end', eng.keyDates?.fieldworkEnd);
+set('eng_fieldwork_start_actual', eng.keyDates?.fieldworkStartActual);
+set('eng_fieldwork_end_actual', eng.keyDates?.fieldworkEndActual);
 set('eng_draft_report', eng.keyDates?.draftReport);
+set('eng_draft_report_actual', eng.keyDates?.draftReportActual);
 set('eng_final_report', eng.keyDates?.finalReport);
 set('eng_issued_at', eng.issuedAt);
 set('eng_status', eng.status || 'draft');
@@ -2760,8 +3107,11 @@ set('doc_author', dc.author);
 set('doc_reviewer', dc.reviewer);
 set('doc_approver', dc.approver);
 set('doc_recipients', dc.recipients);
+docVersionHistory = Array.isArray(dc.versionHistory) ? dc.versionHistory : [];
+renderVersionHistoryRows();
 renderTeamRows(eng.team || []);
 updateDatesValidation();
+applyEditLock();
 }
 
 /**
@@ -2906,7 +3256,23 @@ function findUnvalidatedAIDrafts() {
     .filter(c => c.evidence.includes(AI_DRAFT_MARKER));
 }
 
+// "No Aplicable" without a stated reason is worse than the three bad
+// workarounds it was built to replace (blank, wrongly marked "No Cumple",
+// or silently deleted) — it LOOKS documented and justified from the
+// outside while actually being empty. This is the single check that keeps
+// that from ever reaching a saved or issued audit.
+function findEmptyEvidenceNAControls() {
+  return Array.from(document.querySelectorAll('.control'))
+    .map(blk => ({
+      code: blk.querySelector('.ctrl')?.value || '',
+      compliance: blk.querySelector('.cumple')?.value || '',
+      evidence: blk.querySelector('.evidencia')?.value || ''
+    }))
+    .filter(c => c.compliance === 'na' && !c.evidence.trim());
+}
+
 function issueFinalReport() {
+  if (isAuditLocked()) { alert('🔒 ' + T('locked_already_issued')); return; }
   if (!updateDatesValidation()) {
     alert('🛑 ' + T('date_err_blocking_issue'));
     return;
@@ -2916,6 +3282,41 @@ function issueFinalReport() {
     alert('🛑 ' + T('issue_blocked_ai_drafts') + '\n\n' + unvalidated.map(c => `• ${c.code}`).join('\n'));
     return;
   }
+  const emptyNA = findEmptyEvidenceNAControls();
+  if (emptyNA.length > 0) {
+    alert('🛑 ' + T('na_evidence_required') + '\n\n' + emptyNA.map(c => `• ${c.code}`).join('\n'));
+    return;
+  }
+
+  // The version being issued must be genuinely new — re-issuing under a
+  // version number that has already been formally issued before would
+  // make the history meaningless as a way to tell copies/revisions apart.
+  const versionToIssue = (document.getElementById('doc_version')?.value || '').trim() || '1.0';
+  if (docVersionHistory.some(e => e.issued && e.version === versionToIssue)) {
+    alert('🛑 ' + T('issue_blocked_duplicate_version').replace('{v}', versionToIssue));
+    return;
+  }
+
+  // The version-history entry for THIS issuance is created automatically
+  // and becomes immutable from this point on. If the auditor already
+  // logged a note for this exact version via "+ Registrar Nueva Versión"
+  // (describing what changed in this pass), that entry is promoted to the
+  // official issuance record instead of being duplicated.
+  const issuedAtDate = new Date().toISOString().slice(0, 10);
+  const lastEntry = docVersionHistory[docVersionHistory.length - 1];
+  if (lastEntry && lastEntry.version === versionToIssue && !lastEntry.issued) {
+    lastEntry.issued = true;
+  } else {
+    docVersionHistory.push({
+      version: versionToIssue,
+      date: issuedAtDate,
+      author: document.getElementById('doc_author')?.value || '',
+      note: T('version_history_auto_issue_note'),
+      issued: true
+    });
+  }
+  renderVersionHistoryRows();
+
   // Derive findings fresh from the current controls at the moment of issue,
   // ignoring any earlier snapshot (re-issuing must re-capture, not replay).
   publishedSnapshot = null;
@@ -2925,22 +3326,25 @@ function issueFinalReport() {
   // "Fecha real de emisión" — the date the report was actually issued, kept
   // separate from "Informe final previsto" (the planned date). This is what
   // the PDF header shows once the audit stops being a draft.
-  data.engagement.issuedAt = new Date().toISOString().slice(0, 10);
+  data.engagement.issuedAt = issuedAtDate;
 
   // Freeze exactly what was issued so later edits cannot rewrite it.
-  publishedSnapshot = { publishedAt: data.publishedAt, findings: data.findings };
+  publishedSnapshot = { publishedAt: data.publishedAt, findings: data.findings, fullData: data };
 
   // The issued state must live in the app, not only in the downloaded file.
   // Without this the status selector still reads its previous value, so the
   // next saveProgress()/exportToJSON() would silently write the audit back to
-  // 'draft' and contradict a report that has already been issued. M4 locking
-  // will key off this persisted state.
+  // 'draft' and contradict a report that has already been issued.
   const statusEl = document.getElementById('eng_status');
   if (statusEl) statusEl.value = 'issued';
   const issuedAtEl = document.getElementById('eng_issued_at');
   if (issuedAtEl) issuedAtEl.value = data.engagement.issuedAt;
   localStorage.setItem(`auditnist_${data.id}`, JSON.stringify(data));
   isDirty = false;
+
+  // The edit lock (M4) is now real — freeze the CURRENT session
+  // immediately, not only on the next reload.
+  applyEditLock();
 
   // Create and download the JSON file with findings
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -3079,6 +3483,11 @@ function buildFindingsFromControls(controls, auditId) {
         .filter(f => f !== null);  // ✅ Elimina findings nulos
 }
 function saveProgress() {
+const emptyNA = findEmptyEvidenceNAControls();
+if (emptyNA.length > 0) {
+  alert('🛑 ' + T('na_evidence_required') + '\n\n' + emptyNA.map(c => `• ${c.code}`).join('\n'));
+  return;
+}
 const data = collectAuditData();
 localStorage.setItem(`auditnist_${data.id}`, JSON.stringify(data));
 alert('✅ Informe guardado localmente.');
@@ -3116,6 +3525,11 @@ class="px-3 py-1 bg-cyberaccent text-black text-xs rounded hover:bg-blue-300">
 // 🔹 EXPORT / IMPORT JSON
 // ─────────────────────────────────────────────────────────────────────────────
 function exportToJSON() {
+const emptyNA = findEmptyEvidenceNAControls();
+if (emptyNA.length > 0) {
+  alert('🛑 ' + T('na_evidence_required') + '\n\n' + emptyNA.map(c => `• ${c.code}`).join('\n'));
+  return;
+}
 const data = collectAuditData();
 const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
 saveAs(blob, `Audit_${currentFramework.toUpperCase()}_${data.id}.json`);
@@ -3161,7 +3575,7 @@ const ctrlsContainer = document.getElementById('controls');
 while (ctrlsContainer.firstChild) ctrlsContainer.removeChild(ctrlsContainer.firstChild);
 
 data.controls?.forEach(c => {
-addControl(false, c.question || '', c.scfId || '', getFrameworkCodeForControl(c.scfId, currentFramework), (c.ctrl || '').split(' – ')[1] || c.ctrl || '', '');
+addControl(false, c.question || '', c.scfId || '', getFrameworkCodeForControl(c.scfId, currentFramework), (c.ctrl || '').split(' – ')[1] || c.ctrl || '', '', true);
 const wrapper = document.querySelectorAll('.control')[document.querySelectorAll('.control').length - 1];
 wrapper.querySelector('.cumple').value = c.cumple || '';
 wrapper.querySelector('.riesgo').addEventListener('change', (e) => {
@@ -3176,6 +3590,9 @@ applyComplianceStyling(wrapper, c.cumple || '');
 });
 
 updateAll();
+// Same gap as loadAuditById: these controls were rebuilt AFTER
+// applyEngagement() already applied the lock, so they were never disabled.
+applyEditLock();
 alert('✅ JSON importado correctamente.');
 } catch (err) {
 alert('❌ Error al importar JSON: ' + err.message);
@@ -3188,7 +3605,7 @@ reader.readAsText(file);
 // 🔹 PDF GENERATION 
 // ─────────────────────────────────────────────────────────────────────────────
 function calculateAuditStats(controls) {
-  const stats = { total: 0, compliant: 0, partial: 0, nonCompliant: 0, criticalRisk: 0, highRisk: 0, mediumRisk: 0, lowRisk: 0 };
+  const stats = { total: 0, compliant: 0, partial: 0, nonCompliant: 0, notApplicable: 0, criticalRisk: 0, highRisk: 0, mediumRisk: 0, lowRisk: 0 };
   controls.forEach(blk => {
     const c = blk.querySelector('.cumple')?.value;
     const r = blk.querySelector('.riesgo')?.value;
@@ -3196,11 +3613,20 @@ function calculateAuditStats(controls) {
     if (c === 'yes') stats.compliant++;
     else if (c === 'partial') stats.partial++;
     else if (c === 'no') stats.nonCompliant++;
+    else if (c === 'na') stats.notApplicable++;
     if (r === 'critical') stats.criticalRisk++;
     else if (r === 'high') stats.highRisk++;
     else if (r === 'medium') stats.mediumRisk++;
     else if (r === 'low') stats.lowRisk++;
   });
+  // "Applicable assessed controls" = only those with a real yes/partial/no
+  // verdict. Both "No Aplicable" (deliberately scoped out) AND pending/
+  // blank controls (not yet judged one way or the other) are excluded —
+  // total minus notApplicable alone still counted every un-evaluated
+  // control toward the denominator, diluting the rate with controls
+  // nobody has looked at yet rather than showing a rate that means
+  // anything about what's actually been assessed so far.
+  stats.applicableTotal = stats.compliant + stats.partial + stats.nonCompliant;
   return stats;
 }
 
@@ -3502,7 +3928,7 @@ async function runAIAssessment() {
 
   const stats = {
     total:        0, compliant: 0, partial: 0,
-    nonCompliant: 0, criticalRisk: 0, highRisk: 0, mediumRisk: 0, lowRisk: 0
+    nonCompliant: 0, notApplicable: 0, criticalRisk: 0, highRisk: 0, mediumRisk: 0, lowRisk: 0
   };
   Object.values(EvaluationRegistry.store).forEach(ctrl => {
     ctrl.evaluations.forEach(ev => {
@@ -3510,12 +3936,16 @@ async function runAIAssessment() {
       if (ev.compliance==='yes')          stats.compliant++;
       else if (ev.compliance==='no')      stats.nonCompliant++;
       else if (ev.compliance==='partial') stats.partial++;
+      else if (ev.compliance==='na')      stats.notApplicable++;
       if (ev.risk==='critical') stats.criticalRisk++;
       else if (ev.risk==='high')   stats.highRisk++;
       else if (ev.risk==='medium') stats.mediumRisk++;
       else if (ev.risk==='low')    stats.lowRisk++;
     });
   });
+  // Same reasoning as calculateAuditStats(): "No Aplicable" must never
+  // affect the compliance percentage this modal's narrative reports.
+  stats.applicableTotal = stats.total - stats.notApplicable;
 
   // Try AI narrative first, fall back to deterministic if Ollama offline
   let narrative;
@@ -4082,6 +4512,11 @@ function generatePriorityRecommendationsSync(stats) {
 
 function generatePDF() {
   try {
+    const emptyNA = findEmptyEvidenceNAControls();
+    if (emptyNA.length > 0) {
+      alert('🛑 ' + T('na_evidence_required') + '\n\n' + emptyNA.map(c => `• ${c.code}`).join('\n'));
+      return;
+    }
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit: 'pt', format: 'a4' });
     registerReportFont(doc);
@@ -4250,6 +4685,23 @@ function generatePDF() {
       doc.setFont('Roboto', 'normal').setFontSize(8);
       doc.setTextColor(100, 116, 139);
       txt('  · AI-Assisted GRC', margin + 95, pageHeight - 48);
+      // The version label matters MORE once issued, not less — it's what
+      // lets someone holding a loose page or an old printed copy tell it
+      // apart from a later corrected revision (v1.0 vs v1.1). Draft state
+      // shows a quieter "vX.Y"; issued state shows it alongside the audit
+      // ID and an explicit "EMITIDO" so it reads as closed and official,
+      // not as "still subject to change."
+      if (dc.version) {
+        if (eng.status === 'issued') {
+          doc.setFont('Roboto', 'bold').setFontSize(7.5);
+          doc.setTextColor(124, 58, 237);
+          txt(`${auditData.id} · v${dc.version} · EMITIDO`, pageWidth / 2, pageHeight - 48, { align: 'center' });
+        } else {
+          doc.setFont('Roboto', 'italic').setFontSize(7.5);
+          doc.setTextColor(150, 160, 175);
+          txt(`v${dc.version}`, pageWidth / 2, pageHeight - 48, { align: 'center' });
+        }
+      }
       txt(`Página ${p} de ${total}`, pageWidth - margin, pageHeight - 48, { align: 'right' });
     }
 
@@ -4361,7 +4813,10 @@ function generatePDF() {
       return belongs;
     });
     const stats = calculateAuditStats(controlBlocks);
-    const pctOf = n => stats.total ? Math.round((n / stats.total) * 100) : 0;
+    // "No Aplicable" must never dilute these percentages — they should
+    // read as fractions of what was actually assessable, not of the whole
+    // selection including controls deliberately scoped out.
+    const pctOf = n => stats.applicableTotal ? Math.round((n / stats.applicableTotal) * 100) : 0;
 
     const controlsData = controlBlocks.map((blk, idx) => {
       const ctrlInput = blk.querySelector('.ctrl');
@@ -4396,7 +4851,7 @@ function generatePDF() {
     // specific critical findings by their real framework code — instead of
     // computing a second, potentially inconsistent picture from the raw
     // unmerged controlsData.
-    const COMPLIANCE_RANK = { no: 0, partial: 1, yes: 2, '': 3 };
+    const COMPLIANCE_RANK = { no: 0, partial: 1, yes: 2, na: 3, '': 4 };
     const RISK_RANK = { critical: 0, high: 1, medium: 2, low: 3, '': 4 };
     function mergeControlsByCode(list) {
       const byCode = {};
@@ -4405,7 +4860,7 @@ function generatePDF() {
         if (!byCode[c.code]) { byCode[c.code] = []; order.push(c.code); }
         byCode[c.code].push(c);
       });
-      const COMPLIANCE_LABEL_ES = { yes: 'Cumple', no: 'No Cumple', partial: 'Parcial', '': 'Sin Evaluar' };
+      const COMPLIANCE_LABEL_ES = { yes: 'Cumple', no: 'No Cumple', partial: 'Parcial', na: 'No Aplicable', '': 'Sin Evaluar' };
       return order.map(code => {
         const group = byCode[code];
         const worstCompliance = group.reduce((worst, c) =>
@@ -4477,6 +4932,13 @@ function generatePDF() {
     doc.text(`${auditData.company}  ·  ${auditData.framework}`, pageWidth/2, 302, { align: 'center' });
     drawAccentStrip(pageWidth/2 - 60, 315, 120, 2.5);
 
+    // One unambiguous line so nobody mistakes AuditSym (the software used
+    // to build this report) for the entity actually standing behind its
+    // conclusions — that's the audit firm, named explicitly here.
+    doc.setFont('Roboto', 'normal').setFontSize(9);
+    doc.setTextColor(150, 150, 175);
+    doc.text(`Preparado por: ${auditData.auditorFirm}  ·  Plataforma: AuditSym`, pageWidth/2, 332, { align: 'center' });
+
     // Classification banner — impossible to miss at the top and bottom,
     // with a touch more depth than a flat red fill.
     drawGradientRect(0, 340, pageWidth, 22, [153, 27, 27], [127, 29, 29], 'horizontal');
@@ -4522,12 +4984,45 @@ function generatePDF() {
     });
     cy += 20;
 
-    doc.setFont('Roboto', 'italic').setFontSize(7.5).setTextColor(140, 150, 175);
-    const versionNote = doc.splitTextToSize(
-      'Historial de versiones: consulte el sistema de gestión documental de la organización auditora para el historial completo de revisiones de este informe.',
-      tableW
-    );
-    versionNote.forEach((l, i) => doc.text(l, tableX, cy + i * 10));
+    // Real version history, read straight from the document control log
+    // kept inside the app — replacing the earlier placeholder that pointed
+    // to an external document-management system this tool doesn't have.
+    doc.setFont('Roboto', 'bold').setFontSize(8.5).setTextColor(150, 170, 210);
+    doc.text('Historial de Versiones', tableX, cy);
+    cy += 13;
+    const versionHistory = Array.isArray(dc.versionHistory) ? dc.versionHistory : [];
+    if (versionHistory.length === 0) {
+      doc.setFont('Roboto', 'italic').setFontSize(7.5).setTextColor(140, 150, 175);
+      doc.text('Primera versión emitida de este informe; no hay revisiones previas registradas.', tableX, cy);
+      cy += 14;
+    } else {
+      // The cover page has no pagination safety net — cap what's shown here
+      // to the most recent entries so a long-lived audit (re-run every
+      // quarter for years) can never push this table into the
+      // "CONFIDENCIAL" banner at the bottom of the page.
+      const MAX_VERSION_ROWS = 5;
+      const shown = versionHistory.slice(-MAX_VERSION_ROWS);
+      const omitted = versionHistory.length - shown.length;
+      if (omitted > 0) {
+        doc.setFont('Roboto', 'italic').setFontSize(7).setTextColor(140, 150, 175);
+        doc.text(`(${omitted} versión${omitted !== 1 ? 'es' : ''} anterior${omitted !== 1 ? 'es' : ''} no mostrada${omitted !== 1 ? 's' : ''} aquí — disponible en el archivo de la auditoría)`, tableX, cy);
+        cy += 12;
+      }
+      shown.forEach((entry, i) => {
+        const noteLines = doc.splitTextToSize(pdfSafe(entry.note || ''), tableW - 12);
+        const entryH = 10 + noteLines.length * 10 + 6; // header line + note lines + padding
+        doc.setFillColor(i % 2 === 1 ? 30 : 24, i % 2 === 1 ? 41 : 33, i % 2 === 1 ? 59 : 48);
+        doc.rect(tableX, cy - 9, tableW, entryH, 'F');
+        doc.setFont('Roboto', 'bold').setFontSize(7.5).setTextColor(230, 230, 240);
+        doc.text(`v${entry.version || '—'}`, tableX + 6, cy);
+        doc.setFont('Roboto', 'normal').setTextColor(150, 170, 210);
+        doc.text(`${entry.date || '—'}  ·  ${entry.author || '—'}`, tableX + 60, cy);
+        doc.setTextColor(200, 200, 210);
+        let ny = cy + 10;
+        noteLines.forEach(l => { doc.text(l, tableX + 6, ny); ny += 10; });
+        cy += entryH + 3;
+      });
+    }
 
     drawGradientRect(0, pageHeight - 30, pageWidth, 22, [127, 29, 29], [153, 27, 27], 'horizontal');
     doc.setTextColor(255, 255, 255);
@@ -4617,15 +5112,20 @@ function generatePDF() {
 
     // Domain compliance ratios — computed once, used both for the posture
     // conclusion sentence (weakest domains) and the "Punto Fuerte" callout
-    // below (strongest domain).
+    // below (strongest domain). Only controls with a real yes/partial/no
+    // verdict count toward a domain's ratio — a domain where every control
+    // happens to be "No Aplicable" has nothing to rate as strong or weak,
+    // and must never be crowned "Punto Fuerte" off a 0-applicable-control
+    // 0% that looks like a real (bad) score but isn't one at all.
     const domainTotals = {};
     controlsData.forEach(c => {
-      domainTotals[c.domain] = domainTotals[c.domain] || { total: 0, compliant: 0 };
-      domainTotals[c.domain].total++;
+      domainTotals[c.domain] = domainTotals[c.domain] || { applicable: 0, compliant: 0 };
+      if (!['yes', 'partial', 'no'].includes(c.compliance)) return;
+      domainTotals[c.domain].applicable++;
       if (c.compliance === 'yes') domainTotals[c.domain].compliant++;
     });
     const domainRatios = Object.entries(domainTotals)
-      .map(([d, v]) => ({ d, ratio: v.total ? v.compliant / v.total : 0, total: v.total }))
+      .map(([d, v]) => ({ d, ratio: v.applicable ? v.compliant / v.applicable : 0, total: v.applicable }))
       .filter(x => x.total >= 2);
     const weakestDomains = [...domainRatios].sort((a, b) => a.ratio - b.ratio).slice(0, 3)
       .filter(x => x.ratio < 0.7).map(x => DOMAIN_NAMES[x.d] || x.d);
@@ -4633,8 +5133,17 @@ function generatePDF() {
     // The explicit "so what" sentence a CISO looks for before reading
     // anything else — charts alone don't substitute for a stated
     // conclusion about overall posture and what it means operationally.
-    const compliancePct = pctOf(stats.compliant);
-    const exposureWord = compliancePct >= 80 ? 'baja' : compliancePct >= 60 ? 'moderada' : compliancePct >= 40 ? 'elevada' : 'crítica';
+    // Same reasoning as the dashboard: if no applicable control has been
+    // assessed (a very selective audit, or one where everything considered
+    // turned out to be "No Aplicable"), stating a "0% cumplimiento" posture
+    // in formal report prose would be a false claim, not just an unhelpful
+    // number — it reads as "the organization failed everything" when
+    // nothing was actually judged compliant or not.
+    const hasApplicableForPosture = stats.applicableTotal > 0;
+    const compliancePct = hasApplicableForPosture ? pctOf(stats.compliant) : null;
+    const exposureWord = hasApplicableForPosture
+      ? (compliancePct >= 80 ? 'baja' : compliancePct >= 60 ? 'moderada' : compliancePct >= 40 ? 'elevada' : 'crítica')
+      : null;
     // A natural Spanish list ("Gobernar y Proteger", not "Gobernanza,
     // Proteger" with a bare comma) and the domain names as verbs ("la
     // función Gobernar"), matching how the other NIST CSF functions are
@@ -4648,10 +5157,14 @@ function generatePDF() {
     const concentrationPhrase = weakestDomains.length
       ? `, concentrada en ${weakestDomains.length > 1 ? 'las funciones' : 'la función'} ${joinSpanishList(weakestDomains)}`
       : '';
-    const actionPhrase = exposureWord === 'crítica' || exposureWord === 'elevada'
-      ? 'Se requiere aprobación ejecutiva inmediata de un plan de remediación.'
-      : 'Se recomienda mantener el plan de mejora continua vigente.';
-    const postureConclusion = `La organización presenta un nivel de cumplimiento del ${compliancePct}% y una exposición ${exposureWord}${concentrationPhrase}. ${actionPhrase}`;
+    const actionPhrase = !hasApplicableForPosture
+      ? 'No procede una recomendación de postura general con la información actual.'
+      : (exposureWord === 'crítica' || exposureWord === 'elevada')
+        ? 'Se requiere aprobación ejecutiva inmediata de un plan de remediación.'
+        : 'Se recomienda mantener el plan de mejora continua vigente.';
+    const postureConclusion = hasApplicableForPosture
+      ? `La organización presenta un nivel de cumplimiento del ${compliancePct}% y una exposición ${exposureWord}${concentrationPhrase}. ${actionPhrase}`
+      : `No se registran controles aplicables evaluados dentro del alcance definido — los controles considerados hasta ahora están marcados como No Aplicable o pendientes de evaluación. No es posible calcular una puntuación de cumplimiento hasta que se evalúe al menos un control aplicable.`;
 
     // Names the actual worst findings by their real framework code — the
     // generic domain-level sentence above ("concentrada en Gobernanza...")
@@ -4730,20 +5243,85 @@ function generatePDF() {
     markToc('2. Alcance, Metodología y Limitaciones');
     y += 16;
 
-    function scopeSection(title, body, color) {
-      if (!body) return;
-      if (y > pageHeight - 80) { doc.addPage(); y = drawContinuationHeader('Alcance, Metodología y Limitaciones'); }
-      doc.setFont('Roboto', 'bold').setFontSize(9.5).setTextColor((color||COLORS.text)[0], (color||COLORS.text)[1], (color||COLORS.text)[2]);
-      txt(title, margin, y);
-      y += 12;
-      doc.setFont('Roboto', 'normal').setFontSize(8.5).setTextColor(COLORS.text[0], COLORS.text[1], COLORS.text[2]);
-      const lines = doc.splitTextToSize(pdfSafe(body), contentWidth);
-      lines.forEach(l => {
-        if (y > pageHeight - 80) { doc.addPage(); y = drawContinuationHeader('Alcance, Metodología y Limitaciones'); }
-        txt(l, margin, y); y += 11;
-      });
-      y += 10;
+function scopeSection(title, body, color) {
+  if (!body) return;
+
+  const lineHeight = 11;
+  const sectionSpacing = 10;
+  const bottomLimit = pageHeight - 90;
+
+  function applyBodyStyle() {
+    doc.setFont('Roboto', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(
+      COLORS.text[0],
+      COLORS.text[1],
+      COLORS.text[2]
+    );
+  }
+
+  /*
+   * Es imprescindible establecer primero la fuente y el tamaño.
+   * splitTextToSize utiliza el estilo activo para calcular la anchura.
+   */
+  applyBodyStyle();
+
+  const lines = doc.splitTextToSize(
+    pdfSafe(body),
+    contentWidth
+  );
+
+  const minimumLines = Math.min(lines.length, 2);
+
+  const minimumRequiredHeight =
+    12 +
+    minimumLines * lineHeight +
+    sectionSpacing;
+
+  // Evitar que el título quede solo al final.
+  if (y + minimumRequiredHeight > bottomLimit) {
+    doc.addPage();
+
+    y = drawContinuationHeader(
+      'Alcance, Metodología y Limitaciones'
+    );
+  }
+
+  // Título
+  const sectionColor = color || COLORS.text;
+
+  doc.setFont('Roboto', 'bold');
+  doc.setFontSize(9.5);
+  doc.setTextColor(
+    sectionColor[0],
+    sectionColor[1],
+    sectionColor[2]
+  );
+
+  txt(title, margin, y);
+  y += 12;
+
+  // Restaurar el estilo del cuerpo después del título.
+  applyBodyStyle();
+
+  lines.forEach(line => {
+    if (y + lineHeight > bottomLimit) {
+      doc.addPage();
+
+      y = drawContinuationHeader(
+        'Alcance, Metodología y Limitaciones'
+      );
+
+      // La cabecera cambia la fuente y el color.
+      applyBodyStyle();
     }
+
+    txt(line, margin, y);
+    y += lineHeight;
+  });
+
+  y += sectionSpacing;
+}
 
     // The form has two separate scope fields — the top-level "Alcance" and
     // the Audit Plan's "Resumen del Alcance" — that ask essentially the
@@ -4784,9 +5362,9 @@ function generatePDF() {
       : `Se evaluó una selección de ${stats.total} controles del framework ${auditData.framework}, según el alcance y los criterios descritos en esta página.`;
     scopeSection('Cobertura de Controles Evaluados', coverageText, COLORS.warning);
 
-    scopeSection('Modelo de Puntuación', `Este informe presenta dos cifras de cumplimiento con significados distintos, que no deben confundirse entre sí: el "% Cumple" del gráfico de tarta es la proporción simple de controles evaluados marcados como conformes. La puntuación de postura (p. ej. "${pdfAssess.overallScorePct}%" en Evaluación Final) es un score ponderado por criticidad, calculado en dos pasos. Primero, cada resultado de cumplimiento aporta un valor: Cumple = 1,0; Parcial = 0,5; No Cumple = 0,0; No Evaluado = 0,0 (y no cuenta en el total, ya que solo se puntúan los controles realmente evaluados). Segundo, ese valor se multiplica por la criticidad del control (crítico ×3.5, alto ×2.5, medio ×1.5, bajo ×1.0), de modo que los hallazgos en áreas más críticas pesan más que los de áreas de baja criticidad. El estado "No Aplicable" no está disponible actualmente como opción de cumplimiento en AuditSym; un control fuera de alcance debe excluirse de la selección en lugar de evaluarse. Ambas cifras del informe (% Cumple y puntuación de postura) son correctas; miden cosas diferentes.`);
+    scopeSection('Modelo de Puntuación', `Este informe presenta dos cifras de cumplimiento con significados distintos, que no deben confundirse entre sí: el "% Cumple" del gráfico de tarta es la proporción simple de controles evaluados marcados como conformes. La puntuación de postura (p. ej. "${pdfAssess.overallScorePct}%" en Evaluación Final) es un score ponderado por criticidad, calculado en dos pasos. Primero, cada resultado de cumplimiento aporta un valor: Cumple = 1,0; Parcial = 0,5; No Cumple = 0,0; No Evaluado = 0,0 (y no cuenta en el total, ya que solo se puntúan los controles realmente evaluados). Segundo, ese valor se multiplica por la criticidad del control (crítico ×3.5, alto ×2.5, medio ×1.5, bajo ×1.0), de modo que los hallazgos en áreas más críticas pesan más que los de áreas de baja criticidad. Un control marcado como "No Aplicable" queda excluido por completo de ambas cifras del informe — nunca puntúa como incumplimiento ni como cumplimiento — ya que refleja una decisión deliberada de alcance, no un hallazgo; el motivo del descarte se documenta en la evidencia del propio control. Ambas cifras del informe (% Cumple y puntuación de postura) son correctas; miden cosas diferentes.`);
 
-    scopeSection('Definición de Resultados', 'Cumple: el control está implementado y operativo según lo esperado. Parcial: el control existe pero presenta brechas de diseño, implementación o efectividad operativa. No Cumple: no hay evidencia de que el control esté implementado.');
+    scopeSection('Definición de Resultados', 'Cumple: el control está implementado y operativo según lo esperado. Parcial: el control existe pero presenta brechas de diseño, implementación o efectividad operativa. No Cumple: no hay evidencia de que el control esté implementado. No Aplicable: el control no corresponde al alcance, la infraestructura o el modelo de negocio de la organización auditada; el motivo se documenta en la evidencia del control.');
 
     scopeSection('Definición de Criticidad', 'Crítico / Alto / Medio / Bajo indican la importancia del área de control para la organización, evaluada por el auditor con independencia de si el control está o no implementado — ver nota en Detalle Técnico por Dominio.');
 
@@ -4836,7 +5414,7 @@ function generatePDF() {
     txt(`Madurez: ${maturityEs}`, margin + 165, y + 20);
     doc.setTextColor(200, 200, 200);
     doc.setFont('Roboto', 'normal').setFontSize(7.5);
-    txt(`Controles: ${stats.total} total · ${stats.compliant} cumple · ${stats.partial} parcial · ${stats.nonCompliant} no cumple`, pageWidth - margin - 8, y + 20, { align: 'right' });
+    txt(`Controles: ${stats.total} total · ${stats.compliant} cumple · ${stats.partial} parcial · ${stats.nonCompliant} no cumple${stats.notApplicable ? ` · ${stats.notApplicable} no aplicable` : ''}`, pageWidth - margin - 8, y + 20, { align: 'right' });
     y += 44;
     // "Riesgo Alto" here describes the ORGANIZATION'S overall posture band
     // — a completely different scale from a single control's "Alto"
@@ -5082,8 +5660,8 @@ function generatePDF() {
           ? `${c.name}  (SCF: ${c.scfIds.join(', ')})`
           : c.name;
         txt(fitTextPdf(nameWithTrace, tableCols[1].w - 4, 8), tableCols[1].x, y + 12);
-        const compLbl = c.compliance === 'yes' ? 'Cumple' : c.compliance === 'no' ? 'No Cumple' : c.compliance === 'partial' ? 'Parcial' : 'Sin Evaluar';
-        const compCol = c.compliance === 'yes' ? [34,197,94] : c.compliance === 'no' ? [239,68,68] : c.compliance === 'partial' ? [245,158,11] : [156,163,175];
+        const compLbl = c.compliance === 'yes' ? 'Cumple' : c.compliance === 'no' ? 'No Cumple' : c.compliance === 'partial' ? 'Parcial' : c.compliance === 'na' ? 'No Aplicable' : 'Sin Evaluar';
+        const compCol = c.compliance === 'yes' ? [34,197,94] : c.compliance === 'no' ? [239,68,68] : c.compliance === 'partial' ? [245,158,11] : c.compliance === 'na' ? [167,139,250] : [156,163,175];
         badge(compLbl, compCol, tableCols[2].x, y + 4, 74);
         const riskLbl = c.risk === 'critical' ? 'Crítico' : c.risk === 'high' ? 'Alto' : c.risk === 'medium' ? 'Medio' : c.risk === 'low' ? 'Bajo' : '—';
         if (c.risk) badge(riskLbl, getRiskColor(c.risk), tableCols[3].x, y + 4, 55);
@@ -5132,7 +5710,11 @@ function generatePDF() {
     // assert something nobody actually recorded.
     const controlsWithContent = controlsData.filter(c => c.hasEvidence);
     const compliantWithEvidence = controlsWithContent.filter(c => c.compliance === 'yes');
-    const narrativeControls = controlsWithContent.filter(c => c.compliance !== 'yes');
+    // "No Aplicable" controls get their own section, separate from real
+    // findings — mixing a deliberate scoping decision into "Hallazgos" would
+    // misread as if something was wrong with them.
+    const notApplicableWithEvidence = controlsWithContent.filter(c => c.compliance === 'na');
+    const narrativeControls = controlsWithContent.filter(c => c.compliance !== 'yes' && c.compliance !== 'na');
     // Unlike the domain table above, the appendix intentionally does NOT
     // merge — each SCF control keeps its own full card, since each can
     // carry distinct evidence. When more than one entry here shares the
@@ -5152,7 +5734,7 @@ function generatePDF() {
       siblingsByCode[c.code] = siblingsByCode[c.code] || [];
       siblingsByCode[c.code].push(c);
     });
-    const COMPLIANCE_LABEL_ES_ANNEX = { yes: 'Cumple', no: 'No Cumple', partial: 'Parcial', '': 'Sin Evaluar' };
+    const COMPLIANCE_LABEL_ES_ANNEX = { yes: 'Cumple', no: 'No Cumple', partial: 'Parcial', na: 'No Aplicable', '': 'Sin Evaluar' };
 
     if (controlsWithContent.length > 0) {
       doc.addPage();
@@ -5162,7 +5744,7 @@ function generatePDF() {
       y = 100;
       doc.setFont('Roboto', 'italic').setFontSize(8.5);
       doc.setTextColor(COLORS.textLight[0], COLORS.textLight[1], COLORS.textLight[2]);
-      txt(`${narrativeControls.length} control(es) no conformes o parciales · ${compliantWithEvidence.length} control(es) conformes — evidencia completa para ambos grupos.`, margin, y);
+      txt(`${narrativeControls.length} control(es) no conformes o parciales · ${compliantWithEvidence.length} control(es) conformes · ${notApplicableWithEvidence.length} control(es) no aplicable(s) — evidencia completa para todos los grupos.`, margin, y);
       y += 22;
 
       // A colored section banner — full-width, with a left accent tab and
@@ -5214,16 +5796,21 @@ function generatePDF() {
         y += headingLines.length * 11 + 4;
 
         doc.setFont('Roboto', 'bold').setFontSize(7);
-        const compText = c.compliance === 'yes' ? 'CUMPLE' : c.compliance === 'no' ? 'NO CUMPLE' : 'PARCIAL';
-        const compCol = c.compliance === 'yes' ? COLORS.success : c.compliance === 'no' ? COLORS.danger : COLORS.warning;
+        const compText = c.compliance === 'yes' ? 'CUMPLE' : c.compliance === 'no' ? 'NO CUMPLE' : c.compliance === 'na' ? 'NO APLICABLE' : 'PARCIAL';
+        const compCol = c.compliance === 'yes' ? COLORS.success : c.compliance === 'no' ? COLORS.danger : c.compliance === 'na' ? [167,139,250] : COLORS.warning;
         doc.setFillColor(compCol[0], compCol[1], compCol[2]);
         doc.setTextColor(255, 255, 255);
         doc.rect(margin + 12, y - 4, 72, 11, 'F');
         txt(compText, margin + 48, y + 3, { align: 'center' });
-        const riskText = c.risk === 'critical' ? 'CRÍTICO' : c.risk === 'high' ? 'ALTO' : c.risk === 'medium' ? 'MEDIO' : 'BAJO';
-        doc.setFillColor(riskCol[0], riskCol[1], riskCol[2]);
-        doc.rect(margin + 90, y - 4, 55, 11, 'F');
-        txt(riskText, margin + 117, y + 3, { align: 'center' });
+        // A "No Aplicable" control genuinely has no criticality — showing a
+        // default "BAJO" badge would misleadingly imply a residual risk
+        // level exists. Only draw this badge when a real risk was set.
+        if (c.compliance !== 'na' || c.risk) {
+          const riskText = c.risk === 'critical' ? 'CRÍTICO' : c.risk === 'high' ? 'ALTO' : c.risk === 'medium' ? 'MEDIO' : 'BAJO';
+          doc.setFillColor(riskCol[0], riskCol[1], riskCol[2]);
+          doc.rect(margin + 90, y - 4, 55, 11, 'F');
+          txt(riskText, margin + 117, y + 3, { align: 'center' });
+        }
         y += 16;
 
         // Connects this card back to the domain table's merged row: if
@@ -5322,6 +5909,26 @@ function generatePDF() {
         const byDomainCompliant = groupByDomainOrdered(compliantWithEvidence);
         Object.keys(byDomainCompliant).sort().forEach(domainKey => {
           byDomainCompliant[domainKey].forEach(c => renderControlCard(c));
+        });
+      }
+
+      // A third, clearly separate section for controls the auditor
+      // deliberately scoped out — never mixed with real findings (which
+      // would misread as "something is wrong here") nor silently dropped
+      // (which would leave the reader unable to tell "excluded on purpose"
+      // from "simply forgotten"). Its own violet banner matches the same
+      // color used for "No Aplicable" everywhere else in this report.
+      if (notApplicableWithEvidence.length > 0) {
+        if (y > pageHeight - 200) { doc.addPage(); y = drawContinuationHeader('Anexo · Evidencia Detallada'); }
+        else { y += 12; }
+        renderSectionBanner(
+          `CONTROLES NO APLICABLES (${notApplicableWithEvidence.length})`,
+          [124, 58, 237], [245, 243, 255], notApplicableWithEvidence.length,
+          '5.3 Controles No Aplicables'
+        );
+        const byDomainNA = groupByDomainOrdered(notApplicableWithEvidence);
+        Object.keys(byDomainNA).sort().forEach(domainKey => {
+          byDomainNA[domainKey].forEach(c => renderControlCard(c));
         });
       }
     }
@@ -5629,7 +6236,7 @@ function updateFrameworkProgressBars() {
   if (!container) return;
 
   const frameworksData = {};
-  let globalTotal = 0, globalEvaluated = 0, globalCompliant = 0, globalPartial = 0, globalNonCompliant = 0;
+  let globalTotal = 0, globalEvaluated = 0, globalCompliant = 0, globalPartial = 0, globalNonCompliant = 0, globalNotApplicable = 0;
 
   // 1. Recolectar datos por framework
   Object.keys(FRAMEWORKS).forEach(fw => {
@@ -5639,6 +6246,7 @@ function updateFrameworkProgressBars() {
       compliant: 0, 
       partial: 0, 
       nonCompliant: 0,
+      notApplicable: 0,
       criticalRisk: 0,
       highRisk: 0,
       pending: 0
@@ -5657,6 +6265,7 @@ function updateFrameworkProgressBars() {
               if (latest.compliance === 'yes') stats.compliant++;
               else if (latest.compliance === 'partial') stats.partial++;
               else if (latest.compliance === 'no') stats.nonCompliant++;
+              else if (latest.compliance === 'na') stats.notApplicable++;
               
               if (latest.risk === 'critical') stats.criticalRisk++;
               if (latest.risk === 'high') stats.highRisk++;
@@ -5669,6 +6278,14 @@ function updateFrameworkProgressBars() {
     }
     
     stats.pending = stats.total - stats.evaluated;
+    // Same fix as calculateAuditStats(): the denominator must be only
+    // controls with a real yes/partial/no verdict — total minus
+    // notApplicable still counted every un-evaluated LIBRARY control
+    // (stats.pending, which for a framework this size can be in the
+    // hundreds) toward the denominator, which is how a fresh audit with
+    // nothing evaluated yet could still show a "0%" instead of the
+    // dashboard correctly recognizing nothing's been assessed at all.
+    stats.applicableTotal = stats.compliant + stats.partial + stats.nonCompliant;
     frameworksData[fw] = stats;
     
     // Acumular para global
@@ -5677,21 +6294,27 @@ function updateFrameworkProgressBars() {
     globalCompliant += stats.compliant;
     globalPartial += stats.partial;
     globalNonCompliant += stats.nonCompliant;
+    globalNotApplicable += stats.notApplicable;
   });
 
   // 2. Renderizar cards por framework
   container.innerHTML = Object.entries(frameworksData).map(([fw, stats]) => {
     const fwInfo = FRAMEWORKS[fw];
-    const complianceRate = stats.total > 0 ? Math.round((stats.compliant / stats.total) * 100) : 0;
+    // Same reasoning as the main dashboard: no misleading "0%" when
+    // nothing applicable has been assessed for this framework yet.
+    const hasApplicable = stats.applicableTotal > 0;
+    const complianceRate = hasApplicable ? Math.round((stats.compliant / stats.applicableTotal) * 100) : null;
     const evaluationRate = stats.total > 0 ? Math.round((stats.evaluated / stats.total) * 100) : 0;
     
     // Color de borde según compliance
-    const borderColor = complianceRate >= 80 ? 'border-green-500' : 
+    const borderColor = !hasApplicable ? 'border-gray-600' :
+                        complianceRate >= 80 ? 'border-green-500' : 
                         complianceRate >= 50 ? 'border-yellow-500' : 
                         'border-red-500';
     
     // Color del glow
-    const glowColor = complianceRate >= 80 ? 'shadow-green-900/30' : 
+    const glowColor = !hasApplicable ? 'shadow-gray-900/20' :
+                      complianceRate >= 80 ? 'shadow-green-900/30' : 
                       complianceRate >= 50 ? 'shadow-yellow-900/30' : 
                       'shadow-red-900/30';
     
@@ -5708,8 +6331,8 @@ function updateFrameworkProgressBars() {
             </span>
             <span class="font-bold ${fwInfo.color} text-sm">${fwInfo.name}</span>
           </div>
-          <span class="text-xs font-mono ${complianceRate >= 80 ? 'text-cyberok' : complianceRate >= 50 ? 'text-cyberwarn' : 'text-cyberevil'}">
-            ${complianceRate}%
+          <span class="text-xs font-mono ${!hasApplicable ? 'text-gray-500' : complianceRate >= 80 ? 'text-cyberok' : complianceRate >= 50 ? 'text-cyberwarn' : 'text-cyberevil'}">
+            ${hasApplicable ? complianceRate + '%' : '—'}
           </span>
         </div>
         
@@ -5717,11 +6340,11 @@ function updateFrameworkProgressBars() {
         <div class="mb-2">
           <div class="flex justify-between text-[10px] text-gray-400 mb-0.5">
             <span>Compliance</span>
-            <span>${stats.compliant}/${stats.total}</span>
+            <span>${stats.compliant}/${stats.applicableTotal}</span>
           </div>
           <div class="w-full bg-gray-700 rounded-full h-2">
             <div class="bg-gradient-to-r from-cyberok to-green-400 h-2 rounded-full transition-all duration-500" 
-                 style="width: ${complianceRate}%"></div>
+                 style="width: ${complianceRate || 0}%"></div>
           </div>
         </div>
         
@@ -5735,12 +6358,13 @@ function updateFrameworkProgressBars() {
             ${stats.compliant > 0 ? `<div class="bg-cyberok h-full" style="width: ${(stats.compliant/stats.total)*100}%" title="Compliant: ${stats.compliant}"></div>` : ''}
             ${stats.partial > 0 ? `<div class="bg-cyberwarn h-full" style="width: ${(stats.partial/stats.total)*100}%" title="Partial: ${stats.partial}"></div>` : ''}
             ${stats.nonCompliant > 0 ? `<div class="bg-cyberevil h-full" style="width: ${(stats.nonCompliant/stats.total)*100}%" title="Non-Compliant: ${stats.nonCompliant}"></div>` : ''}
+            ${stats.notApplicable > 0 ? `<div class="bg-violet-400 h-full" style="width: ${(stats.notApplicable/stats.total)*100}%" title="No Aplicable: ${stats.notApplicable}"></div>` : ''}
             ${stats.pending > 0 ? `<div class="bg-gray-600 h-full" style="width: ${(stats.pending/stats.total)*100}%" title="Pending: ${stats.pending}"></div>` : ''}
           </div>
         </div>
         
         <!-- Stats Grid -->
-        <div class="grid grid-cols-4 gap-1 mt-2 text-center">
+        <div class="grid grid-cols-5 gap-1 mt-2 text-center">
           <div class="bg-gray-900/50 rounded p-1">
             <div class="text-cyberok text-sm font-bold">${stats.compliant}</div>
             <div class="text-[8px] text-gray-400">✅</div>
@@ -5752,6 +6376,10 @@ function updateFrameworkProgressBars() {
           <div class="bg-gray-900/50 rounded p-1">
             <div class="text-cyberevil text-sm font-bold">${stats.nonCompliant}</div>
             <div class="text-[8px] text-gray-400">❌</div>
+          </div>
+          <div class="bg-gray-900/50 rounded p-1">
+            <div class="text-violet-400 text-sm font-bold">${stats.notApplicable}</div>
+            <div class="text-[8px] text-gray-400">🚫</div>
           </div>
           <div class="bg-gray-900/50 rounded p-1">
             <div class="text-orange-400 text-sm font-bold">${stats.criticalRisk + stats.highRisk}</div>
@@ -5767,16 +6395,20 @@ function updateFrameworkProgressBars() {
     `;
   }).join('');
 
-  // 3. Actualizar resumen global
-  const globalComplianceRate = globalTotal > 0 ? Math.round((globalCompliant / globalTotal) * 100) : 0;
+  // 3. Actualizar resumen global — same fix as each individual card: only
+  // controls with a real yes/partial/no verdict count toward the rate.
+  const globalApplicableTotal = globalCompliant + globalPartial + globalNonCompliant;
+  const globalHasApplicable = globalApplicableTotal > 0;
+  const globalComplianceRate = globalHasApplicable ? Math.round((globalCompliant / globalApplicableTotal) * 100) : null;
   const globalSummary = document.getElementById('global-framework-progress');
   if (globalSummary) {
     globalSummary.innerHTML = `
-      <span class="font-mono ${globalComplianceRate >= 80 ? 'text-cyberok' : globalComplianceRate >= 50 ? 'text-cyberwarn' : 'text-cyberevil'}">
-        ${globalComplianceRate}% Overall Compliance
+      <span class="font-mono ${!globalHasApplicable ? 'text-gray-500' : globalComplianceRate >= 80 ? 'text-cyberok' : globalComplianceRate >= 50 ? 'text-cyberwarn' : 'text-cyberevil'}">
+        ${globalHasApplicable ? globalComplianceRate + '%' : '—'} Overall Compliance
       </span>
       <span class="mx-2">|</span>
       <span>${globalEvaluated}/${globalTotal} Controls Evaluated</span>
+      ${globalNotApplicable > 0 ? `<span class="mx-2">|</span><span class="text-violet-400">${globalNotApplicable} N/A</span>` : ''}
     `;
   }
 }
@@ -5837,13 +6469,6 @@ function changeFramework() {
   renderControlGrid();
   updateFrameworkProgressBars();  
 }
-function updateAll() {
-  updateSummary();
-  updateCharts();
-  renderControlGrid();
-  EvaluationRegistry.updateDashboard();
-  updateFrameworkProgressBars();  
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 🔹 I18N TRANSLATIONS
@@ -5874,12 +6499,15 @@ generate_pdf_btn:'📄 PDF', export_txt_btn:'📄 TXT',
 export_json_btn:'💾 Exportar JSON', import_json_btn:'📂 Importar JSON',
 save_progress_btn:'💾 Guardar', view_saved_btn:'📋 Ver Informes',
 chart_compliance:'Cumplimiento', chart_risk:'Riesgos',
-yes:'Sí', no:'No', partial:'Parcial',
+yes:'Sí', no:'No', partial:'Parcial', not_applicable:'No Aplicable',
 critical:'Crítico', high:'Alto', medium:'Medio', low:'Bajo',
 panel_compliance_title:'Cumplimiento', panel_risks_title:'Riesgos', panel_evaluations_title:'Evaluaciones',
 work_view_btn:'📝 Vista de Trabajo', work_view_btn_dashboard:'📊 Vista Dashboard',
 library_loaded:'Biblioteca cargada',
 validate_draft_btn:'Validar Borrador', ia_evidence_btn:'IA Evidencia',
+dash_not_applicable:'No Aplicable 🚫',
+na_evidence_required:'Se requiere una justificación en Evidencia cuando un control se marca como No Aplicable.',
+compliance_not_calculated:'Sin controles aplicables evaluados',
 template_library_btn:'📚 Biblioteca',
 template_loading:'Cargando...',
 template_server_err:'Requiere servidor local: python -m http.server 8080',
@@ -5901,6 +6529,7 @@ chart_compliance_title:'🎯 Cumplimiento', chart_risk_title:'⚠️ Riesgos',
 chart_eval_title:'📈 Evaluaciones',
 template_search_ph:'🔍 Buscar controles...', template_select_all:'Seleccionar todo',
 template_load_btn:'Cargar Seleccionados', template_no_results:'No se encontraron controles',
+search_audit_load_btn:'Cargar', search_audit_no_results:'No se encontraron auditorías',
 vertical_general:'General', vertical_healthcare:'Salud', vertical_finance:'Finanzas',
 vertical_government:'Gobierno', vertical_defense:'Defensa', vertical_privacy:'Privacidad',
 status_label:'ESTADO', risk_label:'RIESGO',
@@ -5925,9 +6554,9 @@ eng_technique_label:'Técnica de Auditoría y Muestreo', eng_technique_ph:'Entre
 eng_period_label:'Período Bajo Revisión',
 eng_keydates_label:'Fechas Clave',
 issue_report_btn: "📢 Emitir Informe Final",  
-eng_kickoff_label:'Inicio del Encargo', eng_fieldwork_start_label:'Inicio del Trabajo de Campo',
-eng_fieldwork_end_label:'Fin del Trabajo de Campo', eng_draft_report_label:'Informe Preliminar Previsto',
-eng_final_report_label:'Informe Final Previsto',
+eng_kickoff_label:'Inicio del Encargo', eng_fieldwork_start_label:'Inicio del Trabajo de Campo — Previsto',
+eng_fieldwork_end_label:'Fin del Trabajo de Campo — Previsto', eng_draft_report_label:'Informe Preliminar — Previsto',
+eng_final_report_label:'Informe Final — Previsto',
 eng_status_label:'Estado', eng_status_draft:'Borrador', eng_status_in_progress:'En Progreso',
 eng_status_ready:'Listo para Informe', eng_status_issued:'Emitido',
 eng_team_label:'Equipo de Auditoría', eng_add_member:'+ Añadir Miembro',
@@ -5951,6 +6580,27 @@ doc_classification_label:'Clasificación', doc_classification_confidential:'Conf
 doc_version_label:'Versión', doc_owner_label:'Propietario del Documento', doc_author_label:'Autor',
 doc_reviewer_label:'Revisor', doc_approver_label:'Aprobador',
 doc_recipients_label:'Destinatarios Autorizados', doc_recipients_ph:'Nombres, cargos o departamentos autorizados a recibir este informe',
+doc_version_history_label:'Historial de Versiones', doc_version_history_add:'+ Registrar Nueva Versión',
+doc_version_history_help:'Cada revisión sustancial del informe debería quedar registrada aquí, con el motivo del cambio — esto es lo que se muestra en la portada del PDF en lugar de remitir a un sistema externo.',
+doc_version_history_empty:'Sin registros todavía. Esta será la primera versión emitida del informe.',
+doc_version_history_remove_title:'Eliminar este registro del historial',
+doc_version_history_prompt_version:'Número de versión (ej. 1.1):',
+doc_version_history_prompt_note:'¿Qué cambió en esta versión? (obligatorio)',
+doc_version_history_note_required:'Debes indicar el motivo del cambio para registrar una nueva versión.',
+doc_version_history_remove_confirm:'¿Eliminar este registro del historial de versiones? Esta acción no se puede deshacer.',
+locked_banner_title:'Este informe ya ha sido emitido y está bloqueado',
+locked_banner_detail:'No se puede modificar un informe emitido. Para corregir o ampliar algo, reábralo para registrar una nueva versión.',
+reopen_btn:'🔓 Reabrir para Nueva Versión',
+reopen_confirm:'Vas a reabrir este informe emitido para trabajar en una nueva versión. El estado pasará a "Listo para Informe" y la fecha de emisión anterior se borrará hasta que vuelvas a emitirlo. ¿Continuar?',
+reopen_done:'Informe reabierto. Recuerda registrar una nueva entrada en el Historial de Versiones antes de volver a emitirlo.',
+locked_action_blocked:'Este informe está emitido y bloqueado. Reábralo desde el aviso morado para poder modificarlo.',
+locked_already_issued:'Este informe ya ha sido emitido. Reábralo primero si necesitas volver a emitirlo.',
+status_issued_manual_blocked:'El estado "Emitido" solo puede fijarse pulsando "Emitir Informe Final" — así se garantizan las comprobaciones previas (fechas, borradores de IA sin validar, registro de versión).',
+issue_blocked_duplicate_version:'La versión {v} ya fue emitida formalmente con anterioridad. Indique un número de versión nuevo antes de volver a emitir.',
+version_history_auto_issue_note:'Emisión formal del informe.',
+doc_version_history_duplicate:'Ya existe una entrada con la versión {v} en el historial. Use un número distinto.',
+doc_version_history_remove_issued_blocked:'Esta entrada corresponde a una emisión formal y no se puede eliminar — forma parte del registro permanente de la auditoría.',
+doc_version_history_issued_badge:'EMITIDA',
 date_err_fieldwork_before_kickoff:'El trabajo de campo no puede comenzar antes de la apertura del encargo.',
 date_err_fieldwork_end_before_start:'El fin del trabajo de campo debe ser posterior o igual a su inicio.',
 date_warn_draft_before_fieldwork_end:'El borrador normalmente se emite después de finalizar las pruebas. Revise la fecha.',
@@ -5959,6 +6609,11 @@ date_warn_period_after_fieldwork:'El periodo evaluado incluye fechas posteriores
 date_warn_draft_overdue:'La fecha prevista del informe preliminar ha vencido. Actualícela o registre la fecha real.',
 date_warn_final_overdue:'La fecha prevista del informe final ha vencido. Actualícela o registre la fecha real.',
 date_err_blocking_issue:'Corrija las fechas señaladas en rojo antes de emitir el informe final.',
+date_delay_day:'día', date_delay_days:'días', date_delay_late:'de retraso', date_delay_early:'de adelanto',
+date_delay_on_time:'Cumplido en la fecha prevista', date_delay_no_plan:'Sin fecha prevista para comparar.',
+eng_fieldwork_start_actual_label:'Inicio del Trabajo de Campo — Real', eng_fieldwork_end_actual_label:'Fin del Trabajo de Campo — Real',
+eng_draft_report_actual_label:'Informe Preliminar — Real', eng_final_actual_ref_label:'Informe Final — Real',
+eng_final_actual_ref_help:'Ver "Fecha Real de Emisión" en Documento, más abajo — se completa sola al emitir.',
 issue_blocked_ai_drafts:'No se puede emitir el informe: los siguientes controles tienen evidencia generada por IA sin validar por el auditor. Revísela y pulse "Validar Borrador" antes de emitir:'
 },
 en: {
@@ -5986,12 +6641,15 @@ generate_pdf_btn:'📄 PDF', export_txt_btn:'📄 TXT',
 export_json_btn:'💾 Export JSON', import_json_btn:'📂 Import JSON', issue_report_btn: "📢 Issue Final Report",
 save_progress_btn:'💾 Save', view_saved_btn:'📋 Reports',
 chart_compliance:'Compliance', chart_risk:'Risks',
-yes:'Yes', no:'No', partial:'Partial',
+yes:'Yes', no:'No', partial:'Partial', not_applicable:'Not Applicable',
 critical:'Critical', high:'High', medium:'Medium', low:'Low',
 panel_compliance_title:'Compliance', panel_risks_title:'Risks', panel_evaluations_title:'Evaluations',
 work_view_btn:'📝 Work View', work_view_btn_dashboard:'📊 Dashboard View',
 library_loaded:'Library loaded',
 validate_draft_btn:'Validate Draft', ia_evidence_btn:'AI Evidence',
+dash_not_applicable:'Not Applicable 🚫',
+na_evidence_required:'A justification in Evidence is required when a control is marked Not Applicable.',
+compliance_not_calculated:'No applicable controls assessed',
 template_library_btn:'📚 Library',
 template_loading:'Loading...',
 template_server_err:'Requires local server: python -m http.server 8080',
@@ -6012,6 +6670,7 @@ chart_compliance_title:'🎯 Compliance', chart_risk_title:'⚠️ Risks',
 chart_eval_title:'📈 Evaluations',
 template_search_ph:'🔍 Search controls...', template_select_all:'Select All',
 template_load_btn:'Load Selected', template_no_results:'No controls found',
+search_audit_load_btn:'Load', search_audit_no_results:'No saved audits found',
 vertical_general:'General', vertical_healthcare:'Healthcare', vertical_finance:'Finance',
 vertical_government:'Government', vertical_defense:'Defense', vertical_privacy:'Privacy',
 status_label:'STATUS', risk_label:'RISK',
@@ -6036,9 +6695,9 @@ eng_technique_label:'Audit Technique & Sampling', eng_technique_ph:'Interviews, 
 eng_period_label:'Period Under Review',
 eng_keydates_label:'Key Dates',
 
-eng_kickoff_label:'Engagement Start', eng_fieldwork_start_label:'Fieldwork Start',
-eng_fieldwork_end_label:'Fieldwork End', eng_draft_report_label:'Draft Report Due',
-eng_final_report_label:'Final Report Due',
+eng_kickoff_label:'Engagement Start', eng_fieldwork_start_label:'Fieldwork Start — Planned',
+eng_fieldwork_end_label:'Fieldwork End — Planned', eng_draft_report_label:'Draft Report — Planned',
+eng_final_report_label:'Final Report — Planned',
 eng_status_label:'Status', eng_status_draft:'Draft', eng_status_in_progress:'In Progress',
 eng_status_ready:'Ready for Report', eng_status_issued:'Issued',
 eng_team_label:'Audit Team', eng_add_member:'+ Add Member',
@@ -6060,6 +6719,27 @@ doc_classification_label:'Classification', doc_classification_confidential:'Conf
 doc_version_label:'Version', doc_owner_label:'Document Owner', doc_author_label:'Author',
 doc_reviewer_label:'Reviewer', doc_approver_label:'Approver',
 doc_recipients_label:'Authorized Recipients', doc_recipients_ph:'Names, titles, or departments authorized to receive this report',
+doc_version_history_label:'Version History', doc_version_history_add:'+ Log New Version',
+doc_version_history_help:'Every substantial revision of the report should be logged here, with the reason for the change — this is what the PDF cover page shows instead of pointing to an external system.',
+doc_version_history_empty:'No entries yet. This will be the first issued version of the report.',
+doc_version_history_remove_title:'Remove this history entry',
+doc_version_history_prompt_version:'Version number (e.g. 1.1):',
+doc_version_history_prompt_note:'What changed in this version? (required)',
+doc_version_history_note_required:'You must state the reason for the change to log a new version.',
+doc_version_history_remove_confirm:'Remove this entry from the version history? This cannot be undone.',
+locked_banner_title:'This report has already been issued and is locked',
+locked_banner_detail:'An issued report cannot be modified. To correct or extend anything, reopen it to log a new version.',
+reopen_btn:'🔓 Reopen for New Version',
+reopen_confirm:'You are about to reopen this issued report to work on a new version. Status will move to "Ready for Report" and the previous issuance date will be cleared until you issue it again. Continue?',
+reopen_done:'Report reopened. Remember to log a new entry in the Version History before issuing it again.',
+locked_action_blocked:'This report is issued and locked. Reopen it from the purple banner to make changes.',
+locked_already_issued:'This report has already been issued. Reopen it first if you need to issue it again.',
+status_issued_manual_blocked:'"Issued" can only be set by clicking "Issue Final Report" — that\'s what guarantees the pre-checks run (dates, unvalidated AI drafts, the version-history entry).',
+issue_blocked_duplicate_version:'Version {v} has already been formally issued before. Enter a new version number before issuing again.',
+version_history_auto_issue_note:'Formal issuance of the report.',
+doc_version_history_duplicate:'An entry for version {v} already exists in the history. Use a different number.',
+doc_version_history_remove_issued_blocked:'This entry corresponds to a formal issuance and cannot be removed — it is part of the audit\'s permanent record.',
+doc_version_history_issued_badge:'ISSUED',
 date_err_fieldwork_before_kickoff:'Fieldwork cannot start before the engagement formally opens.',
 date_err_fieldwork_end_before_start:'Fieldwork end must be on or after its start date.',
 date_warn_draft_before_fieldwork_end:'The draft is normally issued after testing concludes. Please review this date.',
@@ -6068,6 +6748,11 @@ date_warn_period_after_fieldwork:'The period under review includes dates after f
 date_warn_draft_overdue:'The planned draft-report date has passed. Update it or record the actual date.',
 date_warn_final_overdue:'The planned final-report date has passed. Update it or record the actual date.',
 date_err_blocking_issue:'Fix the dates flagged in red before issuing the final report.',
+date_delay_day:'day', date_delay_days:'days', date_delay_late:'late', date_delay_early:'early',
+date_delay_on_time:'Met on the planned date', date_delay_no_plan:'No planned date to compare against.',
+eng_fieldwork_start_actual_label:'Fieldwork Start — Actual', eng_fieldwork_end_actual_label:'Fieldwork End — Actual',
+eng_draft_report_actual_label:'Draft Report — Actual', eng_final_actual_ref_label:'Final Report — Actual',
+eng_final_actual_ref_help:'See "Actual Issuance Date" under Document, below — fills in automatically on issuance.',
 issue_blocked_ai_drafts:'Cannot issue the report: the following controls still have unreviewed AI-generated evidence. Review it and click "Validate Draft" before issuing:'
 },
 fr: {
@@ -6083,7 +6768,7 @@ generate_pdf_btn:'📄 PDF', export_txt_btn:'📄 TXT',
 export_json_btn:'💾 Exporter JSON', import_json_btn:'📂 Importer JSON', issue_report_btn: "📢 Publier le Rapport Final",
 save_progress_btn:'💾 Sauvegarder', view_saved_btn:'📋 Rapports',
 chart_compliance:'Conformité', chart_risk:'Risques',
-yes:'Oui', no:'Non', partial:'Partiel',
+yes:'Oui', no:'Non', partial:'Partiel', not_applicable:'Non applicable',
 critical:'Critique', high:'Élevé', medium:'Moyen', low:'Faible',
 template_library_btn:'📚 Bibliothèque',
 template_loading:'Chargement...',
@@ -6097,7 +6782,10 @@ search_audit_label:'🔍 Rechercher Audit Sauvegardé',
 search_audit_ph:'Nom d\'entreprise ou ID d\'audit...',
 dashboard_title:'📊 Tableau de Bord Multi-Framework',
 dash_total:'Total Évalués', dash_compliant:'Conformes', partial_label:'Partiel',
-dash_noncompliant:'Non Conformes', dash_critical_risk:'Risques Critiques', dash_high_risk:'Risques Élevés',
+dash_noncompliant:'Non Conformes', dash_not_applicable:'Non applicable 🚫',
+na_evidence_required:'Une justification dans le champ Preuve est requise lorsqu’un contrôle est marqué Non applicable.',
+compliance_not_calculated:'Aucun contrôle applicable évalué',
+dash_critical_risk:'Risques Critiques', dash_high_risk:'Risques Élevés',
 framework_progress_title:'📊 Progression par Framework',
 summary_controls:'Contrôles', summary_compliant:'Conformes ✅',
 summary_noncompliant:'Non conformes ❌', summary_high_risk:'Risques ÉLEVÉS ⚠️',
@@ -6134,7 +6822,7 @@ generate_pdf_btn:'📄 PDF', export_txt_btn:'📄 TXT',
 export_json_btn:'💾 JSON exportieren', import_json_btn:'📂 JSON importieren', issue_report_btn: "📢 Abschlussbericht ausstellen",
 save_progress_btn:'💾 Speichern', view_saved_btn:'📋 Berichte',
 chart_compliance:'Konformität', chart_risk:'Risiken',
-yes:'Ja', no:'Nein', partial:'Teilweise',
+yes:'Ja', no:'Nein', partial:'Teilweise', not_applicable:'Nicht anwendbar',
 critical:'Kritisch', high:'Hoch', medium:'Mittel', low:'Niedrig',
 template_library_btn:'📚 Bibliothek',
 template_loading:'Laden...',
@@ -6148,7 +6836,10 @@ search_audit_label:'🔍 Gespeicherte Prüfung suchen',
 search_audit_ph:'Unternehmensname oder Audit-ID eingeben...',
 dashboard_title:'📊 Multi-Framework Dashboard',
 dash_total:'Gesamt Bewertet', dash_compliant:'Konform', partial_label:'Teilweise',
-dash_noncompliant:'Nicht Konform', dash_critical_risk:'Kritische Risiken', dash_high_risk:'Hohe Risiken',
+dash_noncompliant:'Nicht Konform', dash_not_applicable:'Nicht anwendbar 🚫',
+na_evidence_required:'Wenn eine Kontrolle als Nicht anwendbar markiert wird, ist eine Begründung im Nachweisfeld erforderlich.',
+compliance_not_calculated:'Keine anwendbaren Kontrollen bewertet',
+dash_critical_risk:'Kritische Risiken', dash_high_risk:'Hohe Risiken',
 framework_progress_title:'📊 Framework Fortschritt',
 summary_controls:'Kontrollen', summary_compliant:'Konform ✅',
 summary_noncompliant:'Nicht konform ❌', summary_high_risk:'HOHE Risiken ⚠️',
@@ -6185,7 +6876,7 @@ generate_pdf_btn:'📄 PDF', export_txt_btn:'📄 TXT',
 export_json_btn:'💾 Exportar JSON', import_json_btn:'📂 Importar JSON', issue_report_btn: "📢 Emitir Relatório Final",
 save_progress_btn:'💾 Salvar', view_saved_btn:'📋 Relatórios',
 chart_compliance:'Conformidade', chart_risk:'Riscos',
-yes:'Sim', no:'Não', partial:'Parcial',
+yes:'Sim', no:'Não', partial:'Parcial', not_applicable:'Não aplicável',
 critical:'Crítico', high:'Alto', medium:'Médio', low:'Baixo',
 template_library_btn:'📚 Biblioteca',
 template_loading:'Carregando...',
@@ -6199,7 +6890,10 @@ search_audit_label:'🔍 Pesquisar Auditoria Salva',
 search_audit_ph:'Digite o nome da empresa ou ID da auditoria...',
 dashboard_title:'📊 Dashboard Multi-Framework',
 dash_total:'Total Avaliados', dash_compliant:'Conformes', partial_label:'Parcial',
-dash_noncompliant:'Não Conformes', dash_critical_risk:'Riscos Críticos', dash_high_risk:'Riscos Altos',
+dash_noncompliant:'Não Conformes', dash_not_applicable:'Não aplicável 🚫',
+na_evidence_required:'É necessária uma justificativa no campo Evidência quando um controle é marcado como Não aplicável.',
+compliance_not_calculated:'Nenhum controle aplicável avaliado',
+dash_critical_risk:'Riscos Críticos', dash_high_risk:'Riscos Altos',
 framework_progress_title:'📊 Progresso por Framework',
 summary_controls:'Controles', summary_compliant:'Conformes ✅',
 summary_noncompliant:'Não conformes ❌', summary_high_risk:'Riscos ALTOS ⚠️',
@@ -6236,7 +6930,7 @@ generate_pdf_btn:'📄 PDF', export_txt_btn:'📄 TXT',
 export_json_btn:'💾 تصدير JSON', import_json_btn:'📂 استيراد JSON', issue_report_btn: "📢 إصدار التقرير النهائي",
 save_progress_btn:'💾 حفظ', view_saved_btn:'📋 التقارير',
 chart_compliance:'الامتثال', chart_risk:'المخاطر',
-yes:'نعم', no:'لا', partial:'جزئي',
+yes:'نعم', no:'لا', partial:'جزئي', not_applicable:'غير قابل للتطبيق',
 critical:'حرج', high:'عالي', medium:'متوسط', low:'منخفض',
 template_library_btn:'📚 المكتبة',
 template_loading:'جارٍ التحميل...',
@@ -6250,7 +6944,10 @@ search_audit_label:'🔍 البحث في التدقيقات المحفوظة',
 search_audit_ph:'اكتب اسم الشركة أو رقم التدقيق...',
 dashboard_title:'📊 لوحة التحكم متعددة الأطر',
 dash_total:'إجمالي المقيّمين', dash_compliant:'ممتثل', partial_label:'جزئي',
-dash_noncompliant:'غير ممتثل', dash_critical_risk:'مخاطر حرجة', dash_high_risk:'مخاطر عالية',
+dash_noncompliant:'غير ممتثل', dash_not_applicable:'غير قابل للتطبيق 🚫',
+na_evidence_required:'يلزم تقديم مبرر في حقل الدليل عند وضع علامة غير قابل للتطبيق على أحد الضوابط.',
+compliance_not_calculated:'لم يتم تقييم أي ضوابط قابلة للتطبيق',
+dash_critical_risk:'مخاطر حرجة', dash_high_risk:'مخاطر عالية',
 framework_progress_title:'📊 تقدم الإطار',
 summary_controls:'الضوابط', summary_compliant:'ممتثل ✅',
 summary_noncompliant:'غير ممتثل ❌', summary_high_risk:'مخاطر عالية ⚠️',
@@ -6287,7 +6984,7 @@ generate_pdf_btn:'📄 PDF', export_txt_btn:'📄 TXT',
 export_json_btn:'💾 导出 JSON', import_json_btn:'📂 导入 JSON', issue_report_btn: "📢 发布最终报告",
 save_progress_btn:'💾 保存', view_saved_btn:'📋 报告',
 chart_compliance:'合规性', chart_risk:'风险',
-yes:'是', no:'否', partial:'部分',
+yes:'是', no:'否', partial:'部分', not_applicable:'不适用',
 critical:'严重', high:'高', medium:'中', low:'低',
 template_library_btn:'📚 模板库',
 template_loading:'加载中...',
@@ -6301,7 +6998,10 @@ search_audit_label:'🔍 搜索已保存的审计',
 search_audit_ph:'输入公司名称或审计ID...',
 dashboard_title:'📊 多框架仪表板',
 dash_total:'总评估数', dash_compliant:'合规', partial_label:'部分',
-dash_noncompliant:'不合规', dash_critical_risk:'严重风险', dash_high_risk:'高风险',
+dash_noncompliant:'不合规', dash_not_applicable:'不适用 🚫',
+na_evidence_required:'将控制项标记为不适用时，必须在证据字段中填写理由。',
+compliance_not_calculated:'尚未评估适用的控制项',
+dash_critical_risk:'严重风险', dash_high_risk:'高风险',
 framework_progress_title:'📊 框架进度',
 summary_controls:'控制项', summary_compliant:'合规 ✅',
 summary_noncompliant:'不合规 ❌', summary_high_risk:'高风险 ⚠️',
@@ -6423,13 +7123,37 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Date-matrix fields — any change re-checks the ordering rules live, so
   // an auditor sees a problem right after creating it, not only when they
   // try to issue the report.
-  ['eng_kickoff','eng_fieldwork_start','eng_fieldwork_end','eng_draft_report','eng_final_report','eng_period_start','eng_period_end']
+  ['eng_kickoff','eng_fieldwork_start','eng_fieldwork_end','eng_fieldwork_start_actual','eng_fieldwork_end_actual','eng_draft_report','eng_draft_report_actual','eng_final_report','eng_period_start','eng_period_end']
   .forEach(id => {
     const el = document.getElementById(id);
     if (el) {
       el.addEventListener('change', () => { isDirty = true; updateDatesValidation(); });
     }
   });
+
+  // "Emitido" must only ever be reached through issueFinalReport() — that
+  // function sets the value via direct assignment, which never fires
+  // 'change', so this listener only ever catches a genuine manual
+  // selection from the dropdown and reverts it. Without this, someone
+  // could flip the audit into looking issued (hiding the version from the
+  // PDF footer, etc.) without any of the real issuance safeguards —
+  // AI-draft validation, date-order checks, the immutable version-history
+  // entry — ever running.
+  const engStatusEl = document.getElementById('eng_status');
+  if (engStatusEl) {
+    let lastKnownStatus = engStatusEl.value;
+    engStatusEl.addEventListener('change', () => {
+      if (engStatusEl.value === 'issued') {
+        engStatusEl.value = lastKnownStatus;
+        alert('🛑 ' + T('status_issued_manual_blocked'));
+        return;
+      }
+      lastKnownStatus = engStatusEl.value;
+      isDirty = true;
+      updateDatesValidation();
+    });
+  }
+
   updateDatesValidation();
 // Auto-save cada 2 minutos
 let autoSaveInterval = setInterval(() => {
