@@ -503,6 +503,10 @@ async function main() {
         document.getElementById('id_informe').value = 'REG-SNAPSHOT-001';
         document.getElementById('doc_author').value = 'Regression Tester';
         document.getElementById('doc_version').value = '1.0';
+        // This section tests version snapshots specifically, not the
+        // approval workflow — opt out of it so issuance isn't blocked by
+        // an unrelated, unconfigured requirement.
+        approvals.policy = 'none';
         document.getElementById('controls').innerHTML = '';
         addControl(false, 'Q1', 'GOV-01', 'GOV-01', 'Governance Program', '');
         const blk = document.querySelector('.control');
@@ -519,7 +523,11 @@ async function main() {
       const noRecursiveNesting = await page.evaluate(() => !versionSnapshots['1.0']?.engagement?.docControl?.versionSnapshots);
       check('A version snapshot does not recursively re-embed the snapshot map itself', noRecursiveNesting);
 
-      // Reopen, fix the finding, bump the version, issue again.
+      // Reopen, fix the finding, bump the version, issue again. reopenForNewVersion()
+      // now requires a non-empty reason via prompt() — the shared dialog
+      // handler in newPage() auto-accepts with no text, which would silently
+      // abort the reopen, so this test supplies one directly.
+      await page.evaluate(() => { window.prompt = () => 'Corrección tras revisión'; });
       await page.evaluate(() => reopenForNewVersion());
       await page.waitForTimeout(150);
       await page.evaluate(() => {
@@ -558,6 +566,265 @@ async function main() {
 
       await page.close();
       await page2.close();
+      await ctx.close();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    section('11. Report Approval workflow (reviewer/approver, not digital signatures)');
+    // Regression covered: the whole approval feature — issuance blocking
+    // by policy, frozen identity copies, self-approval/independent-review
+    // governance disclosure, auto-invalidation on reassignment, and that
+    // reopening supersedes (never deletes) a version's approvals while the
+    // archived snapshot keeps the ORIGINAL decision permanently.
+    {
+      const ctx = await browser.newContext();
+      const page = await newPage(browser, ctx);
+
+      await page.evaluate(() => {
+        document.getElementById('empresa_auditada').value = 'Approval Co';
+        document.getElementById('empresa_auditora').value = 'Approval Auditor Firm';
+        document.getElementById('auditor').value = 'Regression Tester';
+        document.getElementById('id_informe').value = 'REG-APPROVAL-001';
+        document.getElementById('doc_author').value = 'Ana Preparer';
+        document.getElementById('doc_version').value = '1.0';
+        document.getElementById('controls').innerHTML = '';
+        addControl(false, 'Q1', 'GOV-01', 'GOV-01', 'Governance Program', '');
+        const blk = document.querySelector('.control');
+        blk.querySelector('.cumple').value = 'yes';
+        blk.querySelector('.cumple').dispatchEvent(new Event('change'));
+      });
+      await page.waitForTimeout(150);
+
+      // --- 11a. Default policy blocks issuance with named missing roles ---
+      // Overriding window.alert (rather than adding a second page.on('dialog')
+      // listener alongside the one newPage() already installs) avoids any
+      // risk of two handlers racing to accept/read the same native dialog.
+      await page.evaluate(() => { window.__alerts = []; window.alert = (m) => window.__alerts.push(m); });
+      await page.evaluate(() => issueFinalReport());
+      await page.waitForTimeout(150);
+      const blockedMsgs = await page.evaluate(() => window.__alerts);
+      check('Issuance is blocked with the default reviewer_and_approver policy and nothing approved',
+        blockedMsgs.some(m => m.includes('Revisado por') && m.includes('Aprobado por')));
+
+      // --- 11b. Approving requires a complete identity, then freezes a copy ---
+      await page.evaluate(() => { document.getElementById('doc_reviewer').value = 'Carla Reviewer'; }); // role left blank on purpose
+      await page.evaluate(() => { window.__alerts = []; });
+      await page.evaluate(() => approveRole('reviewer'));
+      await page.waitForTimeout(100);
+      const stillPendingWithoutRole = await page.evaluate(() => approvals.reviewer.status);
+      check('Reviewer approval stays "pending" until both name and role are present', stillPendingWithoutRole === 'pending', `got "${stillPendingWithoutRole}"`);
+
+      await page.evaluate(() => { document.getElementById('doc_reviewer_role').value = 'Revisora Técnica'; });
+      await page.evaluate(() => approveRole('reviewer'));
+      await page.waitForTimeout(100);
+      const frozenReviewer = await page.evaluate(() => ({ ...approvals.reviewer }));
+      check('Approving freezes the designated name+role into the approval record', frozenReviewer.name === 'Carla Reviewer' && frozenReviewer.role === 'Revisora Técnica' && frozenReviewer.status === 'approved');
+
+      // Editing the LIVE field afterward must not silently change the frozen copy.
+      await page.evaluate(() => { document.getElementById('doc_reviewer_role').value = 'Cambiado Después'; });
+      const frozenUnaffectedByLaterEdit = await page.evaluate(() => approvals.reviewer.role);
+      check('Editing Document Control after approval does not rewrite the frozen approval record', frozenUnaffectedByLaterEdit === 'Revisora Técnica', `got "${frozenUnaffectedByLaterEdit}"`);
+      await page.evaluate(() => { document.getElementById('doc_reviewer_role').value = 'Revisora Técnica'; }); // restore for the rest of the test
+
+      // --- 11b2. Under reviewer_and_approver, self-approval and same-person-both-roles must be BLOCKED (not just disclosed) ---
+      await page.evaluate(() => { window.__alerts = []; window.alert = (m) => window.__alerts.push(m); });
+      const preparerBlockedAsApprover = await page.evaluate(() => {
+        document.getElementById('doc_approver').value = 'Ana Preparer'; // same as doc_author
+        document.getElementById('doc_approver_role').value = 'Auditora';
+        approveRole('approver');
+        return approvals.approver.status;
+      });
+      check('The report\'s own preparer cannot approve under reviewer_and_approver (self-approval forbidden by this policy)', preparerBlockedAsApprover === 'pending', `got "${preparerBlockedAsApprover}"`);
+
+      const sameAsReviewerBlocked = await page.evaluate(() => {
+        document.getElementById('doc_approver').value = 'Carla Reviewer'; // same as the already-approved reviewer
+        document.getElementById('doc_approver_role').value = 'Directora';
+        approveRole('approver');
+        return approvals.approver.status;
+      });
+      check('Reviewer and approver cannot be the same person under reviewer_and_approver', sameAsReviewerBlocked === 'pending', `got "${sameAsReviewerBlocked}"`);
+
+      // --- 11c. Approver approval + issuance succeeds once complete ---
+      await page.evaluate(() => {
+        document.getElementById('doc_approver').value = 'Beto Approver';
+        document.getElementById('doc_approver_role').value = 'Director de Auditoría';
+      });
+      await page.evaluate(() => approveRole('approver'));
+      await page.waitForTimeout(100);
+
+      const govIndependent = await page.evaluate(() => computeApprovalGovernance());
+      check('Governance correctly reports independent review when reviewer/approver/preparer are all different people', govIndependent.independentReview === true && govIndependent.reason === 'independent_review');
+
+      await page.evaluate(() => { window.__alerts = []; });
+      await page.evaluate(() => issueFinalReport());
+      await page.waitForTimeout(200);
+      const statusNow = await page.evaluate(() => document.getElementById('eng_status').value);
+      check('Issuance succeeds once both required approvals are complete for the current version', statusNow === 'issued', `got "${statusNow}"`);
+
+      // --- 11d. Auto-invalidation when the designated reviewer genuinely changes ---
+      // Reopen first (issuance locks the fields), then swap the reviewer to
+      // a different person and confirm the OLD approval is auto-revoked.
+      await page.evaluate(() => { window.prompt = () => 'Prueba de reasignación'; });
+      await page.evaluate(() => reopenForNewVersion());
+      await page.waitForTimeout(150);
+      const approvalsAfterReopen = await page.evaluate(() => ({ reviewer: approvals.reviewer.status, approver: approvals.approver.status }));
+      check('Reopening supersedes both approvals rather than leaving them "approved"', approvalsAfterReopen.reviewer === 'pending' && approvalsAfterReopen.approver === 'pending');
+
+      // Re-approve under v1.1, then swap the reviewer's NAME to a genuinely different person.
+      await page.evaluate(() => { document.getElementById('doc_version').value = '1.1'; });
+      await page.evaluate(() => approveRole('reviewer'));
+      await page.waitForTimeout(100);
+      await page.evaluate(() => { document.getElementById('doc_reviewer').value = 'Someone Else Entirely'; document.getElementById('doc_reviewer').dispatchEvent(new Event('change')); });
+      await page.waitForTimeout(150);
+      const revokedAfterReassignment = await page.evaluate(() => approvals.reviewer.status);
+      check('Changing the designated reviewer to a genuinely different person auto-revokes the active approval', revokedAfterReassignment === 'revoked', `got "${revokedAfterReassignment}"`);
+
+      // A trivial capitalization/whitespace edit must NOT trigger the same invalidation.
+      await page.evaluate(() => { document.getElementById('doc_reviewer').value = 'Carla Reviewer'; document.getElementById('doc_reviewer_role').value = 'Revisora Técnica'; });
+      await page.evaluate(() => approveRole('reviewer'));
+      await page.waitForTimeout(100);
+      await page.evaluate(() => { document.getElementById('doc_reviewer').value = '  CARLA   reviewer  '; document.getElementById('doc_reviewer').dispatchEvent(new Event('change')); });
+      await page.waitForTimeout(150);
+      const notRevokedForTrivialEdit = await page.evaluate(() => approvals.reviewer.status);
+      check('A whitespace/case-only edit to the same person does NOT auto-revoke the approval', notRevokedForTrivialEdit === 'approved', `got "${notRevokedForTrivialEdit}"`);
+
+      // --- 11e. Self-approval governance disclosure ---
+      await page.evaluate(() => {
+        approvals.policy = 'single_approver';
+        document.getElementById('approval_policy').value = 'single_approver';
+        document.getElementById('doc_approver').value = 'Ana Preparer'; // same as doc_author
+        document.getElementById('doc_approver_role').value = 'Auditora Principal';
+      });
+      const govSelf = await page.evaluate(() => computeApprovalGovernance());
+      check('Governance correctly detects self-approval when the approver matches the preparer', govSelf.independentReview === false && govSelf.reason === 'self_approval', `got ${JSON.stringify(govSelf)}`);
+
+      // --- 11f2. Reject/Revoke/Reopen must each identify a real actor ---
+      // Reset to a clean single-control audit for these checks.
+      await page.evaluate(() => {
+        approvals.policy = 'reviewer_and_approver';
+        document.getElementById('approval_policy').value = 'reviewer_and_approver';
+        document.getElementById('doc_reviewer').value = '';
+        document.getElementById('doc_reviewer_role').value = '';
+        approvals.reviewer = { required: true, status: 'pending', name: '', role: '', decisionAt: null, version: '', comment: '' };
+      });
+      const rejectRefusedWithoutIdentity = await page.evaluate(() => {
+        rejectApproval('reviewer'); // no doc_reviewer/doc_reviewer_role set — should be refused before even prompting
+        return approvals.reviewer.status;
+      });
+      check('Reject is refused when the reviewer identity is incomplete, same as Approve requires', rejectRefusedWithoutIdentity === 'pending', `got "${rejectRefusedWithoutIdentity}"`);
+
+      await page.evaluate(() => {
+        document.getElementById('doc_reviewer').value = 'Carla Reviewer';
+        document.getElementById('doc_reviewer_role').value = 'Revisora';
+      });
+      await page.evaluate(() => approveRole('reviewer'));
+      await page.waitForTimeout(80);
+      const revokeAttribution = await page.evaluate(() => {
+        window.prompt = (msg) => (window.__revokeCall = (window.__revokeCall || 0) + 1) === 1 ? 'Diego Revoker' : 'Motivo de revocación de prueba';
+        revokeApproval('reviewer');
+        const lastEvent = approvalHistory[approvalHistory.length - 1];
+        return { approvalKeepsOriginalApprover: approvals.reviewer.name, historyAttributesRevokerNotApprover: lastEvent.actor };
+      });
+      check('Revocation preserves the ORIGINAL approver\'s identity on the record itself', revokeAttribution.approvalKeepsOriginalApprover === 'Carla Reviewer');
+      check('Revocation attributes the history event to the person revoking now, not the original approver', revokeAttribution.historyAttributesRevokerNotApprover === 'Diego Revoker');
+
+      await page.evaluate(() => {
+        document.getElementById('doc_approver').value = 'Beto Approver';
+        document.getElementById('doc_approver_role').value = 'Director';
+        document.getElementById('doc_reviewer').value = 'Carla Reviewer';
+        document.getElementById('doc_reviewer_role').value = 'Revisora';
+      });
+      await page.evaluate(() => approveRole('reviewer'));
+      await page.waitForTimeout(80);
+      await page.evaluate(() => approveRole('approver'));
+      await page.waitForTimeout(80);
+      await page.evaluate(() => { window.__alerts = []; window.alert = (m) => window.__alerts.push(m); });
+      await page.evaluate(() => issueFinalReport());
+      await page.waitForTimeout(150);
+      const reopenAttribution = await page.evaluate(() => {
+        window.__reopenCall = 0;
+        window.prompt = (msg) => (window.__reopenCall = window.__reopenCall + 1) === 1 ? 'Elena Reopener' : 'Motivo de reapertura de prueba';
+        reopenForNewVersion();
+        const lastReopenEvent = [...approvalHistory].reverse().find(e => e.action === 'report_reopened');
+        return lastReopenEvent?.actor;
+      });
+      check('Reopening attributes the history event to the person reopening now, not the report\'s original author', reopenAttribution === 'Elena Reopener', `got "${reopenAttribution}"`);
+
+      // --- 11f. Old JSON without an approvals object stays importable ---
+      const backwardCompatible = await page.evaluate(() => {
+        try {
+          applyEngagement({}); // simulates loading a pre-this-feature audit with no docControl.approvals at all
+          return approvals && approvals.policy === 'reviewer_and_approver' && approvals.reviewer.status === 'pending';
+        } catch (e) { return false; }
+      });
+      check('Loading an audit with no approvals object defaults cleanly without inventing an approval', backwardCompatible);
+
+      // --- 11g. Vandan's review round: changing doc_author AFTER approvals
+      // were granted must be re-caught at issuance, not just at approval
+      // time — the exact loophole an earlier version left open.
+      await page.evaluate(() => {
+        approvals.policy = 'reviewer_and_approver';
+        document.getElementById('approval_policy').value = 'reviewer_and_approver';
+        document.getElementById('id_informe').value = 'REG-APPROVAL-LOOPHOLE';
+        document.getElementById('doc_author').value = 'Ana';
+        document.getElementById('doc_version').value = '9.0';
+        document.getElementById('doc_reviewer').value = 'Maria';
+        document.getElementById('doc_reviewer_role').value = 'Revisora';
+        document.getElementById('doc_approver').value = 'Pedro';
+        document.getElementById('doc_approver_role').value = 'Director';
+      });
+      await page.evaluate(() => approveRole('reviewer'));
+      await page.waitForTimeout(80);
+      await page.evaluate(() => approveRole('approver'));
+      await page.waitForTimeout(80);
+      // Change the PREPARER to match the already-approved reviewer, without
+      // touching doc_reviewer/doc_approver (so checkApprovalInvalidation's
+      // own listeners never fire) — approvals stay "approved" on paper.
+      await page.evaluate(() => {
+        document.getElementById('doc_author').value = 'Maria';
+        document.getElementById('doc_author').dispatchEvent(new Event('change'));
+      });
+      await page.waitForTimeout(80);
+      const stillApprovedOnPaper = await page.evaluate(() => approvals.reviewer.status === 'approved' && approvals.approver.status === 'approved');
+      check('Reassigning the preparer after approval does not itself revoke the (now compromised) approvals', stillApprovedOnPaper);
+
+      await page.evaluate(() => { window.__alerts = []; window.alert = (m) => window.__alerts.push(m); });
+      await page.evaluate(() => issueFinalReport());
+      await page.waitForTimeout(150);
+      const loopholeBlockedStatus = await page.evaluate(() => document.getElementById('eng_status').value);
+      check('issueFinalReport() re-verifies independence and blocks issuance when the preparer now matches an approver', loopholeBlockedStatus !== 'issued', `got "${loopholeBlockedStatus}"`);
+
+      // --- 11h. Changing ONLY the organisational role (same name) must
+      // also invalidate an active approval — the frozen record no longer
+      // accurately states who approved in what capacity.
+      await page.evaluate(() => {
+        document.getElementById('doc_author').value = 'Ana';
+        document.getElementById('doc_reviewer').value = 'Carlos';
+        document.getElementById('doc_reviewer_role').value = 'Revisor Junior';
+      });
+      await page.evaluate(() => approveRole('reviewer'));
+      await page.waitForTimeout(80);
+      await page.evaluate(() => {
+        document.getElementById('doc_reviewer_role').value = 'Director de Auditoría Interna'; // same name, different role
+        document.getElementById('doc_reviewer_role').dispatchEvent(new Event('change'));
+      });
+      await page.waitForTimeout(80);
+      const revokedForRoleChange = await page.evaluate(() => approvals.reviewer.status);
+      check('Changing only the organisational role (same person) auto-revokes the active approval', revokedForRoleChange === 'revoked', `got "${revokedForRoleChange}"`);
+
+      // --- 11i. Newly generated findings start with decision: null, not a
+      // pre-picked treatment nobody in Management actually chose.
+      await page.evaluate(() => {
+        document.getElementById('controls').innerHTML = '';
+        addControl(false, 'Q1', 'GOV-01', 'GOV-01', 'Governance', '');
+        const blk = document.querySelector('.control');
+        blk.querySelector('.cumple').value = 'no';
+        blk.querySelector('.cumple').dispatchEvent(new Event('change'));
+      });
+      const newFindingDecision = await page.evaluate(() => collectAuditData().findings[0]?.decision);
+      check('A freshly generated finding has decision: null (no Management decision fabricated)', newFindingDecision === null, `got ${JSON.stringify(newFindingDecision)}`);
+
+      await page.close();
       await ctx.close();
     }
 

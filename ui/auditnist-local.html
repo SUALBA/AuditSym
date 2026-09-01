@@ -817,13 +817,53 @@ placeholder="Ej: INF-2025-001" class="w-full mt-1 p-2 rounded bg-gray-700 text-g
 <span class="text-xs text-gray-400" data-i18n="doc_author_label">Autor</span>
 <input id="doc_author" type="text" class="w-full p-2 rounded bg-gray-700 text-gray-100"/>
 </div>
+</div>
+
+<!-- Reviewer / Approver identity — Control Documental is deliberately the
+     ONE place these people get designated. The approval workflow below
+     reads these fields (never lets you type a name inside the approval
+     dialog itself), so there's never a second, possibly-inconsistent copy
+     of "who is the reviewer" floating around the form. -->
+<div class="grid md:grid-cols-2 gap-3 mt-3">
 <div>
-<span class="text-xs text-gray-400" data-i18n="doc_reviewer_label">Revisor</span>
+<span class="text-xs text-gray-400" data-i18n="doc_reviewer_label">Revisor — Nombre</span>
 <input id="doc_reviewer" type="text" class="w-full p-2 rounded bg-gray-700 text-gray-100"/>
 </div>
 <div>
-<span class="text-xs text-gray-400" data-i18n="doc_approver_label">Aprobador</span>
+<span class="text-xs text-gray-400" data-i18n="doc_reviewer_role_label">Revisor — Cargo</span>
+<input id="doc_reviewer_role" type="text" class="w-full p-2 rounded bg-gray-700 text-gray-100"/>
+</div>
+</div>
+<div class="grid md:grid-cols-2 gap-3 mt-3">
+<div>
+<span class="text-xs text-gray-400" data-i18n="doc_approver_label">Aprobador — Nombre</span>
 <input id="doc_approver" type="text" class="w-full p-2 rounded bg-gray-700 text-gray-100"/>
+</div>
+<div>
+<span class="text-xs text-gray-400" data-i18n="doc_approver_role_label">Aprobador — Cargo</span>
+<input id="doc_approver_role" type="text" class="w-full p-2 rounded bg-gray-700 text-gray-100"/>
+</div>
+</div>
+
+<!-- Report Approval workflow — internal document-review approvals, NOT
+     cryptographic digital signatures (AuditSym cannot verify identity in
+     this local-first version). Each Approve action freezes a COPY of the
+     designated reviewer/approver's name+role at that moment — later
+     editing the fields above never silently rewrites a past approval; it
+     only invalidates the ACTIVE one if the person genuinely changed,
+     prompting a fresh approval instead. -->
+<div class="mt-4 border-t border-gray-700 pt-3">
+<div class="flex items-center justify-between mb-2">
+<span class="text-xs font-bold text-gray-300" data-i18n="approval_section_title">Aprobación del Informe</span>
+<select id="approval_policy" onchange="onApprovalPolicyChange()" class="text-xs bg-gray-700 text-gray-100 rounded px-2 py-1">
+<option value="none" data-i18n="approval_policy_none">Sin aprobación formal</option>
+<option value="single_approver" data-i18n="approval_policy_single">Aprobación única</option>
+<option value="reviewer_and_approver" selected data-i18n="approval_policy_reviewer_approver">Revisor + Aprobador</option>
+</select>
+</div>
+<p class="text-[10px] text-gray-500 mb-2" data-i18n="approval_section_help">Estas son aprobaciones internas de flujo documental, no firmas electrónicas cualificadas — AuditSym no puede verificar criptográficamente la identidad de quien aprueba.</p>
+<div id="approval-governance-notice" class="hidden text-xs text-cyberwarn bg-yellow-900/20 border border-cyberwarn/40 rounded p-2 mb-2"></div>
+<div id="approval-table-rows" class="space-y-1.5"></div>
 </div>
 </div>
 <div class="mt-3">
@@ -2871,6 +2911,301 @@ let docVersionHistory = [];
 // afterward — that immutability is the whole point of an audit trail.
 let versionSnapshots = {};
 
+// ─────────────────────────────────────────────────────────────────────────
+// Report Approval workflow — internal document-review approvals, NOT
+// cryptographic digital signatures. AuditSym cannot independently verify
+// the identity of the approving person in this local-first version; these
+// are documented workflow approvals only.
+//
+// approvals.reviewer / approvals.approver each hold a FROZEN COPY of the
+// designated person's name+role at the moment they approved — never a
+// live reference back to doc_reviewer/doc_approver, so editing those
+// fields later can never silently rewrite a past approval's identity.
+// ─────────────────────────────────────────────────────────────────────────
+function defaultApprovals() {
+  return {
+    policy: 'reviewer_and_approver',
+    reviewer: { required: true, status: 'pending', name: '', role: '', decisionAt: null, version: '', comment: '' },
+    approver: { required: true, status: 'pending', name: '', role: '', decisionAt: null, version: '', comment: '' }
+  };
+}
+let approvals = defaultApprovals();
+
+// Every approval action's own auditable trail — shape matches exactly what
+// the issue specifies ({ts, actor, actorRole, action, version, note}), a
+// direct application of the genId/newRecord/recordChange "Lifecycle
+// Foundation" that had existed unused in this codebase until now.
+let approvalHistory = [];
+
+function logApprovalEvent(actor, actorRole, action, version, note) {
+  approvalHistory.push({ ts: nowTs(), actor, actorRole, action, version, note });
+}
+
+// Accent-insensitive, whitespace/case-insensitive comparison — used both to
+// detect "the reviewer field was changed to a genuinely different person"
+// (auto-invalidating a stale approval) and to detect self-approval for the
+// governance disclosure. A future authenticated-users version should
+// compare user IDs instead of free-text names.
+function normalizeName(s) {
+  return (s || '').toString().trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ');
+}
+function samePerson(a, b) {
+  const na = normalizeName(a), nb = normalizeName(b);
+  return !!na && !!nb && na === nb;
+}
+
+// Calculated by the app — never a value the user can type in directly —
+// so the disclosure can't be gamed into claiming independence that isn't
+// real. Reflects the CURRENT designated reviewer/approver, not necessarily
+// who ended up approving (matches "the workflow configured", which is what
+// a reader deciding how much to trust the report needs to know).
+function computeApprovalGovernance() {
+  const preparer = document.getElementById('doc_author')?.value || '';
+  const reviewer = document.getElementById('doc_reviewer')?.value || '';
+  const approver = document.getElementById('doc_approver')?.value || '';
+  if (approvals.policy === 'none') return { independentReview: false, reason: 'no_formal_approval' };
+  if (approvals.policy === 'single_approver') {
+    return samePerson(preparer, approver)
+      ? { independentReview: false, reason: 'self_approval' }
+      : { independentReview: false, reason: 'single_approver' };
+  }
+  // reviewer_and_approver
+  if (samePerson(preparer, reviewer) || samePerson(preparer, approver) || samePerson(reviewer, approver)) {
+    return { independentReview: false, reason: 'self_approval' };
+  }
+  return { independentReview: true, reason: 'independent_review' };
+}
+
+function renderApprovalGovernanceNotice() {
+  const el = document.getElementById('approval-governance-notice');
+  if (!el) return;
+  const gov = computeApprovalGovernance();
+  const messages = {
+    no_formal_approval: T('approval_gov_none'),
+    single_approver: T('approval_gov_single'),
+    self_approval: T('approval_gov_self'),
+    independent_review: ''
+  };
+  const msg = messages[gov.reason] || '';
+  el.textContent = msg ? `⚠ ${msg}` : '';
+  el.classList.toggle('hidden', !msg);
+}
+
+function renderApprovalTable() {
+  const container = document.getElementById('approval-table-rows');
+  if (!container) return;
+  const policyEl = document.getElementById('approval_policy');
+  if (policyEl) policyEl.value = approvals.policy;
+  renderApprovalGovernanceNotice();
+
+  const version = document.getElementById('doc_version')?.value?.trim() || '';
+  const locked = isAuditLocked();
+
+  const rows = [];
+
+  // "Prepared by" is informational only — always drawn from Control
+  // Documental directly, never its own approval action (someone doesn't
+  // "approve" their own act of preparing the report).
+  rows.push({
+    role: T('approval_role_prepared'),
+    name: document.getElementById('doc_author')?.value || '—',
+    orgRole: T('approval_prepared_org_role'),
+    status: T('approval_status_completed'),
+    statusClass: 'text-cyberok',
+    date: '—',
+    version,
+    actionsHtml: ''
+  });
+
+  if (approvals.policy !== 'none') {
+    const designatedReviewerName = document.getElementById('doc_reviewer')?.value || '';
+    const designatedReviewerRole = document.getElementById('doc_reviewer_role')?.value || '';
+
+    if (approvals.policy === 'reviewer_and_approver') {
+      rows.push(buildApprovalRow('reviewer', T('approval_role_reviewed'), designatedReviewerName, designatedReviewerRole, version, locked));
+    }
+
+    const designatedApproverName = document.getElementById('doc_approver')?.value || '';
+    const designatedApproverRole = document.getElementById('doc_approver_role')?.value || '';
+    rows.push(buildApprovalRow('approver', T('approval_role_approved'), designatedApproverName, designatedApproverRole, version, locked));
+  }
+
+  container.innerHTML = rows.map(r => `
+    <div class="grid grid-cols-12 gap-1 items-center bg-gray-800/60 rounded px-2 py-1.5 text-xs">
+      <div class="col-span-2 text-gray-400">${escapeHTML(r.role)}</div>
+      <div class="col-span-3 text-gray-200 truncate">${escapeHTML(r.name || '—')}</div>
+      <div class="col-span-3 text-gray-400 truncate">${escapeHTML(r.orgRole || '—')}</div>
+      <div class="col-span-2 font-bold ${r.statusClass}">${escapeHTML(r.status)}</div>
+      <div class="col-span-2 flex justify-end gap-1">${r.actionsHtml}</div>
+    </div>
+    ${r.comment ? `<div class="text-[10px] text-gray-500 pl-2 -mt-1 mb-1">💬 ${escapeHTML(r.comment)}</div>` : ''}
+  `).join('');
+}
+
+function buildApprovalRow(roleKey, roleLabel, designatedName, designatedOrgRole, version, locked) {
+  const a = approvals[roleKey];
+  const statusMap = {
+    pending:   { label: T('approval_status_pending'),   cls: 'text-gray-400' },
+    approved:  { label: T('approval_status_approved'),  cls: 'text-cyberok' },
+    rejected:  { label: T('approval_status_rejected'),  cls: 'text-cyberevil' },
+    revoked:   { label: T('approval_status_revoked'),   cls: 'text-cyberevil' },
+    superseded:{ label: T('approval_status_superseded'),cls: 'text-violet-400' }
+  };
+  const st = statusMap[a.status] || statusMap.pending;
+  let actionsHtml = '';
+  if (!locked) {
+    if (a.status === 'pending' || a.status === 'rejected') {
+      const label = roleKey === 'reviewer' ? T('approval_action_approve_review') : T('approval_action_approve_issuance');
+      actionsHtml = `<button type="button" onclick="approveRole('${roleKey}')" class="px-2 py-0.5 bg-cyberok text-black rounded text-[10px] font-bold hover:bg-green-400">${escapeHTML(label)}</button>
+        <button type="button" onclick="rejectApproval('${roleKey}')" class="px-2 py-0.5 bg-cyberevil text-white rounded text-[10px] font-bold hover:bg-red-500">${T('approval_action_reject')}</button>`;
+    } else if (a.status === 'approved') {
+      actionsHtml = `<button type="button" onclick="revokeApproval('${roleKey}')" class="px-2 py-0.5 bg-gray-600 text-white rounded text-[10px] font-bold hover:bg-gray-500">${T('approval_action_revoke')}</button>`;
+    }
+  }
+  return {
+    role: roleLabel,
+    name: a.status === 'approved' ? a.name : designatedName,
+    orgRole: a.status === 'approved' ? a.role : designatedOrgRole,
+    status: st.label,
+    statusClass: st.cls,
+    date: a.decisionAt ? new Date(a.decisionAt).toLocaleString() : '—',
+    version: a.status === 'approved' ? a.version : version,
+    actionsHtml,
+    comment: (a.status === 'rejected' || a.status === 'revoked') ? a.comment : ''
+  };
+}
+
+function onApprovalPolicyChange() {
+  if (isAuditLocked()) { alert('🔒 ' + T('locked_action_blocked')); document.getElementById('approval_policy').value = approvals.policy; return; }
+  approvals.policy = document.getElementById('approval_policy').value;
+  isDirty = true;
+  renderApprovalTable();
+}
+
+function approveRole(roleKey) {
+  if (isAuditLocked()) { alert('🔒 ' + T('locked_action_blocked')); return; }
+  const nameField = roleKey === 'reviewer' ? 'doc_reviewer' : 'doc_approver';
+  const roleField = roleKey === 'reviewer' ? 'doc_reviewer_role' : 'doc_approver_role';
+  const name = document.getElementById(nameField)?.value?.trim() || '';
+  const orgRole = document.getElementById(roleField)?.value?.trim() || '';
+  const version = document.getElementById('doc_version')?.value?.trim() || '';
+
+  if (!name || !orgRole) {
+    alert('🛑 ' + T('approval_missing_identity').replace('{field}', roleKey === 'reviewer' ? T('doc_reviewer_label') : T('doc_approver_label')));
+    return;
+  }
+
+  // Under "reviewer_and_approver", the whole point of the policy is a
+  // guaranteed independent review — allowing the preparer to also serve as
+  // reviewer/approver, or the same person to hold BOTH roles, would make
+  // the policy name a fiction. This is the one policy where self-approval
+  // is actively forbidden, not just disclosed (single_approver still
+  // permits it, with disclosure, for a solo auditor's engagement).
+  if (approvals.policy === 'reviewer_and_approver') {
+    const preparer = document.getElementById('doc_author')?.value || '';
+    if (samePerson(name, preparer)) {
+      alert('🛑 ' + T('approval_self_approval_forbidden'));
+      return;
+    }
+    const otherRoleField = roleKey === 'reviewer' ? 'doc_approver' : 'doc_reviewer';
+    const otherName = document.getElementById(otherRoleField)?.value || '';
+    if (otherName && samePerson(name, otherName)) {
+      alert('🛑 ' + T('approval_same_person_both_roles_forbidden'));
+      return;
+    }
+  }
+
+  if (roleKey === 'approver' && approvals.policy === 'reviewer_and_approver' && approvals.reviewer.status !== 'approved') {
+    alert('🛑 ' + T('approval_reviewer_first'));
+    return;
+  }
+
+  const confirmMsg = T('approval_confirm_prompt')
+    .replace('{name}', name).replace('{role}', orgRole)
+    .replace('{function}', roleKey === 'reviewer' ? T('approval_role_reviewed') : T('approval_role_approved'))
+    .replace('{version}', version || '—');
+  if (!confirm(confirmMsg)) return;
+
+  approvals[roleKey] = {
+    required: true, status: 'approved', name, role: orgRole,
+    decisionAt: new Date().toISOString(), version, comment: ''
+  };
+  logApprovalEvent(name, orgRole, roleKey === 'reviewer' ? 'review_approved' : 'final_approval_granted', version,
+    roleKey === 'reviewer' ? 'Revisión metodológica completada' : 'Aprobación final para emisión');
+  isDirty = true;
+  renderApprovalTable();
+}
+
+function rejectApproval(roleKey) {
+  if (isAuditLocked()) { alert('🔒 ' + T('locked_action_blocked')); return; }
+  const nameField = roleKey === 'reviewer' ? 'doc_reviewer' : 'doc_approver';
+  const roleField = roleKey === 'reviewer' ? 'doc_reviewer_role' : 'doc_approver_role';
+  const name = document.getElementById(nameField)?.value?.trim() || '';
+  const orgRole = document.getElementById(roleField)?.value?.trim() || '';
+  // A rejection must have an identified actor behind it, same as an
+  // approval — an unnamed rejection would be just as ungoverned as an
+  // unnamed approval, and the issue explicitly requires one.
+  if (!name || !orgRole) {
+    alert('🛑 ' + T('approval_missing_identity').replace('{field}', roleKey === 'reviewer' ? T('doc_reviewer_label') : T('doc_approver_label')));
+    return;
+  }
+  const reason = prompt(T('approval_reject_prompt'));
+  if (reason === null) return;
+  if (!reason.trim()) { alert('🛑 ' + T('approval_reason_required')); return; }
+  const version = document.getElementById('doc_version')?.value?.trim() || '';
+
+  approvals[roleKey] = { required: true, status: 'rejected', name, role: orgRole, decisionAt: new Date().toISOString(), version, comment: reason.trim() };
+  logApprovalEvent(name, orgRole, roleKey === 'reviewer' ? 'review_rejected' : 'final_approval_rejected', version, reason.trim());
+  isDirty = true;
+  renderApprovalTable();
+}
+
+function revokeApproval(roleKey) {
+  if (isAuditLocked()) { alert('🔒 ' + T('locked_action_blocked')); return; }
+  // Whoever is revoking NOW may not be the same person who originally
+  // approved — reusing the frozen approver's name here would misattribute
+  // the revocation decision to someone who might not even be the one
+  // making it. Ask explicitly, exactly as approving does.
+  const revokerName = prompt(T('approval_revoker_name_prompt'));
+  if (revokerName === null) return;
+  if (!revokerName.trim()) { alert('🛑 ' + T('approval_reason_required')); return; }
+  const reason = prompt(T('approval_revoke_prompt'));
+  if (reason === null) return;
+  if (!reason.trim()) { alert('🛑 ' + T('approval_reason_required')); return; }
+  const version = document.getElementById('doc_version')?.value?.trim() || '';
+  const prevApproval = approvals[roleKey];
+  approvals[roleKey] = { required: true, status: 'revoked', name: prevApproval.name, role: prevApproval.role, decisionAt: new Date().toISOString(), version, comment: reason.trim() };
+  logApprovalEvent(revokerName.trim(), T('approval_revoker_role_generic'), 'approval_revoked', version, `${reason.trim()} (revocado por: ${revokerName.trim()}; aprobación original de: ${prevApproval.name})`);
+  isDirty = true;
+  renderApprovalTable();
+}
+
+// Called whenever the designated reviewer/approver name or role changes —
+// if an APPROVED decision was frozen under a genuinely different person
+// (not just a typo fix, thanks to samePerson()'s normalization), that
+// approval no longer means what it says and must not silently keep
+// authorizing issuance under the new designation.
+function checkApprovalInvalidation(roleKey) {
+  const a = approvals[roleKey];
+  if (!a || a.status !== 'approved') return;
+  const nameField = roleKey === 'reviewer' ? 'doc_reviewer' : 'doc_approver';
+  const roleField = roleKey === 'reviewer' ? 'doc_reviewer_role' : 'doc_approver_role';
+  const currentName = document.getElementById(nameField)?.value || '';
+  const currentRole = document.getElementById(roleField)?.value?.trim() || '';
+  // Either the person OR their stated organizational role changing means
+  // the frozen record no longer accurately describes who approved this —
+  // e.g. "María López, Head of Internal Audit" approving is a materially
+  // different fact from "María López, CFO" approving, even though the
+  // name matches.
+  if (!samePerson(currentName, a.name) || currentRole !== (a.role || '').trim()) {
+    const version = document.getElementById('doc_version')?.value?.trim() || '';
+    logApprovalEvent('system', 'system', 'approval_revoked', version, `Reasignado de "${a.name} (${a.role})" a "${currentName} (${currentRole})"`);
+    approvals[roleKey] = { required: true, status: 'revoked', name: a.name, role: a.role, decisionAt: new Date().toISOString(), version, comment: T('approval_auto_revoked_reason') };
+    isDirty = true;
+    renderApprovalTable();
+  }
+}
+
 function renderVersionHistoryRows() {
   const container = document.getElementById('doc-version-history-rows');
   if (!container) return;
@@ -2996,10 +3331,18 @@ version: val('doc_version'),
 owner: val('doc_owner'),
 author: val('doc_author'),
 reviewer: val('doc_reviewer'),
+reviewerRole: val('doc_reviewer_role'),
 approver: val('doc_approver'),
+approverRole: val('doc_approver_role'),
 recipients: val('doc_recipients'),
 versionHistory: docVersionHistory,
-versionSnapshots: versionSnapshots
+versionSnapshots: versionSnapshots,
+approvals: approvals,
+approvalHistory: approvalHistory,
+// Always recomputed live — never trusted verbatim from a loaded/imported
+// file, so an edited JSON can't falsely claim more independence than the
+// CURRENT designated people/policy actually provide.
+approvalGovernance: computeApprovalGovernance()
 }
 };
 }
@@ -3088,7 +3431,19 @@ function applyEditLock() {
 // misleadingly suggest starting from nothing — and clears the old issuance
 // date, since whatever comes next is heading toward a NEW one.
 function reopenForNewVersion() {
+  // Whoever presses this button may not be the report's original author —
+  // reusing doc_author here would misattribute the reopening decision to
+  // whoever happened to prepare v1.0, not to the actual person deciding
+  // to reopen it now.
+  const reopenerName = prompt(T('reopen_actor_prompt'));
+  if (reopenerName === null) return; // cancelled
+  if (!reopenerName.trim()) { alert('🛑 ' + T('approval_reason_required')); return; }
+  const reason = prompt(T('reopen_reason_prompt'));
+  if (reason === null) return; // cancelled
+  if (!reason.trim()) { alert('🛑 ' + T('approval_reason_required')); return; }
   if (!confirm(T('reopen_confirm'))) return;
+
+  const oldVersion = document.getElementById('doc_version')?.value?.trim() || '';
   const statusEl = document.getElementById('eng_status');
   if (statusEl) statusEl.value = 'ready_for_report';
   const issuedAtEl = document.getElementById('eng_issued_at');
@@ -3099,8 +3454,26 @@ function reopenForNewVersion() {
   // producing a JSON that claimed both "not yet issued" and "issued on
   // <old date>" at the same time.
   publishedSnapshot = null;
+
+  // The previous version's approvals remain perfectly preserved inside
+  // versionSnapshots[oldVersion] (frozen forever, per that mechanism's own
+  // design) — what changes here is only the LIVE, active workflow: those
+  // approvals become "superseded" (still true for the version they
+  // authorized, just not for what comes next) and the new working cycle
+  // starts with fresh pending decisions, never inheriting old ones.
+  ['reviewer', 'approver'].forEach(roleKey => {
+    if (approvals[roleKey].status === 'approved') {
+      logApprovalEvent(approvals[roleKey].name, approvals[roleKey].role, 'approvals_superseded', oldVersion, `Superada al reabrir para nueva versión (reabierto por ${reopenerName.trim()}): ${reason.trim()}`);
+      approvals[roleKey] = { ...approvals[roleKey], status: 'superseded' };
+    }
+  });
+  logApprovalEvent(reopenerName.trim(), T('approval_reopener_role_generic'), 'report_reopened', oldVersion, reason.trim());
+  approvals.reviewer = { required: approvals.reviewer.required, status: 'pending', name: '', role: '', decisionAt: null, version: '', comment: '' };
+  approvals.approver = { required: approvals.approver.required, status: 'pending', name: '', role: '', decisionAt: null, version: '', comment: '' };
+
   applyEditLock();
   updateDatesValidation();
+  renderApprovalTable();
   isDirty = true;
   alert('🔓 ' + T('reopen_done'));
 }
@@ -3214,11 +3587,19 @@ set('doc_version', dc.version);
 set('doc_owner', dc.owner);
 set('doc_author', dc.author);
 set('doc_reviewer', dc.reviewer);
+set('doc_reviewer_role', dc.reviewerRole);
 set('doc_approver', dc.approver);
+set('doc_approver_role', dc.approverRole);
 set('doc_recipients', dc.recipients);
 docVersionHistory = Array.isArray(dc.versionHistory) ? dc.versionHistory : [];
 versionSnapshots = (dc.versionSnapshots && typeof dc.versionSnapshots === 'object') ? dc.versionSnapshots : {};
+// Older audits saved before this feature existed simply won't have an
+// approvals object — default to the standard policy without inventing any
+// approver identity or pretending a decision was ever made.
+approvals = (dc.approvals && typeof dc.approvals === 'object') ? dc.approvals : defaultApprovals();
+approvalHistory = Array.isArray(dc.approvalHistory) ? dc.approvalHistory : [];
 renderVersionHistoryRows();
+renderApprovalTable();
 renderTeamRows(eng.team || []);
 updateDatesValidation();
 applyEditLock();
@@ -3419,6 +3800,59 @@ function issueFinalReport() {
     return;
   }
 
+  // Required approvals must be complete AND bound to THIS exact version —
+  // an approval frozen under a previous version number (e.g. left over
+  // from before a reopen, or a reused version string) does not authorize
+  // a different one. The error names exactly what's missing rather than a
+  // generic "cannot issue."
+  if (approvals.policy !== 'none') {
+    const missing = [];
+    if (approvals.policy === 'reviewer_and_approver' && (approvals.reviewer.status !== 'approved' || approvals.reviewer.version !== versionToIssue)) {
+      missing.push(T('approval_role_reviewed'));
+    }
+    if (approvals.approver.status !== 'approved' || approvals.approver.version !== versionToIssue) {
+      missing.push(T('approval_role_approved'));
+    }
+    if (missing.length > 0) {
+      alert('🛑 ' + T('issue_blocked_missing_approvals') + '\n\n' + missing.map(m => `• ${m}`).join('\n'));
+      return;
+    }
+
+    // Independence was checked at the moment each approval was GRANTED —
+    // but doc_author (or doc_reviewer/doc_approver, via a path that
+    // wouldn't trip checkApprovalInvalidation) can be edited afterward
+    // without ever re-touching the already-approved records. Re-verify
+    // here too, at the one point that actually matters: right before the
+    // report becomes locked and official. A passive warning is not
+    // enough — under this policy, a compromised separation of duties must
+    // block issuance outright, the same as it blocks a fresh approval.
+    if (approvals.policy === 'reviewer_and_approver') {
+      const preparerNow = document.getElementById('doc_author')?.value || '';
+      const reviewerNow = document.getElementById('doc_reviewer')?.value || '';
+      const approverNow = document.getElementById('doc_approver')?.value || '';
+      if (samePerson(preparerNow, reviewerNow) || samePerson(preparerNow, approverNow) || samePerson(reviewerNow, approverNow)) {
+        alert('🛑 ' + T('approval_self_approval_forbidden'));
+        return;
+      }
+    }
+  }
+
+  // The approval table already shows the governance disclosure passively
+  // at all times — but the exact moment of clicking "Emitir" deserves an
+  // active, impossible-to-miss confirmation when there's something to
+  // disclose, not just a note the person may have scrolled past earlier.
+  const govAtIssuance = computeApprovalGovernance();
+  if (govAtIssuance.reason !== 'independent_review') {
+    const govConfirmMsgs = {
+      no_formal_approval: T('approval_gov_none'),
+      single_approver: T('approval_gov_single'),
+      self_approval: T('approval_gov_self')
+    };
+    if (!confirm('⚠ ' + (govConfirmMsgs[govAtIssuance.reason] || '') + '\n\n' + T('issue_governance_confirm'))) {
+      return;
+    }
+  }
+
   // The version-history entry for THIS issuance is created automatically
   // and becomes immutable from this point on. If the auditor already
   // logged a note for this exact version via "+ Registrar Nueva Versión"
@@ -3438,6 +3872,7 @@ function issueFinalReport() {
     });
   }
   renderVersionHistoryRows();
+  logApprovalEvent(document.getElementById('doc_author')?.value || '', T('approval_role_prepared'), 'report_issued', versionToIssue, 'Informe emitido');
 
   // Derive findings fresh from the current controls at the moment of issue,
   // ignoring any earlier snapshot (re-issuing must re-capture, not replay).
@@ -3594,7 +4029,11 @@ function buildFinding(control, auditId) {
         cost: effort,                        // cost band key; the Hub renders it as $/$$/$$$
         score: score,                        // Impact ÷ Effort
         // ── MANAGEMENT RESPONSE (M2) ──
-        decision: 'mitigate',                // avoid|mitigate|transfer|risk_accepted|false_positive
+        // null, not a pre-picked value — nobody in Management has actually
+        // decided anything about a finding the moment it's auto-generated.
+        // Defaulting this to 'mitigate' would let a brand-new, untouched
+        // finding look like Management already chose a treatment path.
+        decision: null,                      // null until decided | avoid|mitigate|transfer|risk_accepted|false_positive
         owner: '',
         timeframe: `${days} days`,           // "X days"
         status: 'open',
@@ -5089,6 +5528,22 @@ function generatePDF() {
     // several authorized recipients: board members, CISO, legal, external
     // regulator...) simply ran off the right edge of the page instead of
     // wrapping.
+    // Reviewer/Approver rows show the real approval status once the
+    // workflow is active (name, org role, decision, date, version) instead
+    // of just a plain name — the whole point of this feature is that the
+    // report visibly documents WHO reviewed/authorized it and WHEN, not
+    // just who was nominally assigned to the role.
+    const STATUS_LABELS_APPROVAL = { pending: 'Pendiente', approved: 'Aprobado', rejected: 'Rechazado', revoked: 'Revocado', superseded: 'Superada (versión anterior)' };
+    function approvalRowValue(app, designatedName, designatedRole) {
+      if (!app) return designatedName || '—';
+      const statusLabel = STATUS_LABELS_APPROVAL[app.status] || 'Pendiente';
+      if (app.status === 'approved') {
+        const dateStr = app.decisionAt ? new Date(app.decisionAt).toLocaleDateString('es-ES') : '';
+        return `${app.name} (${app.role}) · ${statusLabel} · ${dateStr} · v${app.version}`;
+      }
+      return `${designatedName || '—'}${designatedRole ? ' (' + designatedRole + ')' : ''} · ${statusLabel}`;
+    }
+    const approvalsPolicy = dc.approvals?.policy || 'none';
     let cy = 400;
     const tableX = margin + 40, tableW = contentWidth - 80, labelW = 160;
     const valueW = tableX + tableW - (tableX + labelW) - 10;
@@ -5100,8 +5555,8 @@ function generatePDF() {
       ['Estado', STATUS_LABELS_COVER[eng.status] || 'Borrador'],
       ['Propietario del Documento', dc.owner || '—'],
       ['Autor', dc.author || auditData.auditor || '—'],
-      ['Revisor', dc.reviewer || '—'],
-      ['Aprobador', dc.approver || '—'],
+      ['Revisor', approvalsPolicy === 'reviewer_and_approver' ? approvalRowValue(dc.approvals?.reviewer, dc.reviewer, dc.reviewerRole) : (dc.reviewer || '—')],
+      ['Aprobador', approvalsPolicy !== 'none' ? approvalRowValue(dc.approvals?.approver, dc.approver, dc.approverRole) : (dc.approver || '—')],
       ['Destinatarios Autorizados', dc.recipients || '—'],
       ['Fecha Real de Emisión', (eng.status === 'issued' && eng.issuedAt) ? eng.issuedAt : 'Pendiente de emisión'],
       ['Copia Generada', new Date().toLocaleString('es-ES')],
@@ -5119,7 +5574,35 @@ function generatePDF() {
       valueLines.forEach((l, li) => doc.text(l, tableX + labelW, cy + 13 + li * lineH));
       cy += rowH;
     });
-    cy += 20;
+    cy += 12;
+
+    // Honest disclosure, calculated by the app (never user-editable) — a
+    // report issued without independent review should say so plainly
+    // rather than let the reader assume a review happened just because
+    // rows are filled in. Only shown when there's something to disclose;
+    // a genuine independent reviewer+approver leaves no message here.
+    const govForCover = computeApprovalGovernance();
+    const govMessages = {
+      no_formal_approval: 'Este informe se emite sin un flujo formal de revisión o aprobación, de acuerdo con la política seleccionada para este encargo.',
+      single_approver: 'Este informe ha sido autorizado mediante un flujo de aprobación de una sola persona. No se ha realizado una revisión independiente adicional.',
+      self_approval: 'La persona que preparó este informe también participa en su aprobación. No se ha realizado una revisión verdaderamente independiente.'
+    };
+    if (govMessages[govForCover.reason]) {
+      doc.setFont('Roboto', 'italic').setFontSize(7.5).setTextColor(217, 119, 6);
+      const govLines = doc.splitTextToSize(`⚠ ${govMessages[govForCover.reason]}`, tableW);
+      govLines.forEach((l, i) => doc.text(l, tableX, cy + i * 10));
+      cy += govLines.length * 10 + 4;
+    }
+
+    // The scope-boundary honesty this whole feature is built on: never let
+    // an "Aprobado" status be mistaken for a cryptographic signature.
+    doc.setFont('Roboto', 'italic').setFontSize(7).setTextColor(140, 150, 175);
+    const approvalDisclaimerLines = doc.splitTextToSize(
+      'Las aprobaciones registradas en este informe representan el flujo interno de revisión documental de AuditSym. No constituyen firmas electrónicas cualificadas ni acreditan criptográficamente la identidad de quien aprueba.',
+      tableW
+    );
+    approvalDisclaimerLines.forEach((l, i) => doc.text(l, tableX, cy + i * 9));
+    cy += approvalDisclaimerLines.length * 9 + 12;
 
     // Real version history, read straight from the document control log
     // kept inside the app — replacing the earlier placeholder that pointed
@@ -6716,6 +7199,36 @@ doc_control_title:'📄 Control Documental', doc_control_intro:'Se muestra como 
 doc_classification_label:'Clasificación', doc_classification_confidential:'Confidencial', doc_classification_internal:'Uso Interno', doc_classification_public:'Público',
 doc_version_label:'Versión', doc_owner_label:'Propietario del Documento', doc_author_label:'Autor',
 doc_reviewer_label:'Revisor', doc_approver_label:'Aprobador',
+doc_reviewer_role_label:'Cargo del Revisor', doc_approver_role_label:'Cargo del Aprobador',
+approval_section_title:'Aprobación del Informe',
+approval_section_help:'Estas son aprobaciones internas de flujo documental, no firmas electrónicas cualificadas — AuditSym no puede verificar criptográficamente la identidad de quien aprueba.',
+approval_policy_none:'Sin aprobación formal', approval_policy_single:'Aprobación única', approval_policy_reviewer_approver:'Revisor + Aprobador',
+approval_role_prepared:'Preparado por', approval_role_reviewed:'Revisado por', approval_role_approved:'Aprobado por',
+approval_prepared_org_role:'Auditor principal',
+approval_status_completed:'Completado', approval_status_pending:'Pendiente', approval_status_approved:'Aprobado',
+approval_status_rejected:'Rechazado', approval_status_revoked:'Revocado', approval_status_superseded:'Superada (versión anterior)',
+approval_action_approve_review:'Aprobar Revisión', approval_action_approve_issuance:'Aprobar Emisión',
+approval_action_reject:'Rechazar', approval_action_revoke:'Revocar',
+approval_gov_none:'Este informe se emite sin un flujo formal de revisión o aprobación, de acuerdo con la política seleccionada para este encargo.',
+approval_gov_single:'Este informe ha sido autorizado mediante un flujo de aprobación de una sola persona. No se ha realizado una revisión independiente adicional.',
+approval_gov_self:'La persona que preparó el informe también participa en su aprobación. No se ha realizado una revisión verdaderamente independiente.',
+approval_missing_identity:'Indica el nombre y el cargo de "{field}" en Control Documental antes de aprobar.',
+approval_reviewer_first:'La aprobación del revisor debe completarse antes de aprobar la emisión.',
+approval_self_approval_forbidden:'No permitido: bajo la política "Revisor + Aprobador", la persona que preparó el informe no puede también revisarlo o aprobarlo — esta política existe precisamente para garantizar una revisión independiente.',
+approval_same_person_both_roles_forbidden:'No permitido: el revisor y el aprobador deben ser personas distintas bajo esta política.',
+approval_confirm_prompt:'Aprobar como:\n\nNombre: {name}\nCargo: {role}\nFunción: {function}\nVersión: {version}\n\n¿Confirmar?',
+approval_reject_prompt:'Motivo del rechazo (obligatorio):',
+approval_revoke_prompt:'Motivo de la revocación (obligatorio):',
+approval_reason_required:'Debes indicar un motivo para continuar.',
+approval_unknown_actor:'(sin identificar)',
+approval_revoker_name_prompt:'Nombre de quien revoca esta aprobación ahora (obligatorio):',
+approval_revoker_role_generic:'Revocador',
+reopen_actor_prompt:'Nombre de quien reabre este informe ahora (obligatorio):',
+approval_reopener_role_generic:'Persona que reabre el informe',
+approval_auto_revoked_reason:'Revocada automáticamente: el nombre designado cambió tras la aprobación.',
+issue_blocked_missing_approvals:'No se puede emitir el informe: faltan las siguientes aprobaciones para la versión actual:',
+issue_governance_confirm:'¿Confirmas que quieres emitir el informe de todas formas?',
+reopen_reason_prompt:'¿Por qué se reabre este informe emitido? (obligatorio)',
 doc_recipients_label:'Destinatarios Autorizados', doc_recipients_ph:'Nombres, cargos o departamentos autorizados a recibir este informe',
 doc_version_history_label:'Historial de Versiones', doc_version_history_add:'+ Registrar Nueva Versión',
 doc_version_history_help:'Cada revisión sustancial del informe debería quedar registrada aquí, con el motivo del cambio — esto es lo que se muestra en la portada del PDF en lugar de remitir a un sistema externo.',
@@ -6857,6 +7370,36 @@ doc_control_title:'📄 Document Control', doc_control_intro:'Shown as the forma
 doc_classification_label:'Classification', doc_classification_confidential:'Confidential', doc_classification_internal:'Internal Use', doc_classification_public:'Public',
 doc_version_label:'Version', doc_owner_label:'Document Owner', doc_author_label:'Author',
 doc_reviewer_label:'Reviewer', doc_approver_label:'Approver',
+doc_reviewer_role_label:'Reviewer Role', doc_approver_role_label:'Approver Role',
+approval_section_title:'Report Approval',
+approval_section_help:'These are internal document-review approvals, not qualified electronic signatures — AuditSym cannot cryptographically verify the identity of the approver.',
+approval_policy_none:'No formal approval', approval_policy_single:'Single approver', approval_policy_reviewer_approver:'Reviewer + Approver',
+approval_role_prepared:'Prepared by', approval_role_reviewed:'Reviewed by', approval_role_approved:'Approved by',
+approval_prepared_org_role:'Lead Auditor',
+approval_status_completed:'Completed', approval_status_pending:'Pending', approval_status_approved:'Approved',
+approval_status_rejected:'Rejected', approval_status_revoked:'Revoked', approval_status_superseded:'Superseded (previous version)',
+approval_action_approve_review:'Approve Review', approval_action_approve_issuance:'Approve Issuance',
+approval_action_reject:'Reject', approval_action_revoke:'Revoke',
+approval_gov_none:'This report is issued without a formal review or approval workflow, per the policy selected for this engagement.',
+approval_gov_single:'This report was authorized through a single-person approval workflow. No additional independent review was performed.',
+approval_gov_self:'The person who prepared this report is also involved in approving it. No genuinely independent review was performed.',
+approval_missing_identity:'Enter the name and role for "{field}" in Document Control before approving.',
+approval_reviewer_first:'Reviewer approval must be completed before approving issuance.',
+approval_self_approval_forbidden:'Not allowed: under the "Reviewer + Approver" policy, the person who prepared the report cannot also review or approve it — this policy exists specifically to guarantee an independent review.',
+approval_same_person_both_roles_forbidden:'Not allowed: the reviewer and approver must be different people under this policy.',
+approval_confirm_prompt:'Approve as:\n\nName: {name}\nRole: {role}\nFunction: {function}\nVersion: {version}\n\nConfirm?',
+approval_reject_prompt:'Reason for rejection (required):',
+approval_revoke_prompt:'Reason for revocation (required):',
+approval_reason_required:'You must provide a reason to continue.',
+approval_unknown_actor:'(unidentified)',
+approval_revoker_name_prompt:'Name of the person revoking this approval now (required):',
+approval_revoker_role_generic:'Revoker',
+reopen_actor_prompt:'Name of the person reopening this report now (required):',
+approval_reopener_role_generic:'Person reopening the report',
+approval_auto_revoked_reason:'Automatically revoked: the designated name changed after approval.',
+issue_blocked_missing_approvals:'Cannot issue the report: the following approvals are missing for the current version:',
+issue_governance_confirm:'Do you confirm you want to issue the report anyway?',
+reopen_reason_prompt:'Why is this issued report being reopened? (required)',
 doc_recipients_label:'Authorized Recipients', doc_recipients_ph:'Names, titles, or departments authorized to receive this report',
 doc_version_history_label:'Version History', doc_version_history_add:'+ Log New Version',
 doc_version_history_help:'Every substantial revision of the report should be logged here, with the reason for the change — this is what the PDF cover page shows instead of pointing to an external system.',
@@ -6910,6 +7453,53 @@ export_json_btn:'💾 Exporter JSON', import_json_btn:'📂 Importer JSON', issu
 save_progress_btn:'💾 Sauvegarder', view_saved_btn:'📋 Rapports',
 chart_compliance:'Conformité', chart_risk:'Risques',
 yes:'Oui', no:'Non', partial:'Partiel', not_applicable:'Non applicable',
+doc_reviewer_label:'Réviseur',
+doc_approver_label:'Approbateur',
+doc_reviewer_role_label:'Fonction du Réviseur',
+doc_approver_role_label:'Fonction de l\'Approbateur',
+approval_section_title:'Approbation du Rapport',
+approval_section_help:'Il s\'agit d\'approbations internes du flux documentaire, non de signatures électroniques qualifiées — AuditSym ne peut pas vérifier cryptographiquement l\'identité de la personne qui approuve.',
+approval_policy_none:'Aucune approbation formelle',
+approval_policy_single:'Approbation unique',
+approval_policy_reviewer_approver:'Réviseur + Approbateur',
+approval_role_prepared:'Préparé par',
+approval_role_reviewed:'Révisé par',
+approval_role_approved:'Approuvé par',
+approval_prepared_org_role:'Auditeur principal',
+approval_status_completed:'Terminé',
+approval_status_pending:'En attente',
+approval_status_approved:'Approuvé',
+approval_status_rejected:'Rejeté',
+approval_status_revoked:'Révoqué',
+approval_status_superseded:'Remplacée (version antérieure)',
+approval_action_approve_review:'Approuver la Révision',
+approval_action_approve_issuance:'Approuver l\'Émission',
+approval_action_reject:'Rejeter',
+approval_action_revoke:'Révoquer',
+approval_gov_none:'Ce rapport est émis sans processus formel de révision ou d\'approbation, conformément à la politique sélectionnée pour cette mission.',
+approval_gov_single:'Ce rapport a été autorisé par un processus d\'approbation à une seule personne. Aucune révision indépendante supplémentaire n\'a été effectuée.',
+approval_gov_self:'La personne qui a préparé ce rapport participe également à son approbation. Aucune révision véritablement indépendante n\'a été effectuée.',
+approval_missing_identity:'Indiquez le nom et la fonction de "{field}" dans le Contrôle Documentaire avant d\'approuver.',
+approval_reviewer_first:'L\'approbation du réviseur doit être complétée avant d\'approuver l\'émission.',
+approval_self_approval_forbidden:'Non autorisé : selon la politique "Réviseur + Approbateur", la personne qui a préparé le rapport ne peut pas également le réviser ou l\'approuver — cette politique existe précisément pour garantir une révision indépendante.',
+approval_same_person_both_roles_forbidden:'Non autorisé : le réviseur et l\'approbateur doivent être des personnes différentes selon cette politique.',
+approval_confirm_prompt:'Approuver en tant que :\\n\\nNom : {name}\\nFonction : {role}\\nRôle : {function}\\nVersion : {version}\\n\\nConfirmer ?',
+approval_reject_prompt:'Motif du rejet (obligatoire) :',
+approval_revoke_prompt:'Motif de la révocation (obligatoire) :',
+approval_reason_required:'Vous devez indiquer un motif pour continuer.',
+approval_unknown_actor:'(non identifié)',
+approval_auto_revoked_reason:'Révoquée automatiquement : le nom désigné a changé après l\'approbation.',
+approval_revoker_name_prompt:'Nom de la personne qui révoque cette approbation maintenant (obligatoire) :',
+approval_revoker_role_generic:'Révocateur',
+reopen_actor_prompt:'Nom de la personne qui rouvre ce rapport maintenant (obligatoire) :',
+approval_reopener_role_generic:'Personne qui rouvre le rapport',
+issue_blocked_missing_approvals:'Impossible d\'émettre le rapport : les approbations suivantes manquent pour la version actuelle :',
+issue_governance_confirm:'Confirmez-vous vouloir émettre le rapport quand même ?',
+reopen_btn:'🔓 Rouvrir pour une Nouvelle Version',
+reopen_confirm:'Vous allez rouvrir ce rapport émis pour travailler sur une nouvelle version. Le statut passera à "Prêt pour le Rapport" et la date d\'émission précédente sera effacée jusqu\'à la prochaine émission. Continuer ?',
+reopen_done:'Rapport rouvert. N\'oubliez pas d\'enregistrer une nouvelle entrée dans l\'Historique des Versions avant de le réémettre.',
+reopen_reason_prompt:'Pourquoi ce rapport émis est-il rouvert ? (obligatoire)',
+status_issued_manual_blocked:'Le statut "Émis" ne peut être défini qu\'en cliquant sur "Émettre le Rapport Final" — cela garantit les vérifications préalables (dates, brouillons IA non validés, entrée d\'historique de version).',
 critical:'Critique', high:'Élevé', medium:'Moyen', low:'Faible',
 template_library_btn:'📚 Bibliothèque',
 template_loading:'Chargement...',
@@ -6964,6 +7554,53 @@ export_json_btn:'💾 JSON exportieren', import_json_btn:'📂 JSON importieren'
 save_progress_btn:'💾 Speichern', view_saved_btn:'📋 Berichte',
 chart_compliance:'Konformität', chart_risk:'Risiken',
 yes:'Ja', no:'Nein', partial:'Teilweise', not_applicable:'Nicht anwendbar',
+doc_reviewer_label:'Prüfer',
+doc_approver_label:'Genehmiger',
+doc_reviewer_role_label:'Funktion des Prüfers',
+doc_approver_role_label:'Funktion des Genehmigers',
+approval_section_title:'Berichtsgenehmigung',
+approval_section_help:'Dies sind interne Dokumenten-Workflow-Genehmigungen, keine qualifizierten elektronischen Signaturen — AuditSym kann die Identität der genehmigenden Person nicht kryptografisch verifizieren.',
+approval_policy_none:'Keine formelle Genehmigung',
+approval_policy_single:'Einzelgenehmigung',
+approval_policy_reviewer_approver:'Prüfer + Genehmiger',
+approval_role_prepared:'Erstellt von',
+approval_role_reviewed:'Geprüft von',
+approval_role_approved:'Genehmigt von',
+approval_prepared_org_role:'Leitender Prüfer',
+approval_status_completed:'Abgeschlossen',
+approval_status_pending:'Ausstehend',
+approval_status_approved:'Genehmigt',
+approval_status_rejected:'Abgelehnt',
+approval_status_revoked:'Widerrufen',
+approval_status_superseded:'Ersetzt (vorherige Version)',
+approval_action_approve_review:'Prüfung genehmigen',
+approval_action_approve_issuance:'Freigabe genehmigen',
+approval_action_reject:'Ablehnen',
+approval_action_revoke:'Widerrufen',
+approval_gov_none:'Dieser Bericht wird ohne formellen Prüf- oder Genehmigungsworkflow ausgegeben, gemäß der für diesen Auftrag ausgewählten Richtlinie.',
+approval_gov_single:'Dieser Bericht wurde durch einen Ein-Personen-Genehmigungsworkflow autorisiert. Es wurde keine zusätzliche unabhängige Prüfung durchgeführt.',
+approval_gov_self:'Die Person, die diesen Bericht erstellt hat, ist auch an dessen Genehmigung beteiligt. Es wurde keine wirklich unabhängige Prüfung durchgeführt.',
+approval_missing_identity:'Geben Sie Name und Funktion von "{field}" in der Dokumentenkontrolle an, bevor Sie genehmigen.',
+approval_reviewer_first:'Die Genehmigung des Prüfers muss abgeschlossen sein, bevor die Freigabe genehmigt wird.',
+approval_self_approval_forbidden:'Nicht zulässig: Gemäß der Richtlinie "Prüfer + Genehmiger" darf die Person, die den Bericht erstellt hat, ihn nicht auch prüfen oder genehmigen — diese Richtlinie soll gerade eine unabhängige Prüfung gewährleisten.',
+approval_same_person_both_roles_forbidden:'Nicht zulässig: Prüfer und Genehmiger müssen gemäß dieser Richtlinie unterschiedliche Personen sein.',
+approval_confirm_prompt:'Genehmigen als:\\n\\nName: {name}\\nFunktion: {role}\\nRolle: {function}\\nVersion: {version}\\n\\nBestätigen?',
+approval_reject_prompt:'Grund für die Ablehnung (erforderlich):',
+approval_revoke_prompt:'Grund für den Widerruf (erforderlich):',
+approval_reason_required:'Sie müssen einen Grund angeben, um fortzufahren.',
+approval_unknown_actor:'(nicht identifiziert)',
+approval_auto_revoked_reason:'Automatisch widerrufen: Der bezeichnete Name hat sich nach der Genehmigung geändert.',
+approval_revoker_name_prompt:'Name der Person, die diese Genehmigung jetzt widerruft (erforderlich):',
+approval_revoker_role_generic:'Widerrufende Person',
+reopen_actor_prompt:'Name der Person, die diesen Bericht jetzt wieder öffnet (erforderlich):',
+approval_reopener_role_generic:'Person, die den Bericht wieder öffnet',
+issue_blocked_missing_approvals:'Bericht kann nicht ausgegeben werden: Für die aktuelle Version fehlen folgende Genehmigungen:',
+issue_governance_confirm:'Bestätigen Sie, dass Sie den Bericht trotzdem ausgeben möchten?',
+reopen_btn:'🔓 Für neue Version wieder öffnen',
+reopen_confirm:'Sie werden diesen ausgegebenen Bericht wieder öffnen, um an einer neuen Version zu arbeiten. Der Status wechselt zu "Bereit für Bericht" und das vorherige Ausgabedatum wird gelöscht, bis Sie erneut ausgeben. Fortfahren?',
+reopen_done:'Bericht wieder geöffnet. Denken Sie daran, vor der erneuten Ausgabe einen neuen Eintrag in der Versionshistorie zu erfassen.',
+reopen_reason_prompt:'Warum wird dieser ausgegebene Bericht wieder geöffnet? (erforderlich)',
+status_issued_manual_blocked:'Der Status "Ausgegeben" kann nur durch Klicken auf "Abschlussbericht ausgeben" gesetzt werden — dies garantiert die vorherigen Prüfungen (Daten, nicht validierte KI-Entwürfe, Versionshistorieneintrag).',
 critical:'Kritisch', high:'Hoch', medium:'Mittel', low:'Niedrig',
 template_library_btn:'📚 Bibliothek',
 template_loading:'Laden...',
@@ -7018,6 +7655,53 @@ export_json_btn:'💾 Exportar JSON', import_json_btn:'📂 Importar JSON', issu
 save_progress_btn:'💾 Salvar', view_saved_btn:'📋 Relatórios',
 chart_compliance:'Conformidade', chart_risk:'Riscos',
 yes:'Sim', no:'Não', partial:'Parcial', not_applicable:'Não aplicável',
+doc_reviewer_label:'Revisor',
+doc_approver_label:'Aprovador',
+doc_reviewer_role_label:'Cargo do Revisor',
+doc_approver_role_label:'Cargo do Aprovador',
+approval_section_title:'Aprovação do Relatório',
+approval_section_help:'Estas são aprovações internas do fluxo documental, não assinaturas eletrônicas qualificadas — o AuditSym não pode verificar criptograficamente a identidade de quem aprova.',
+approval_policy_none:'Sem aprovação formal',
+approval_policy_single:'Aprovação única',
+approval_policy_reviewer_approver:'Revisor + Aprovador',
+approval_role_prepared:'Preparado por',
+approval_role_reviewed:'Revisado por',
+approval_role_approved:'Aprovado por',
+approval_prepared_org_role:'Auditor principal',
+approval_status_completed:'Concluído',
+approval_status_pending:'Pendente',
+approval_status_approved:'Aprovado',
+approval_status_rejected:'Rejeitado',
+approval_status_revoked:'Revogado',
+approval_status_superseded:'Substituída (versão anterior)',
+approval_action_approve_review:'Aprovar Revisão',
+approval_action_approve_issuance:'Aprovar Emissão',
+approval_action_reject:'Rejeitar',
+approval_action_revoke:'Revogar',
+approval_gov_none:'Este relatório é emitido sem um fluxo formal de revisão ou aprovação, de acordo com a política selecionada para este trabalho.',
+approval_gov_single:'Este relatório foi autorizado por meio de um fluxo de aprovação de uma única pessoa. Nenhuma revisão independente adicional foi realizada.',
+approval_gov_self:'A pessoa que preparou este relatório também participa de sua aprovação. Nenhuma revisão verdadeiramente independente foi realizada.',
+approval_missing_identity:'Indique o nome e o cargo de "{field}" no Controle Documental antes de aprovar.',
+approval_reviewer_first:'A aprovação do revisor deve ser concluída antes de aprovar a emissão.',
+approval_self_approval_forbidden:'Não permitido: sob a política "Revisor + Aprovador", a pessoa que preparou o relatório não pode também revisá-lo ou aprová-lo — esta política existe justamente para garantir uma revisão independente.',
+approval_same_person_both_roles_forbidden:'Não permitido: o revisor e o aprovador devem ser pessoas diferentes sob esta política.',
+approval_confirm_prompt:'Aprovar como:\\n\\nNome: {name}\\nCargo: {role}\\nFunção: {function}\\nVersão: {version}\\n\\nConfirmar?',
+approval_reject_prompt:'Motivo da rejeição (obrigatório):',
+approval_revoke_prompt:'Motivo da revogação (obrigatório):',
+approval_reason_required:'Você deve indicar um motivo para continuar.',
+approval_unknown_actor:'(não identificado)',
+approval_auto_revoked_reason:'Revogada automaticamente: o nome designado mudou após a aprovação.',
+approval_revoker_name_prompt:'Nome de quem está revogando esta aprovação agora (obrigatório):',
+approval_revoker_role_generic:'Revogador',
+reopen_actor_prompt:'Nome de quem está reabrindo este relatório agora (obrigatório):',
+approval_reopener_role_generic:'Pessoa que reabre o relatório',
+issue_blocked_missing_approvals:'Não é possível emitir o relatório: faltam as seguintes aprovações para a versão atual:',
+issue_governance_confirm:'Confirma que deseja emitir o relatório mesmo assim?',
+reopen_btn:'🔓 Reabrir para Nova Versão',
+reopen_confirm:'Você vai reabrir este relatório emitido para trabalhar em uma nova versão. O status mudará para "Pronto para Relatório" e a data de emissão anterior será apagada até que seja emitido novamente. Continuar?',
+reopen_done:'Relatório reaberto. Lembre-se de registrar uma nova entrada no Histórico de Versões antes de emiti-lo novamente.',
+reopen_reason_prompt:'Por que este relatório emitido está sendo reaberto? (obrigatório)',
+status_issued_manual_blocked:'O status "Emitido" só pode ser definido clicando em "Emitir Relatório Final" — isso garante as verificações prévias (datas, rascunhos de IA não validados, registro no histórico de versões).',
 critical:'Crítico', high:'Alto', medium:'Médio', low:'Baixo',
 template_library_btn:'📚 Biblioteca',
 template_loading:'Carregando...',
@@ -7072,6 +7756,53 @@ export_json_btn:'💾 تصدير JSON', import_json_btn:'📂 استيراد JSO
 save_progress_btn:'💾 حفظ', view_saved_btn:'📋 التقارير',
 chart_compliance:'الامتثال', chart_risk:'المخاطر',
 yes:'نعم', no:'لا', partial:'جزئي', not_applicable:'غير قابل للتطبيق',
+doc_reviewer_label:'المراجع',
+doc_approver_label:'المعتمِد',
+doc_reviewer_role_label:'منصب المراجع',
+doc_approver_role_label:'منصب المعتمِد',
+approval_section_title:'اعتماد التقرير',
+approval_section_help:'هذه موافقات داخلية على سير العمل المستندي، وليست توقيعات إلكترونية مؤهلة — لا يستطيع AuditSym التحقق من هوية الموافق بشكل تشفيري.',
+approval_policy_none:'بدون موافقة رسمية',
+approval_policy_single:'موافقة واحدة',
+approval_policy_reviewer_approver:'مراجع + معتمِد',
+approval_role_prepared:'أُعِدّ بواسطة',
+approval_role_reviewed:'رُوجِع بواسطة',
+approval_role_approved:'اعتُمِد بواسطة',
+approval_prepared_org_role:'المدقق الرئيسي',
+approval_status_completed:'مكتمل',
+approval_status_pending:'قيد الانتظار',
+approval_status_approved:'معتمَد',
+approval_status_rejected:'مرفوض',
+approval_status_revoked:'مُلغى',
+approval_status_superseded:'مُستبدَل (إصدار سابق)',
+approval_action_approve_review:'اعتماد المراجعة',
+approval_action_approve_issuance:'اعتماد الإصدار',
+approval_action_reject:'رفض',
+approval_action_revoke:'إلغاء',
+approval_gov_none:'يُصدر هذا التقرير دون سير عمل رسمي للمراجعة أو الاعتماد، وفقًا للسياسة المختارة لهذا التكليف.',
+approval_gov_single:'تم اعتماد هذا التقرير من خلال سير عمل موافقة من شخص واحد. لم تُجرَ مراجعة مستقلة إضافية.',
+approval_gov_self:'الشخص الذي أعدّ هذا التقرير يشارك أيضًا في اعتماده. لم تُجرَ مراجعة مستقلة حقيقية.',
+approval_missing_identity:'أدخل اسم ومنصب "{field}" في مراقبة المستندات قبل الاعتماد.',
+approval_reviewer_first:'يجب إكمال اعتماد المراجع قبل اعتماد الإصدار.',
+approval_self_approval_forbidden:'غير مسموح: بموجب سياسة "مراجع + معتمِد"، لا يمكن للشخص الذي أعدّ التقرير أن يراجعه أو يعتمده أيضًا — توجد هذه السياسة تحديدًا لضمان مراجعة مستقلة.',
+approval_same_person_both_roles_forbidden:'غير مسموح: يجب أن يكون المراجع والمعتمِد شخصين مختلفين بموجب هذه السياسة.',
+approval_confirm_prompt:'الاعتماد باسم:\\n\\nالاسم: {name}\\nالمنصب: {role}\\nالوظيفة: {function}\\nالإصدار: {version}\\n\\nتأكيد؟',
+approval_reject_prompt:'سبب الرفض (إلزامي):',
+approval_revoke_prompt:'سبب الإلغاء (إلزامي):',
+approval_reason_required:'يجب تقديم سبب للمتابعة.',
+approval_unknown_actor:'(غير محدد)',
+approval_auto_revoked_reason:'أُلغيت تلقائيًا: تغيّر الاسم المحدد بعد الاعتماد.',
+approval_revoker_name_prompt:'اسم الشخص الذي يلغي هذا الاعتماد الآن (إلزامي):',
+approval_revoker_role_generic:'الملغي',
+reopen_actor_prompt:'اسم الشخص الذي يعيد فتح هذا التقرير الآن (إلزامي):',
+approval_reopener_role_generic:'الشخص الذي يعيد فتح التقرير',
+issue_blocked_missing_approvals:'لا يمكن إصدار التقرير: الموافقات التالية مفقودة للإصدار الحالي:',
+issue_governance_confirm:'هل تؤكد رغبتك في إصدار التقرير رغم ذلك؟',
+reopen_btn:'🔓 إعادة الفتح لإصدار جديد',
+reopen_confirm:'ستعيد فتح هذا التقرير الصادر للعمل على إصدار جديد. ستتغير الحالة إلى "جاهز للتقرير" وسيُحذف تاريخ الإصدار السابق حتى تصدره مرة أخرى. متابعة؟',
+reopen_done:'أُعيد فتح التقرير. تذكّر تسجيل إدخال جديد في سجل الإصدارات قبل إصداره مرة أخرى.',
+reopen_reason_prompt:'لماذا يُعاد فتح هذا التقرير الصادر؟ (إلزامي)',
+status_issued_manual_blocked:'لا يمكن تعيين حالة "صادر" إلا بالنقر على "إصدار التقرير النهائي" — وهذا يضمن إجراء الفحوصات المسبقة (التواريخ، مسودات الذكاء الاصطناعي غير المعتمدة، سجل الإصدار).',
 critical:'حرج', high:'عالي', medium:'متوسط', low:'منخفض',
 template_library_btn:'📚 المكتبة',
 template_loading:'جارٍ التحميل...',
@@ -7126,6 +7857,53 @@ export_json_btn:'💾 导出 JSON', import_json_btn:'📂 导入 JSON', issue_re
 save_progress_btn:'💾 保存', view_saved_btn:'📋 报告',
 chart_compliance:'合规性', chart_risk:'风险',
 yes:'是', no:'否', partial:'部分', not_applicable:'不适用',
+doc_reviewer_label:'审阅人',
+doc_approver_label:'批准人',
+doc_reviewer_role_label:'审阅人职位',
+doc_approver_role_label:'批准人职位',
+approval_section_title:'报告审批',
+approval_section_help:'这些是内部文档审查流程审批，不是合格的电子签名 — AuditSym 无法通过加密方式验证批准人的身份。',
+approval_policy_none:'无正式审批',
+approval_policy_single:'单人审批',
+approval_policy_reviewer_approver:'审阅人 + 批准人',
+approval_role_prepared:'编制人',
+approval_role_reviewed:'审阅人',
+approval_role_approved:'批准人',
+approval_prepared_org_role:'主审核员',
+approval_status_completed:'已完成',
+approval_status_pending:'待处理',
+approval_status_approved:'已批准',
+approval_status_rejected:'已拒绝',
+approval_status_revoked:'已撤销',
+approval_status_superseded:'已被取代（旧版本）',
+approval_action_approve_review:'批准审阅',
+approval_action_approve_issuance:'批准发布',
+approval_action_reject:'拒绝',
+approval_action_revoke:'撤销',
+approval_gov_none:'根据本次委托选定的政策，本报告在没有正式审查或审批流程的情况下发布。',
+approval_gov_single:'本报告通过单人审批流程获得授权，未进行额外的独立审查。',
+approval_gov_self:'编制本报告的人员同时参与其批准，未进行真正独立的审查。',
+approval_missing_identity:'在文档控制中批准前，请填写"{field}"的姓名和职位。',
+approval_reviewer_first:'必须先完成审阅人批准，才能批准发布。',
+approval_self_approval_forbidden:'不允许：在"审阅人 + 批准人"政策下，编制报告的人员不能同时审阅或批准该报告 — 此政策的目的正是为了确保独立审阅。',
+approval_same_person_both_roles_forbidden:'不允许：在此政策下，审阅人和批准人必须是不同的人员。',
+approval_confirm_prompt:'以以下身份批准：\\n\\n姓名：{name}\\n职位：{role}\\n职能：{function}\\n版本：{version}\\n\\n确认？',
+approval_reject_prompt:'拒绝原因（必填）：',
+approval_revoke_prompt:'撤销原因（必填）：',
+approval_reason_required:'必须提供原因才能继续。',
+approval_unknown_actor:'（未识别）',
+approval_auto_revoked_reason:'已自动撤销：批准后指定的姓名发生了变化。',
+approval_revoker_name_prompt:'现在撤销此批准的人员姓名（必填）：',
+approval_revoker_role_generic:'撤销人',
+reopen_actor_prompt:'现在重新打开此报告的人员姓名（必填）：',
+approval_reopener_role_generic:'重新打开报告的人员',
+issue_blocked_missing_approvals:'无法发布报告：当前版本缺少以下批准：',
+issue_governance_confirm:'您确认仍要发布该报告吗？',
+reopen_btn:'🔓 重新打开以创建新版本',
+reopen_confirm:'您将重新打开此已发布的报告以处理新版本。状态将变为"准备好生成报告"，之前的发布日期将被清除，直到再次发布。是否继续？',
+reopen_done:'报告已重新打开。请记得在再次发布前在版本历史中记录一条新条目。',
+reopen_reason_prompt:'为什么要重新打开这份已发布的报告？（必填）',
+status_issued_manual_blocked:'"已发布"状态只能通过点击"发布最终报告"来设置 — 这样可以确保完成事先检查（日期、未验证的AI草稿、版本历史记录）。',
 critical:'严重', high:'高', medium:'中', low:'低',
 template_library_btn:'📚 模板库',
 template_loading:'加载中...',
@@ -7294,6 +8072,24 @@ document.addEventListener('DOMContentLoaded', async () => {
       updateDatesValidation();
     });
   }
+
+  // Reviewer/approver identity fields — changing the designated NAME (not
+  // just its organizational-role label) after an approval was frozen means
+  // that approval no longer describes who's actually assigned, and must be
+  // auto-revoked rather than silently kept "approved" under someone else's
+  // name. Also keeps the approval table's "Prepared by"/designated-person
+  // display current as the auditor fills these fields in for the first
+  // time.
+  ['doc_reviewer', 'doc_approver'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('change', () => { isDirty = true; checkApprovalInvalidation(id === 'doc_reviewer' ? 'reviewer' : 'approver'); renderApprovalTable(); });
+  });
+  ['doc_reviewer_role', 'doc_approver_role'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('change', () => { isDirty = true; checkApprovalInvalidation(id === 'doc_reviewer_role' ? 'reviewer' : 'approver'); renderApprovalTable(); });
+  });
+  const docAuthorEl = document.getElementById('doc_author');
+  if (docAuthorEl) docAuthorEl.addEventListener('change', () => { isDirty = true; renderApprovalTable(); });
 
   updateDatesValidation();
 // Auto-save cada 2 minutos
