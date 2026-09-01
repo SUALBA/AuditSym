@@ -1,5 +1,5 @@
 // ═════════════════════════════════════════════════════════════════════════
-// AuditSym — Regression Test Suite
+// AuditSym — E2E Regression Test Suite
 // ═════════════════════════════════════════════════════════════════════════
 // Covers the real bugs found and fixed during the "PDF redesign + Work View"
 // session, so a future change can't silently reintroduce any of them.
@@ -8,20 +8,22 @@
 //   npm install playwright
 //   npx playwright install chromium
 //
-// USAGE — place this file at repo-root/tests/regression_suite.mjs, then:
-//   node tests/regression_suite.mjs
+// USAGE — place this file at repo-root/tests/e2e/regression_suite.mjs, then:
+//   node tests/e2e/regression_suite.mjs
 //
 // By default this reads the AuditNIST_Pro repo's OWN files directly (never
 // a separate copy that could quietly drift out of sync):
 //   repo-root/
-//   ├── data/scf-controls.json        ← read directly, as-is
-//   ├── ui/auditnist-local.html       ← read directly, as-is
-//   └── tests/regression_suite.mjs    ← this file
+//   ├── data/scf-controls.json                  ← read directly, as-is
+//   ├── ui/auditnist-local.html                 ← read directly, as-is
+//   └── tests/
+//       ├── unit/                               ← pure-logic tests (core/)
+//       └── e2e/regression_suite.mjs            ← this file
 //
 // If your local layout differs, override either path with an env var:
 //   AUDITSYM_HTML=path/to/auditnist-local.html \
 //   AUDITSYM_SCF_DATA=path/to/scf-controls.json \
-//   node tests/regression_suite.mjs
+//   node tests/e2e/regression_suite.mjs
 //
 // Each test prints PASS/FAIL. A non-zero exit code means at least one
 // regression was detected.
@@ -40,8 +42,16 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 //   ├── data/scf-controls.json
 //   ├── ui/auditnist-local.html
 //   └── tests/regression_suite.mjs   ← this file
-const TARGET_HTML = process.env.AUDITSYM_HTML || path.join(__dirname, '..', 'ui', 'auditnist-local.html');
-const SCF_DATA_PATH = process.env.AUDITSYM_SCF_DATA || path.join(__dirname, '..', 'data', 'scf-controls.json');
+// Defaults match the real AuditNIST_Pro repo layout. This script lives in
+// tests/e2e/, with ui/ and data/ two levels up at repo root:
+//   repo-root/
+//   ├── data/scf-controls.json
+//   ├── ui/auditnist-local.html
+//   └── tests/
+//       ├── unit/          ← pure-logic tests (core/, no browser needed)
+//       └── e2e/regression_suite.mjs   ← this file
+const TARGET_HTML = process.env.AUDITSYM_HTML || path.join(__dirname, '..', '..', 'ui', 'auditnist-local.html');
+const SCF_DATA_PATH = process.env.AUDITSYM_SCF_DATA || path.join(__dirname, '..', '..', 'data', 'scf-controls.json');
 const PORT = 8793;
 
 let passCount = 0, failCount = 0;
@@ -360,6 +370,195 @@ async function main() {
       fnMatches.forEach(fn => { fnCounts[fn] = (fnCounts[fn] || 0) + 1; });
       const dupeFns = Object.entries(fnCounts).filter(([, n]) => n > 1).map(([fn]) => fn);
       check('No duplicate top-level function declarations', dupeFns.length === 0, dupeFns.join(', '));
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    section('9. "No Aplicable" (N/A) — full feature coverage');
+    // Regression covered: the whole N/A assessment result — its evidence-
+    // required validation, its exclusion from every compliance
+    // denominator (dashboard, framework cards, global summary, PDF
+    // weighted score, and the "strongest domain" callout), that it never
+    // becomes a remediation finding, and that it survives a save/export/
+    // import round-trip intact.
+    {
+      const ctx = await browser.newContext();
+      const page = await newPage(browser, ctx);
+
+      // --- 9a. Live evidence-required warning ---
+      await page.evaluate(() => {
+        document.getElementById('controls').innerHTML = '';
+        addControl(false, '¿Pregunta?', 'GOV-01', 'GOV-01', 'Governance Program', '');
+      });
+      await page.waitForTimeout(150);
+      await page.evaluate(() => {
+        const blk = document.querySelector('.control');
+        blk.querySelector('.cumple').value = 'na';
+        blk.querySelector('.cumple').dispatchEvent(new Event('change'));
+      });
+      await page.waitForTimeout(150);
+      const warningShown = await page.evaluate(() => !document.querySelector('.na-evidence-warning').classList.contains('hidden'));
+      check('Selecting "na" with empty Evidence shows a live warning immediately', warningShown);
+
+      const riskLockedForNA = await page.evaluate(() => document.querySelector('.riesgo').disabled);
+      check('Risk selector is disabled once a control is marked "na" (criticality is meaningless for something that doesn\'t apply)', riskLockedForNA);
+
+      // --- 9b. Blocked at every output/save point until justified ---
+      await page.evaluate(() => {
+        document.getElementById('empresa_auditada').value = 'Regression Co';
+        document.getElementById('empresa_auditora').value = 'Regression Auditor Firm';
+        document.getElementById('auditor').value = 'Regression Tester';
+        document.getElementById('id_informe').value = 'REG-NA-001';
+      });
+      const saveBlocked = await page.evaluate(() => {
+        const before = localStorage.getItem('auditnist_REG-NA-001');
+        saveProgress();
+        const after = localStorage.getItem('auditnist_REG-NA-001');
+        return before === after; // still null/unchanged -> save was refused
+      });
+      check('saveProgress() refuses to save while an "na" control has empty Evidence', saveBlocked);
+
+      // --- 9c. Warning clears and save succeeds once justified ---
+      await page.evaluate(() => {
+        const ta = document.querySelector('.evidencia');
+        ta.value = 'No aplicable: sin entorno multi-tenant en el alcance definido.';
+        ta.dispatchEvent(new Event('input'));
+      });
+      await page.waitForTimeout(150);
+      const warningClearedAfterTyping = await page.evaluate(() => document.querySelector('.na-evidence-warning').classList.contains('hidden'));
+      check('Warning clears live once Evidence is filled in', warningClearedAfterTyping);
+
+      const saveSucceedsAfterFix = await page.evaluate(() => {
+        saveProgress();
+        return !!localStorage.getItem('auditnist_REG-NA-001');
+      });
+      check('saveProgress() succeeds once Evidence is provided', saveSucceedsAfterFix);
+
+      // --- 9d. Zero-denominator: dashboard must not show a misleading 0% ---
+      const ctx2 = await browser.newContext();
+      const page2 = await newPage(browser, ctx2);
+      await page2.evaluate(() => {
+        document.getElementById('controls').innerHTML = '';
+        addControl(false, 'Q1', 'GOV-01', 'GOV-01', 'Governance Program', '');
+        addControl(false, 'Q2', 'AST-01', 'AST-01', 'Asset Governance', '');
+      });
+      await page2.waitForTimeout(150);
+      await page2.evaluate(() => {
+        document.querySelectorAll('.control').forEach(blk => {
+          blk.querySelector('.cumple').value = 'na';
+          blk.querySelector('.cumple').dispatchEvent(new Event('change'));
+          blk.querySelector('.evidencia').value = 'No aplicable a este alcance.';
+        });
+      });
+      await page2.waitForTimeout(150);
+      const zeroDenomState = await page2.evaluate(() => ({
+        rate: document.getElementById('dash-compliance-rate').textContent,
+        naCount: document.getElementById('dash-not-applicable').textContent,
+      }));
+      check('Dashboard shows "—" (not a misleading "0%") when every evaluated control is "na"', zeroDenomState.rate === '—', `got "${zeroDenomState.rate}"`);
+      check('Dashboard N/A KPI counts both controls', zeroDenomState.naCount === '2', `got "${zeroDenomState.naCount}"`);
+
+      // --- 9e. AssessmentEngine excludes BOTH "na" and pending controls ---
+      const scoreExcludesPendingAndNA = await page2.evaluate(() => {
+        const controls = [
+          { compliance: 'yes', risk: 'low', domain: 'GV' },
+          { compliance: 'yes', risk: 'low', domain: 'GV' },
+          { compliance: 'na', risk: '', domain: 'GV' },   // must not count as a zero
+          { compliance: '', risk: '', domain: 'GV' },     // pending — must not count as a zero either
+        ];
+        return AssessmentEngine.calculate(controls, 'nist-csf').overallScorePct;
+      });
+      check('Weighted PDF score reflects only real verdicts (100%, not diluted by "na"/pending controls)', scoreExcludesPendingAndNA === 100, `got ${scoreExcludesPendingAndNA}%`);
+
+      // --- 9f. Never becomes a remediation finding ---
+      const findingsExcludeNA = await page2.evaluate(() => {
+        const data = collectAuditData();
+        return data.findings.some(f => f.controlId === 'AST-01' || f.scfId === 'AST-01');
+      });
+      check('An "na" control never appears in the generated findings list', !findingsExcludeNA);
+
+      // --- 9g. Export/import round-trip preserves the "na" value + evidence ---
+      const exported = await page2.evaluate(() => collectAuditData().controls.find(c => c.scfId === 'AST-01'));
+      check('Exported JSON preserves compliance="na"', exported?.cumple === 'na', `got "${exported?.cumple}"`);
+      check('Exported JSON preserves the Evidence justification', !!exported?.evidencia?.trim(), `got "${exported?.evidencia}"`);
+
+      await page.close(); await ctx.close();
+      await page2.close(); await ctx2.close();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    section('10. Full version snapshots survive reopening and reissuing');
+    // Regression covered: publishedSnapshot originally only froze
+    // {publishedAt, findings} — reopening and reissuing under a new
+    // version silently lost the EARLIER version's full state (controls,
+    // evidence, everything). versionSnapshots must keep every past
+    // issuance as an immutable, standalone, fully recoverable archive.
+    {
+      const ctx = await browser.newContext();
+      const page = await newPage(browser, ctx);
+
+      await page.evaluate(() => {
+        document.getElementById('empresa_auditada').value = 'Snapshot Co';
+        document.getElementById('empresa_auditora').value = 'Snapshot Auditor Firm';
+        document.getElementById('auditor').value = 'Regression Tester';
+        document.getElementById('id_informe').value = 'REG-SNAPSHOT-001';
+        document.getElementById('doc_author').value = 'Regression Tester';
+        document.getElementById('doc_version').value = '1.0';
+        document.getElementById('controls').innerHTML = '';
+        addControl(false, 'Q1', 'GOV-01', 'GOV-01', 'Governance Program', '');
+        const blk = document.querySelector('.control');
+        blk.querySelector('.cumple').value = 'no';
+        blk.querySelector('.cumple').dispatchEvent(new Event('change'));
+      });
+      await page.waitForTimeout(150);
+      await page.evaluate(() => issueFinalReport());
+      await page.waitForTimeout(200);
+
+      const v1Frozen = await page.evaluate(() => versionSnapshots['1.0']?.controls?.[0]?.cumple);
+      check('v1.0 is archived as its own immutable snapshot at issuance', v1Frozen === 'no', `got "${v1Frozen}"`);
+
+      const noRecursiveNesting = await page.evaluate(() => !versionSnapshots['1.0']?.engagement?.docControl?.versionSnapshots);
+      check('A version snapshot does not recursively re-embed the snapshot map itself', noRecursiveNesting);
+
+      // Reopen, fix the finding, bump the version, issue again.
+      await page.evaluate(() => reopenForNewVersion());
+      await page.waitForTimeout(150);
+      await page.evaluate(() => {
+        const blk = document.querySelector('.control');
+        blk.querySelector('.cumple').value = 'yes';
+        blk.querySelector('.cumple').dispatchEvent(new Event('change'));
+        document.getElementById('doc_version').value = '1.1';
+      });
+      await page.evaluate(() => issueFinalReport());
+      await page.waitForTimeout(200);
+
+      const afterReissue = await page.evaluate(() => ({
+        v1Untouched: versionSnapshots['1.0']?.controls?.[0]?.cumple,
+        v2Updated: versionSnapshots['1.1']?.controls?.[0]?.cumple,
+      }));
+      check('Reissuing as v1.1 leaves the archived v1.0 snapshot completely unchanged', afterReissue.v1Untouched === 'no', `got "${afterReissue.v1Untouched}"`);
+      check('The new v1.1 snapshot correctly reflects the fix', afterReissue.v2Updated === 'yes', `got "${afterReissue.v2Updated}"`);
+
+      // Full round-trip: save, reload the page, load the audit back.
+      await page.evaluate(() => saveProgress());
+      await page.waitForTimeout(200);
+      const page2 = await newPage(browser, ctx);
+      await page2.evaluate(() => loadAuditById('auditnist_REG-SNAPSHOT-001'));
+      await page2.waitForTimeout(300);
+      const afterRoundTrip = await page2.evaluate(() => ({
+        keys: Object.keys(versionSnapshots).sort().join(','),
+        v1StillFrozen: versionSnapshots['1.0']?.controls?.[0]?.cumple,
+      }));
+      check('Both v1.0 and v1.1 snapshots survive a save/reload/load round-trip', afterRoundTrip.keys === '1.0,1.1', `got "${afterRoundTrip.keys}"`);
+      check('v1.0 snapshot data is still intact after the round-trip', afterRoundTrip.v1StillFrozen === 'no', `got "${afterRoundTrip.v1StillFrozen}"`);
+
+      const downloadButtonsPresent = await page2.evaluate(() =>
+        ['1.0', '1.1'].every(v => document.querySelector(`button[onclick="downloadVersionSnapshot('${v}')"]`))
+      );
+      check('A download button is offered for every archived (issued) version', downloadButtonsPresent);
+
+      await page.close();
+      await page2.close();
+      await ctx.close();
     }
 
   } finally {

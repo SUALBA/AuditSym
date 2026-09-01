@@ -572,6 +572,7 @@ class="absolute w-full bg-gray-800 border border-gray-600 rounded-lg mt-1 max-h-
       <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-cyberok"></span> Compliant</span>
       <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-cyberwarn"></span> Partial</span>
       <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-cyberevil"></span> Non-Compliant</span>
+      <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-violet-400"></span> N/A</span>
       <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-gray-600"></span> Pending</span>
     </div>
   </div>
@@ -867,7 +868,18 @@ placeholder="Ej: INF-2025-001" class="w-full mt-1 p-2 rounded bg-gray-700 text-g
      regardless of which view is active. Only ONE of #work-view-wrapper /
      the plain stacked position is visible at a time. -->
 <div id="work-view-wrapper" class="hidden mt-6 flex gap-4 items-start">
-  <div id="work-view-sidebar" class="w-64 flex-shrink-0 bg-gray-800 border border-gray-700 rounded-lg p-2 space-y-1 max-h-[75vh] overflow-y-auto sticky top-4"></div>
+  <div class="w-64 flex-shrink-0 sticky top-4">
+    <!-- Filter reuses the exact same two checks that already block Guardar/
+         Emitir (unvalidated AI drafts, empty-evidence "No Aplicable") — so
+         what shows up here is exactly what would otherwise surprise the
+         auditor as a blocking alert only once they try to save or issue. -->
+    <button id="work-view-filter-toggle" type="button" onclick="toggleWorkViewFilter()"
+      class="w-full mb-2 px-2 py-1.5 rounded text-xs font-medium bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700 flex items-center justify-between transition-colors">
+      <span>⚠️ Solo pendientes de validar</span>
+      <span id="work-view-filter-count" class="text-gray-500"></span>
+    </button>
+    <div id="work-view-sidebar" class="bg-gray-800 border border-gray-700 rounded-lg p-2 space-y-1 max-h-[70vh] overflow-y-auto"></div>
+  </div>
   <div class="flex-1 min-w-0">
     <div class="flex items-center justify-between mb-2 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2">
       <button onclick="workViewNav(-1)" class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm">◀ Anterior</button>
@@ -2083,6 +2095,7 @@ function validateAIDraft(btn) {
   textarea.value = textarea.value.replace(/^\[Borrador generado por IA[^\]]*\]\n\n?/, '');
   btn.classList.add('hidden');
   isDirty = true;
+  if (workViewActive) renderWorkViewSidebar();
 }
 
 async function generarEvidenciaIA(btn) {
@@ -2277,6 +2290,11 @@ function updateNAEvidenceWarning(evidenciaEl) {
   if (warningEl) warningEl.classList.toggle('hidden', !missing);
   evidenciaEl.classList.toggle('border-cyberwarn', missing);
   evidenciaEl.classList.toggle('border-2', missing);
+  // Typing evidence is exactly the action that can resolve a pending-issue
+  // control (na without a reason, or an unvalidated AI draft) — without
+  // this, the Work View filter's badge/count would only catch up the next
+  // time compliance itself changes, not as the auditor actually fixes it.
+  if (workViewActive) renderWorkViewSidebar();
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -2291,6 +2309,7 @@ function updateNAEvidenceWarning(evidenciaEl) {
 // ─────────────────────────────────────────────────────────────────────────
 let workViewActive = false;
 let workViewSelectedControl = null;
+let workViewFilterActive = false; // shows only controls with a pending validation problem
 
 function toggleWorkView() {
   workViewActive = !workViewActive;
@@ -2347,17 +2366,40 @@ function renderWorkViewSidebar() {
   }
   const selectedIdx = allControls.indexOf(workViewSelectedControl);
 
-  sidebar.innerHTML = allControls.map((c, i) => {
+  const pendingCount = allControls.filter(controlHasPendingIssue).length;
+  const filterCountEl = document.getElementById('work-view-filter-count');
+  if (filterCountEl) filterCountEl.textContent = pendingCount > 0 ? pendingCount : '';
+  const filterToggleEl = document.getElementById('work-view-filter-toggle');
+  if (filterToggleEl) {
+    filterToggleEl.classList.toggle('bg-cyberwarn/20', workViewFilterActive);
+    filterToggleEl.classList.toggle('border-cyberwarn', workViewFilterActive);
+    filterToggleEl.classList.toggle('text-cyberwarn', workViewFilterActive);
+  }
+
+  // Keeps the currently open control visible even if it just stopped
+  // matching the filter (e.g. the auditor fixed it while it's on screen) —
+  // having it vanish mid-edit would be jarring. Everything else respects
+  // the filter normally.
+  const visibleControls = workViewFilterActive
+    ? allControls.filter(c => c === workViewSelectedControl || controlHasPendingIssue(c))
+    : allControls;
+
+  sidebar.innerHTML = visibleControls.length ? visibleControls.map(c => {
+    const i = allControls.indexOf(c); // real index into the full list — selectWorkViewControl() always operates on allControls, regardless of the filter
     const code = escapeHTML(workViewControlLabel(c));
     const compliance = c.querySelector('.cumple')?.value || '';
     const dotColor = COMPLIANCE_STATE_COLORS[compliance] || COMPLIANCE_STATE_COLORS[''];
     const isSelected = c === workViewSelectedControl;
+    const hasIssue = controlHasPendingIssue(c);
     return `<button type="button" onclick="selectWorkViewControl(${i})"
       class="w-full text-left px-2 py-1.5 rounded text-sm flex items-center gap-2 ${isSelected ? 'bg-cyberaccent/20 border border-cyberaccent text-white' : 'hover:bg-gray-700/60 text-gray-300 border border-transparent'}">
       <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color:${dotColor}"></span>
-      <span class="truncate">${code}</span>
+      <span class="truncate flex-1">${code}</span>
+      ${hasIssue ? '<span class="text-[10px] flex-shrink-0" title="Pendiente de validar">⚠️</span>' : ''}
     </button>`;
-  }).join('') || '<p class="text-xs text-gray-500 p-2">Sin controles añadidos todavía.</p>';
+  }).join('') : (workViewFilterActive
+    ? '<p class="text-xs text-gray-500 p-2">✅ Nada pendiente de validar.</p>'
+    : '<p class="text-xs text-gray-500 p-2">Sin controles añadidos todavía.</p>');
 
   allControls.forEach(c => {
     const selected = c === workViewSelectedControl;
@@ -2366,6 +2408,11 @@ function renderWorkViewSidebar() {
   });
 
   posEl.textContent = allControls.length ? `${selectedIdx + 1} de ${allControls.length}` : '0 de 0';
+}
+
+function toggleWorkViewFilter() {
+  workViewFilterActive = !workViewFilterActive;
+  renderWorkViewSidebar();
 }
 
 function selectWorkViewControl(index) {
@@ -2378,9 +2425,19 @@ function selectWorkViewControl(index) {
 function workViewNav(delta) {
   const allControls = Array.from(document.getElementById('controls').querySelectorAll('.control'));
   if (!allControls.length) return;
-  const currentIdx = Math.max(0, allControls.indexOf(workViewSelectedControl));
-  const nextIdx = Math.min(allControls.length - 1, Math.max(0, currentIdx + delta));
-  selectWorkViewControl(nextIdx);
+  // When the filter is active, step through the SAME set the sidebar is
+  // currently showing (pending-issue controls, plus whichever one is
+  // already open) — otherwise Siguiente/Anterior would silently ignore the
+  // filter and jump to a control with nothing wrong, defeating the whole
+  // point of using it to work through problems one by one.
+  const navList = workViewFilterActive
+    ? allControls.filter(c => c === workViewSelectedControl || controlHasPendingIssue(c))
+    : allControls;
+  if (!navList.length) return;
+  const currentPos = Math.max(0, navList.indexOf(workViewSelectedControl));
+  const nextPos = Math.min(navList.length - 1, Math.max(0, currentPos + delta));
+  const nextControl = navList[nextPos];
+  selectWorkViewControl(allControls.indexOf(nextControl));
 }
 
 function onComplianceChange(select) {
@@ -2445,12 +2502,25 @@ const filtered = scfData.controls.filter(c =>
 c.mappings[currentFramework] && c.mappings[currentFramework].length > 0
 );
 
+// Controls already added to THIS audit's working list — regardless of
+// whether they've been given a compliance verdict yet. Without this, a
+// freshly-added-but-still-blank control looked identical in the grid to
+// one that had never been touched at all, so clicking the same box
+// repeatedly gave no feedback that it was already in the list below.
+const addedScfIds = new Set(
+  Array.from(document.querySelectorAll('#controls .ctrl'))
+    .map(el => el.dataset.scfId)
+    .filter(Boolean)
+);
+
 grid.innerHTML = filtered.map(c => {
 const fwCode = pickFrameworkCode(c.mappings[currentFramework], currentFramework) || c.id;
 const isEvaluated = evaluatedControls[c.id];
+const isAddedPending = !isEvaluated && addedScfIds.has(c.id);
 
 let statusClass = 'bg-gray-700 text-gray-300';
 let statusIcon = '○';
+let extraClass = '';
 
 if (isEvaluated) {
 const latest = EvaluationRegistry.getLatest(c.id);
@@ -2469,13 +2539,20 @@ statusClass = 'bg-violet-400 text-black'; // #a78bfa, same violet as COMPLIANCE_
 statusIcon = '🚫';
 }
 }
+} else if (isAddedPending) {
+// Distinct from BOTH "never touched" (plain gray) and any compliance
+// color (which would wrongly imply a verdict already exists) — an
+// accent-colored ring plus a pencil icon reads as "already claimed,
+// still being worked on," not as a finished evaluation.
+extraClass = 'ring-2 ring-cyberaccent';
+statusIcon = '📝';
 }
 
 return `
-<div class="ctrl-box text-xs p-2 rounded border border-gray-600 ${statusClass} cursor-pointer relative"
+<div class="ctrl-box text-xs p-2 rounded border border-gray-600 ${statusClass} ${extraClass} cursor-pointer relative"
 data-scf-id="${c.id}"
 data-fw-code="${fwCode}"
-title="${c.name}"
+title="${isAddedPending ? 'Ya está en tu lista de controles, pendiente de valorar — ' + c.name : c.name}"
 onclick="addControlFromGrid('${c.id}','${fwCode}','${c.name.replace(/'/g,'&#39;')}')">
 <div class="font-bold">${fwCode}</div>
 <div class="text-[10px] opacity-70 truncate">${c.name}</div>
@@ -2784,6 +2861,16 @@ container.innerHTML = '';
 // external document-management system this tool doesn't have.
 let docVersionHistory = [];
 
+// Full historical snapshots, keyed by version string. Unlike
+// publishedSnapshot (which only ever holds the MOST RECENT issuance's
+// findings, for the live dashboard/PDF to use right now), this is the
+// permanent archive: a complete, standalone copy of the ENTIRE audit
+// (controls, evidence, scope, dates, doc control — everything
+// collectAuditData() produces) exactly as it stood at each past issuance.
+// Written once per version at issuance time and never overwritten
+// afterward — that immutability is the whole point of an audit trail.
+let versionSnapshots = {};
+
 function renderVersionHistoryRows() {
   const container = document.getElementById('doc-version-history-rows');
   if (!container) return;
@@ -2799,11 +2886,32 @@ function renderVersionHistoryRows() {
         ${entry.issued ? `<span class="ml-1 px-1.5 py-0.5 rounded bg-purple-900/60 text-purple-300 text-[9px] font-bold">${T('doc_version_history_issued_badge')}</span>` : ''}
         <div class="text-gray-400 mt-0.5">${escapeHTML(entry.note)}</div>
       </div>
-      ${entry.issued
-        ? `<span title="${T('doc_version_history_remove_issued_blocked')}" class="text-gray-600 text-xs flex-shrink-0">🔒</span>`
-        : `<button type="button" onclick="removeVersionHistoryEntry(${i})" title="${T('doc_version_history_remove_title')}" class="text-red-400 hover:text-red-300 text-xs flex-shrink-0">&times;</button>`}
+      <div class="flex items-center gap-2 flex-shrink-0">
+        ${entry.issued && versionSnapshots[entry.version]
+          ? `<button type="button" onclick="downloadVersionSnapshot('${escapeHTML(entry.version)}')" title="${T('doc_version_history_download_title')}" class="text-cyberaccent hover:text-blue-300 text-xs">📥</button>`
+          : ''}
+        ${entry.issued
+          ? `<span title="${T('doc_version_history_remove_issued_blocked')}" class="text-gray-600 text-xs">🔒</span>`
+          : `<button type="button" onclick="removeVersionHistoryEntry(${i})" title="${T('doc_version_history_remove_title')}" class="text-red-400 hover:text-red-300 text-xs">&times;</button>`}
+      </div>
     </div>
   `).join('');
+}
+
+// Retrieves the FULL, standalone archived copy of the audit as it stood at
+// a specific past issuance (see the comment on `versionSnapshots` above)
+// and downloads it as its own JSON file — a safe, read-only way to
+// recover exactly what v1.0 said even after the audit has moved on to
+// v1.1, v1.2... Deliberately a download rather than loading it into the
+// live form: that would either silently discard unsaved current work or
+// require building a whole separate read-only viewer, when re-importing
+// the downloaded file into a fresh "Nueva Auditoría" workspace already
+// gives full, safe inspection using functionality that's already tested.
+function downloadVersionSnapshot(version) {
+  const snapshot = versionSnapshots[version];
+  if (!snapshot) { alert('🛑 ' + T('doc_version_history_snapshot_missing')); return; }
+  const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
+  saveAs(blob, `Audit_${(snapshot.framework || currentFramework).toUpperCase()}_${snapshot.id}_v${version}_ARCHIVED.json`);
 }
 
 function addVersionHistoryEntry() {
@@ -2890,7 +2998,8 @@ author: val('doc_author'),
 reviewer: val('doc_reviewer'),
 approver: val('doc_approver'),
 recipients: val('doc_recipients'),
-versionHistory: docVersionHistory
+versionHistory: docVersionHistory,
+versionSnapshots: versionSnapshots
 }
 };
 }
@@ -3108,6 +3217,7 @@ set('doc_reviewer', dc.reviewer);
 set('doc_approver', dc.approver);
 set('doc_recipients', dc.recipients);
 docVersionHistory = Array.isArray(dc.versionHistory) ? dc.versionHistory : [];
+versionSnapshots = (dc.versionSnapshots && typeof dc.versionSnapshots === 'object') ? dc.versionSnapshots : {};
 renderVersionHistoryRows();
 renderTeamRows(eng.team || []);
 updateDatesValidation();
@@ -3271,6 +3381,18 @@ function findEmptyEvidenceNAControls() {
     .filter(c => c.compliance === 'na' && !c.evidence.trim());
 }
 
+// Single-control version of the same two checks above, combined — this is
+// what the Work View sidebar's "⚠️ Solo pendientes de validar" filter uses,
+// so what shows up there is exactly what would otherwise only surface as a
+// blocking alert the moment the auditor tries to Guardar or Emitir.
+function controlHasPendingIssue(controlEl) {
+  const compliance = controlEl.querySelector('.cumple')?.value || '';
+  const evidence = controlEl.querySelector('.evidencia')?.value || '';
+  if (evidence.includes(AI_DRAFT_MARKER)) return true;
+  if (compliance === 'na' && !evidence.trim()) return true;
+  return false;
+}
+
 function issueFinalReport() {
   if (isAuditLocked()) { alert('🔒 ' + T('locked_already_issued')); return; }
   if (!updateDatesValidation()) {
@@ -3330,6 +3452,21 @@ function issueFinalReport() {
 
   // Freeze exactly what was issued so later edits cannot rewrite it.
   publishedSnapshot = { publishedAt: data.publishedAt, findings: data.findings, fullData: data };
+
+  // Beyond that lightweight snapshot (used by the live dashboard/PDF right
+  // now), also archive a FULL, standalone, immutable copy of the entire
+  // audit under this exact version — controls, evidence, scope, dates,
+  // doc control, everything. This is what makes it possible to recover
+  // v1.0 exactly as it was even after the audit is reopened and reissued
+  // as v1.1, v1.2... Deep-cloned via JSON round-trip to fully detach it
+  // from any live DOM state, and its own versionSnapshots field is
+  // stripped before storing — otherwise each new snapshot would
+  // recursively re-embed every earlier one, doubling in size on every
+  // re-issuance instead of growing by one entry.
+  const frozenCopy = JSON.parse(JSON.stringify(data));
+  if (frozenCopy.engagement?.docControl) delete frozenCopy.engagement.docControl.versionSnapshots;
+  versionSnapshots[versionToIssue] = frozenCopy;
+  data.engagement.docControl.versionSnapshots = versionSnapshots;
 
   // The issued state must live in the app, not only in the downloaded file.
   // Without this the status selector still reads its previous value, so the
@@ -6600,6 +6737,8 @@ issue_blocked_duplicate_version:'La versión {v} ya fue emitida formalmente con 
 version_history_auto_issue_note:'Emisión formal del informe.',
 doc_version_history_duplicate:'Ya existe una entrada con la versión {v} en el historial. Use un número distinto.',
 doc_version_history_remove_issued_blocked:'Esta entrada corresponde a una emisión formal y no se puede eliminar — forma parte del registro permanente de la auditoría.',
+doc_version_history_download_title:'Descargar el archivo completo de esta versión, tal como se emitió',
+doc_version_history_snapshot_missing:'No se encontró el archivo completo de esta versión en este dispositivo. Puede que la auditoría se haya importado desde otro equipo sin conservar este historial.',
 doc_version_history_issued_badge:'EMITIDA',
 date_err_fieldwork_before_kickoff:'El trabajo de campo no puede comenzar antes de la apertura del encargo.',
 date_err_fieldwork_end_before_start:'El fin del trabajo de campo debe ser posterior o igual a su inicio.',
@@ -6739,6 +6878,8 @@ issue_blocked_duplicate_version:'Version {v} has already been formally issued be
 version_history_auto_issue_note:'Formal issuance of the report.',
 doc_version_history_duplicate:'An entry for version {v} already exists in the history. Use a different number.',
 doc_version_history_remove_issued_blocked:'This entry corresponds to a formal issuance and cannot be removed — it is part of the audit\'s permanent record.',
+doc_version_history_download_title:'Download the complete archive of this version, exactly as it was issued',
+doc_version_history_snapshot_missing:'The full archive for this version was not found on this device. The audit may have been imported from another machine without carrying this history along.',
 doc_version_history_issued_badge:'ISSUED',
 date_err_fieldwork_before_kickoff:'Fieldwork cannot start before the engagement formally opens.',
 date_err_fieldwork_end_before_start:'Fieldwork end must be on or after its start date.',
