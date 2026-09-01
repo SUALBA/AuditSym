@@ -4040,11 +4040,28 @@ function buildFinding(control, auditId) {
         notes: '',
         recommendation: '',
         // Provenance of the auditee's response — seeded empty so the shape is
-        // consistent from creation. source stays 'manual_entry' (auditor as
-        // scribe) until an integration feeds responses in.
+        // consistent from creation. The audit engine now emits the COMPLETE
+        // M2 contract itself rather than a partial shape the Remediation
+        // Hub has to repair on import — a finding generated here is already
+        // a valid M2 record, not one that only becomes valid once another
+        // tool touches it.
         managementResponse: {
-            responder: '', responderRole: '', responseDate: '',
-            receivedVia: '', comments: '', source: 'manual_entry'
+            validationStatus: null,
+            disputeReason: '',
+            disputeEvidence: '',
+            auditorAdjudication: '',
+
+            responder: '',
+            responderRole: '',
+            responseDate: '',
+            source: 'manual_entry',
+            receivedVia: '',
+            comments: '',
+
+            treatment: null,
+            treatmentOwner: '',
+            treatmentOwnerRole: '',
+            riskAcceptance: null
         }
     };
 }

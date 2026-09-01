@@ -824,6 +824,28 @@ async function main() {
       const newFindingDecision = await page.evaluate(() => collectAuditData().findings[0]?.decision);
       check('A freshly generated finding has decision: null (no Management decision fabricated)', newFindingDecision === null, `got ${JSON.stringify(newFindingDecision)}`);
 
+      // The audit engine must emit the COMPLETE M2 managementResponse
+      // contract itself — a finding should already be a valid M2 record
+      // the moment it's generated, not something that only becomes valid
+      // once the Remediation Hub repairs it on import.
+      const newFindingResponse = await page.evaluate(() => collectAuditData().findings[0]?.managementResponse);
+      check('A freshly generated finding contains the complete empty M2 contract',
+        newFindingResponse?.validationStatus === null &&
+        newFindingResponse?.disputeReason === '' &&
+        newFindingResponse?.disputeEvidence === '' &&
+        newFindingResponse?.auditorAdjudication === '' &&
+        newFindingResponse?.responder === '' &&
+        newFindingResponse?.responderRole === '' &&
+        newFindingResponse?.responseDate === '' &&
+        newFindingResponse?.source === 'manual_entry' &&
+        newFindingResponse?.receivedVia === '' &&
+        newFindingResponse?.comments === '' &&
+        newFindingResponse?.treatment === null &&
+        newFindingResponse?.treatmentOwner === '' &&
+        newFindingResponse?.treatmentOwnerRole === '' &&
+        newFindingResponse?.riskAcceptance === null,
+        `got ${JSON.stringify(newFindingResponse)}`);
+
       await page.close();
       await ctx.close();
     }
