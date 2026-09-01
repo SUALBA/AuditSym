@@ -982,6 +982,23 @@ data-i18n="export_json_btn">💾 Exportar JSON</button>
           data-i18n="issue_report_btn">📢 Emitir Informe Final</button>
 </div>
 
+<!-- Issue #1 (audit-handoff): shown right after a successful issuance.
+     Two separate buttons rather than two automatic downloads — each
+     click is its own user gesture, which sidesteps the browser blocking
+     a second programmatic download fired right after the first. Both
+     artifacts represent the same immutable audit version — the JSON is
+     read directly from that version's frozen versionSnapshots entry, and
+     the PDF is rendered from that same data (see generatePDF's
+     sourceSnapshot parameter). "Same version," not literally identical
+     bytes: a PDF and a JSON are different formats. -->
+<div id="post-issuance-actions" class="hidden mt-3 p-4 bg-green-900/20 border border-cyberok rounded-lg">
+  <p class="text-sm text-cyberok font-bold mb-3" data-i18n="post_issuance_message">✅ Informe emitido correctamente. Descarga y conserva los dos archivos oficiales.</p>
+  <div class="flex flex-wrap gap-2">
+    <button onclick="downloadIssuedPDF()" class="px-4 py-2 bg-cyberaccent text-white rounded hover:bg-blue-500 font-bold" data-i18n="download_issued_pdf_btn">📄 Descargar PDF emitido</button>
+    <button onclick="downloadIssuedJSON()" class="px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-600 font-bold" data-i18n="download_issued_json_btn">📦 Descargar JSON para Remediation Hub</button>
+  </div>
+</div>
+
 </main>
 
 <!-- Charts - Versión Neón  -->
@@ -2931,6 +2948,53 @@ function defaultApprovals() {
 }
 let approvals = defaultApprovals();
 
+// Issue #1 (audit-handoff): which version's post-issuance download panel
+// is currently showing, if any. null whenever that panel should be
+// hidden — a fresh page load, a different/new audit, or a reopened audit
+// all reset it, since the buttons it renders must never offer a download
+// that doesn't correspond to the CURRENT locked, just-issued state.
+let lastIssuedVersion = null;
+
+function showPostIssuanceActions() {
+  const el = document.getElementById('post-issuance-actions');
+  if (el) el.classList.remove('hidden');
+}
+function hidePostIssuanceActions() {
+  lastIssuedVersion = null;
+  const el = document.getElementById('post-issuance-actions');
+  if (el) el.classList.add('hidden');
+}
+
+// Both files represent the same immutable audit version, but are produced
+// differently:
+//
+// - The JSON (downloadRemediationHandoffJSON → buildRemediationHandoffPayload)
+//   is read directly out of versionSnapshots[version]'s stored data.
+//
+// - The PDF is RENDERED from that same stored data — versionSnapshots only
+//   stores JSON, not a cached binary PDF, so "redownloading" a PDF always
+//   means rendering it again. generatePDF()'s sourceSnapshot parameter is
+//   what makes this safe for ANY past version regardless of what the live
+//   form currently holds: every field the renderer reads comes from the
+//   passed-in snapshot, never from document.getElementById(...) or
+//   .control DOM elements, so requesting v1.0's PDF while v1.1 is the
+//   live active version cannot leak v1.1's data into it.
+function downloadIssuedVersionPDF(version) {
+  const snapshot = versionSnapshots[version];
+  if (!snapshot) { alert('🛑 ' + T('doc_version_history_snapshot_missing')); return; }
+  generatePDF(`${buildIssuedFileBaseName(snapshot, version)}.pdf`, snapshot);
+}
+
+function downloadIssuedPDF() {
+  if (!lastIssuedVersion) return;
+  downloadIssuedVersionPDF(lastIssuedVersion);
+}
+
+function downloadIssuedJSON() {
+  if (!lastIssuedVersion) return;
+  downloadRemediationHandoffJSON(lastIssuedVersion);
+}
+
 // Every approval action's own auditable trail — shape matches exactly what
 // the issue specifies ({ts, actor, actorRole, action, version, note}), a
 // direct application of the genId/newRecord/recordChange "Lifecycle
@@ -3223,7 +3287,8 @@ function renderVersionHistoryRows() {
       </div>
       <div class="flex items-center gap-2 flex-shrink-0">
         ${entry.issued && versionSnapshots[entry.version]
-          ? `<button type="button" onclick="downloadVersionSnapshot('${escapeHTML(entry.version)}')" title="${T('doc_version_history_download_title')}" class="text-cyberaccent hover:text-blue-300 text-xs">📥</button>`
+          ? `<button type="button" onclick="downloadIssuedVersionPDF('${escapeHTML(entry.version)}')" title="${T('doc_version_history_download_pdf_title')}" class="text-cyberaccent hover:text-blue-300 text-xs">📄</button>
+             <button type="button" onclick="downloadRemediationHandoffJSON('${escapeHTML(entry.version)}')" title="${T('doc_version_history_download_json_title')}" class="text-cyberaccent hover:text-blue-300 text-xs">📦</button>`
           : ''}
         ${entry.issued
           ? `<span title="${T('doc_version_history_remove_issued_blocked')}" class="text-gray-600 text-xs">🔒</span>`
@@ -3242,11 +3307,63 @@ function renderVersionHistoryRows() {
 // require building a whole separate read-only viewer, when re-importing
 // the downloaded file into a fresh "Nueva Auditoría" workspace already
 // gives full, safe inspection using functionality that's already tested.
-function downloadVersionSnapshot(version) {
+// Builds the exact JSON payload the Remediation Hub should receive for a
+// given issued version — a deep copy derived from the frozen, immutable
+// versionSnapshots entry, with a remediationHandoff block added onto the
+// copy (issue #1: "audit-handoff"). structuredClone() rather than a
+// shallow spread so nothing downstream can accidentally mutate the stored
+// snapshot's nested objects through a shared reference. Shared by every
+// download path (the post-issuance panel and the version history's
+// re-download button) so they all produce the same payload for the same
+// version, never reconstructed from the live form.
+//
+// generatedAt is read from the snapshot's OWN frozen timestamp
+// (remediationHandoffGeneratedAt, set once at issuance in
+// issueFinalReport() — see there) rather than computed fresh here. If it
+// were recomputed on every call, re-downloading the same version's JSON a
+// week later would silently change generatedAt each time, which defeats
+// the point of a field meant to record when the ORIGINAL handoff artifact
+// was produced. Deliberately no `|| new Date().toISOString()` fallback:
+// that would reintroduce exactly this problem for any older-shaped
+// snapshot that predates this field. A snapshot with no usable timestamp
+// at all is not eligible for an official handoff artifact — callers must
+// treat a null return as "this historical version cannot produce a
+// handoff JSON," not silently stamp today's date onto it.
+function buildRemediationHandoffPayload(version) {
   const snapshot = versionSnapshots[version];
-  if (!snapshot) { alert('🛑 ' + T('doc_version_history_snapshot_missing')); return; }
-  const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
-  saveAs(blob, `Audit_${(snapshot.framework || currentFramework).toUpperCase()}_${snapshot.id}_v${version}_ARCHIVED.json`);
+  if (!snapshot) return null;
+  const generatedAt = snapshot.remediationHandoffGeneratedAt || snapshot.publishedAt || snapshot.engagement?.issuedAt;
+  if (!generatedAt) return null;
+  const clone = structuredClone(snapshot);
+  clone.remediationHandoff = {
+    eligible: true,
+    generatedAt,
+    sourceAuditId: snapshot.id,
+    sourceVersion: version,
+    sourceStatus: snapshot.engagement?.status || 'issued'
+  };
+  return clone;
+}
+
+// "AuditSym_{FRAMEWORK}_{AUDIT_ID}_v{VERSION}_EMITIDO" — the shared base
+// name for both the issued PDF and its sibling JSON, so the two files are
+// unmistakably a matched pair sitting next to each other in a downloads
+// folder.
+function buildIssuedFileBaseName(snapshot, version) {
+  const fwName = FRAMEWORKS[snapshot.framework]?.name || snapshot.framework || 'Audit';
+  const safeFramework = fwName.replace(/[.\s]+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
+  return `AuditSym_${safeFramework}_${snapshot.id}_v${version}_EMITIDO`;
+}
+
+// Named for what it actually produces now: the enriched, official
+// remediation-handoff JSON (frozen snapshot + remediationHandoff block),
+// not a bare copy of the stored snapshot — distinct from a general
+// backup/export.
+function downloadRemediationHandoffJSON(version) {
+  const payload = buildRemediationHandoffPayload(version);
+  if (!payload) { alert('🛑 ' + T('doc_version_history_snapshot_missing')); return; }
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  saveAs(blob, `${buildIssuedFileBaseName(payload, version)}.json`);
 }
 
 function addVersionHistoryEntry() {
@@ -3454,6 +3571,11 @@ function reopenForNewVersion() {
   // producing a JSON that claimed both "not yet issued" and "issued on
   // <old date>" at the same time.
   publishedSnapshot = null;
+  // The post-issuance download panel offered downloads for the version
+  // that's no longer the active one — hide it so its buttons can never be
+  // clicked to silently re-download stale files under a "current" state
+  // that has since moved on.
+  hidePostIssuanceActions();
 
   // The previous version's approvals remain perfectly preserved inside
   // versionSnapshots[oldVersion] (frozen forever, per that mechanism's own
@@ -3562,6 +3684,12 @@ function updateDatesValidation() {
 
 function applyEngagement(data) {
 const eng = (data && data.engagement) || {};
+// Any (re)load of engagement data — a fresh audit, an import, or
+// switching to a saved one — means whatever version the post-issuance
+// panel was showing download buttons for is no longer necessarily the
+// one now active. hidePostIssuanceActions() is idempotent to call even
+// when the panel was already hidden.
+hidePostIssuanceActions();
 const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
 set('eng_objective', eng.objective);
 set('eng_type', eng.engagementType || 'internal_audit');
@@ -3900,6 +4028,12 @@ function issueFinalReport() {
   // re-issuance instead of growing by one entry.
   const frozenCopy = JSON.parse(JSON.stringify(data));
   if (frozenCopy.engagement?.docControl) delete frozenCopy.engagement.docControl.versionSnapshots;
+  // Fixed once, here, at the exact moment of issuance — never recomputed
+  // on a later re-download (see buildRemediationHandoffPayload). This is
+  // what remediationHandoff.generatedAt reports: the birth of the
+  // official handoff artifact, not whenever someone happens to click
+  // "Descargar" again.
+  frozenCopy.remediationHandoffGeneratedAt = new Date().toISOString();
   versionSnapshots[versionToIssue] = frozenCopy;
   data.engagement.docControl.versionSnapshots = versionSnapshots;
 
@@ -3918,11 +4052,16 @@ function issueFinalReport() {
   // immediately, not only on the next reload.
   applyEditLock();
 
-  // Create and download the JSON file with findings
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  saveAs(blob, `Audit_${currentFramework.toUpperCase()}_${data.id}_FINAL.json`);
-
-  alert('✅ Final report issued. The JSON includes structured findings.');
+  // Issue #1 (audit-handoff): issuance no longer auto-triggers two
+  // downloads back to back — Chrome and other browsers can silently block
+  // the second one when both fire programmatically without a fresh user
+  // gesture in between. Instead, show two explicit buttons; each click is
+  // its own gesture, and both pull from the SAME just-frozen
+  // versionSnapshots entry, never from a later live-edited state — safe
+  // precisely because the audit is locked from this point until an
+  // explicit reopen.
+  lastIssuedVersion = versionToIssue;
+  showPostIssuanceActions();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -4197,11 +4336,16 @@ reader.readAsText(file);
 // ─────────────────────────────────────────────────────────────────────────────
 // 🔹 PDF GENERATION 
 // ─────────────────────────────────────────────────────────────────────────────
+// Accepts either live .control DOM blocks (has .querySelector) or plain
+// control-data objects with .cumple/.riesgo fields directly (e.g. a
+// version snapshot's stored controls) — same stats either way, so a PDF
+// rendered from a frozen historical version computes identically to one
+// rendered from the live form.
 function calculateAuditStats(controls) {
   const stats = { total: 0, compliant: 0, partial: 0, nonCompliant: 0, notApplicable: 0, criticalRisk: 0, highRisk: 0, mediumRisk: 0, lowRisk: 0 };
-  controls.forEach(blk => {
-    const c = blk.querySelector('.cumple')?.value;
-    const r = blk.querySelector('.riesgo')?.value;
+  controls.forEach(item => {
+    const c = item.querySelector ? item.querySelector('.cumple')?.value : item.cumple;
+    const r = item.querySelector ? item.querySelector('.riesgo')?.value : item.riesgo;
     stats.total++;
     if (c === 'yes') stats.compliant++;
     else if (c === 'partial') stats.partial++;
@@ -4390,7 +4534,18 @@ function getRiskColor(level) {
 // pairs show up literally in the exported PDF. This parses each paragraph's
 // leading **Label**: into a real bold section heading and strips any other
 // stray ** markers from the body text, instead of dumping the raw markdown.
-function pdfRenderEvidence(doc, rawText, x, maxWidth, y, pageHeight, margin, colors) {
+function pdfRenderEvidence( doc, rawText, x, maxWidth, y, pageHeight, margin, colors, onPageBreak
+) {
+  function startContinuationPage() {
+    doc.addPage();
+
+    if (typeof onPageBreak === 'function') {
+      return onPageBreak();
+    }
+
+    return margin;
+  }
+
   const text = String(rawText || '').trim();
   if (!text) return y;
 
@@ -4430,10 +4585,12 @@ function pdfRenderEvidence(doc, rawText, x, maxWidth, y, pageHeight, margin, col
     doc.setFont('Roboto', 'normal').setFontSize(8);
     const lines = body ? doc.splitTextToSize(body, maxWidth) : [];
     const neededForLabelAndFirstLine = (label ? 11 : 0) + (lines.length ? 11 : 0);
-    if (neededForLabelAndFirstLine && y + neededForLabelAndFirstLine > SAFE_BOTTOM) {
-      doc.addPage();
-      y = margin;
-    }
+  if (
+    neededForLabelAndFirstLine &&
+    y + neededForLabelAndFirstLine > SAFE_BOTTOM
+  ) {
+    y = startContinuationPage();
+  }
 
     // A label with nothing underneath it (the AI wrote "**Evidencia
     // técnica**:" and then nothing usable) is worse than not showing the
@@ -4452,11 +4609,14 @@ function pdfRenderEvidence(doc, rawText, x, maxWidth, y, pageHeight, margin, col
     if (lines.length) {
       doc.setFont('Roboto', 'normal').setFontSize(8);
       doc.setTextColor(colors.text[0], colors.text[1], colors.text[2]);
-      lines.forEach(line => {
-        if (y > SAFE_BOTTOM) { doc.addPage(); y = margin; }
-        doc.text(line, x, y);
-        y += 11;
-      });
+  lines.forEach(line => {
+    if (y > SAFE_BOTTOM) {
+      y = startContinuationPage();
+    }
+
+    doc.text(line, x, y);
+    y += 11;
+  });
     }
     y += 4;
   });
@@ -5103,12 +5263,35 @@ function generatePriorityRecommendationsSync(stats) {
   return recs.slice(0, 4);
 }
 
-function generatePDF() {
+// overrideFilename lets a caller (issueFinalReport's post-issuance panel)
+// reuse this exact same rendering path — same data source, same layout
+// logic — while controlling the saved filename, instead of duplicating
+// ~1500 lines of PDF drawing just to get a different name on the file.
+// overrideFilename lets a caller (issueFinalReport's post-issuance panel,
+// the version history's per-version PDF re-download) reuse this exact
+// same rendering path while controlling the saved filename.
+//
+// sourceSnapshot lets a caller render from a frozen versionSnapshots[...]
+// entry instead of the live form — this is what makes it safe to
+// regenerate v1.0's PDF even while the live form currently holds v1.1's
+// data. When provided, every field below is read from sourceSnapshot
+// (engagement, controls, id/company/auditor/scope), never from the DOM;
+// when omitted, behavior is unchanged from before (reads the live form,
+// exactly as "Generar PDF" always has).
+function generatePDF(overrideFilename, sourceSnapshot = null) {
   try {
-    const emptyNA = findEmptyEvidenceNAControls();
-    if (emptyNA.length > 0) {
-      alert('🛑 ' + T('na_evidence_required') + '\n\n' + emptyNA.map(c => `• ${c.code}`).join('\n'));
-      return;
+    // The empty-evidence-for-"na" check only makes sense against the LIVE
+    // form being actively edited — a snapshot being re-rendered already
+    // passed this same validation at the moment it was issued, and can
+    // never be edited again (it's frozen), so re-checking it here would
+    // be meaningless at best and could wrongly block a legitimate
+    // historical re-download if evidence rules were tightened since.
+    if (!sourceSnapshot) {
+      const emptyNA = findEmptyEvidenceNAControls();
+      if (emptyNA.length > 0) {
+        alert('🛑 ' + T('na_evidence_required') + '\n\n' + emptyNA.map(c => `• ${c.code}`).join('\n'));
+        return;
+      }
     }
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit: 'pt', format: 'a4' });
@@ -5131,7 +5314,11 @@ function generatePDF() {
       white: [255, 255, 255]
     };
 
-    const eng = collectEngagement();
+    const eng = sourceSnapshot?.engagement || collectEngagement();
+    // The framework a snapshot was issued under — not necessarily still
+    // "currentFramework" if the live form has since moved on to a
+    // different audit or a later reopened version.
+    const activeFramework = sourceSnapshot?.framework || currentFramework;
     // Golden rule from here on: mapping discrepancies between SCF sub-
     // controls (e.g. "GOV-04 (Parcial), GOV-04.1 (No Cumple)") are internal
     // rigor an auditor and reviewer benefit from seeing WHILE the audit is
@@ -5142,7 +5329,15 @@ function generatePDF() {
     // them, everywhere they appear (domain table rows and the annex's
     // sibling note boxes).
     const showInternalDiscrepancyNotes = (eng.status === 'draft' || eng.status === 'in_progress');
-    const auditData = {
+    const auditData = sourceSnapshot ? {
+      id: sourceSnapshot.id || `ANP-${Date.now()}`,
+      company: sourceSnapshot.empresa,
+      auditorFirm: sourceSnapshot.auditora,
+      auditor: sourceSnapshot.auditor,
+      scope: sourceSnapshot.alcance,
+      date: eng.issuedAt || eng.keyDates?.finalReport || eng.keyDates?.kickoff || new Date().toLocaleDateString('es-ES'),
+      framework: FRAMEWORKS[activeFramework]?.name || activeFramework || 'NIST CSF 2.0'
+    } : {
       id: document.getElementById('id_informe')?.value || `ANP-${Date.now()}`,
       company: document.getElementById('empresa_auditada')?.value,
       auditorFirm: document.getElementById('empresa_auditora')?.value,
@@ -5153,7 +5348,7 @@ function generatePDF() {
       // header itself no longer shows one ambiguous "audit date" — see
       // drawHeader() below, which shows the actual date matrix instead.
       date: eng.issuedAt || eng.keyDates.finalReport || eng.keyDates.kickoff || new Date().toLocaleDateString('es-ES'),
-      framework: FRAMEWORKS[currentFramework]?.name || 'NIST CSF 2.0'
+      framework: FRAMEWORKS[activeFramework]?.name || 'NIST CSF 2.0'
     };
 
     if (!auditData.company || !auditData.auditorFirm) {
@@ -5393,25 +5588,61 @@ function generatePDF() {
     // previously let SCF-only IDs like "AST-01" or "BCD-01" — which have no
     // real ISO 27001 correspondence — appear inside a report labeled
     // "ISO 27001".
-    const allControlBlocks = Array.from(document.querySelectorAll('.control'));
     // Tracked but no longer surfaced in the PDF (a per-control exclusion
     // notice on page 1 was more clutter than signal, especially with a
     // single excluded control). Kept here for console debugging / a future,
     // less prominent placement if ever needed.
     const excludedBlocks = [];
-    const controlBlocks = allControlBlocks.filter(blk => {
-      const scfId = blk.querySelector('.ctrl')?.dataset?.scfId || '';
-      const belongs = controlBelongsToFramework(scfId, currentFramework);
-      if (!belongs) excludedBlocks.push(blk.querySelector('.ctrl')?.value || scfId);
-      return belongs;
-    });
-    const stats = calculateAuditStats(controlBlocks);
+    let controlBlocks, controlsSource;
+    if (sourceSnapshot) {
+      // Plain data objects from the frozen snapshot, never DOM elements —
+      // this is the actual fix for the issue: a historical version's PDF
+      // is built entirely from its own stored controls array, so
+      // re-rendering v1.0 while the live form holds v1.1 can never leak
+      // v1.1's data into v1.0's PDF.
+      controlBlocks = null;
+      controlsSource = (sourceSnapshot.controls || []).filter(c => {
+        const belongs = controlBelongsToFramework(c.scfId || '', activeFramework);
+        if (!belongs) excludedBlocks.push(c.ctrl || c.scfId || '');
+        return belongs;
+      });
+    } else {
+      const allControlBlocks = Array.from(document.querySelectorAll('.control'));
+      controlBlocks = allControlBlocks.filter(blk => {
+        const scfId = blk.querySelector('.ctrl')?.dataset?.scfId || '';
+        const belongs = controlBelongsToFramework(scfId, activeFramework);
+        if (!belongs) excludedBlocks.push(blk.querySelector('.ctrl')?.value || scfId);
+        return belongs;
+      });
+      controlsSource = controlBlocks;
+    }
+    const stats = calculateAuditStats(controlsSource);
     // "No Aplicable" must never dilute these percentages — they should
     // read as fractions of what was actually assessable, not of the whole
     // selection including controls deliberately scoped out.
     const pctOf = n => stats.applicableTotal ? Math.round((n / stats.applicableTotal) * 100) : 0;
 
-    const controlsData = controlBlocks.map((blk, idx) => {
+    const controlsData = sourceSnapshot ? controlsSource.map((c, idx) => {
+      const scfId = c.scfId || '';
+      const rawName = c.ctrl || c.name || '';
+      const name = rawName.includes(' – ') ? rawName.split(' – ').slice(1).join(' – ') : rawName;
+      // Recomputed fresh against the snapshot's OWN framework — same
+      // reasoning as the live path below: trust the SCF mapping, not
+      // whatever code string happened to be stored at issuance time.
+      const fwCode = getFrameworkCodeForControl(scfId, activeFramework);
+      const code = (fwCode && fwCode.trim().toUpperCase() !== 'N/A' && fwCode.trim() !== '') ? fwCode : `Custom Control ${idx + 1}`;
+      const evidence = c.evidencia || '';
+      const notes = c.notes || '';
+      return {
+        code, name: name || code, scfId,
+        compliance: c.cumple || '',
+        risk: c.riesgo || '',
+        evidence, notes, question: c.question || '',
+        hasEvidence: !!evidence.trim() && evidence.trim().toLowerCase() !== 'no evidence provided',
+        hasNotes: !!notes.trim(),
+        domain: domainOf(code)
+      };
+    }) : controlBlocks.map((blk, idx) => {
       const ctrlInput = blk.querySelector('.ctrl');
       const scfId = ctrlInput?.dataset?.scfId || '';
       // Recomputed fresh against the CURRENT framework — not parsed from
@@ -5422,7 +5653,7 @@ function generatePDF() {
       // show SCF codes like "AST-01" inside a report labeled NIST CSF.
       const rawName = ctrlInput?.value || '';
       const name = rawName.includes(' – ') ? rawName.split(' – ').slice(1).join(' – ') : rawName;
-      const fwCode = getFrameworkCodeForControl(scfId, currentFramework);
+      const fwCode = getFrameworkCodeForControl(scfId, activeFramework);
       const code = (fwCode && fwCode.trim().toUpperCase() !== 'N/A' && fwCode.trim() !== '') ? fwCode : `Custom Control ${idx + 1}`;
       const evidence = blk.querySelector('.evidencia')?.value || '';
       const notes = blk.querySelector('.notes')?.value || '';
@@ -5485,18 +5716,21 @@ function generatePDF() {
     // Run the scoring engine once, up front, so both Page 1's callouts and
     // Page 2's Final Assessment can use the same computed narrative instead
     // of two different pieces of code guessing at similar insights.
-    // Built from the SAME already-framework-filtered controlBlocks used for
-    // the stats/charts above — NOT a fresh, unfiltered
-    // getControlsForAssessment() DOM query, which would silently re-include
-    // the excluded-from-this-framework controls and produce a score badge
-    // that disagreed with the "Controles: N total" count shown right next
-    // to it.
-    const pdfControls = controlBlocks.map(blk => ({
-      compliance: blk.querySelector('.cumple')?.value || '',
-      risk:       blk.querySelector('.riesgo')?.value || '',
-      domain:     blk.querySelector('.ctrl')?.dataset.domain || 'General'
+    // Built from controlsData (already framework-filtered and normalized
+    // for BOTH the live-DOM and sourceSnapshot paths above) — not a fresh,
+    // unfiltered getControlsForAssessment() DOM query, which would
+    // silently re-include the excluded-from-this-framework controls and
+    // produce a score badge that disagreed with the "Controles: N total"
+    // count shown right next to it. Reusing controlsData here (rather
+    // than re-deriving from controlBlocks, which is null on the
+    // sourceSnapshot path) is also what makes this line safe to reach at
+    // all when rendering from a historical version.
+    const pdfControls = controlsData.map(c => ({
+      compliance: c.compliance,
+      risk: c.risk,
+      domain: c.domain
     }));
-    const pdfAssess = AssessmentEngine.calculate(pdfControls, currentFramework);
+    const pdfAssess = AssessmentEngine.calculate(pdfControls, activeFramework);
     const pdfNarrative = AssessmentEngine.buildFallbackNarrative(pdfAssess, auditData, stats, 'es');
 
     // ═══════════════════════════════════════════════════════════════════
@@ -5859,9 +6093,14 @@ function generatePDF() {
     // in English, and mixing languages inside a single Spanish report reads
     // as broken, not bilingual. Always Spanish here, with or without a
     // final-report date on file.
-    const engForCallout = collectEngagement();
-    const nextStepText = engForCallout?.keyDates?.finalReport
-      ? `Informe final previsto para el ${engForCallout.keyDates.finalReport}. Se recomienda agendar una reunión de Dirección para aprobar el plan de remediación.`
+    //
+    // Reuses the SAME `eng` computed at the top of this function (already
+    // correctly sourced from sourceSnapshot when provided) rather than
+    // calling collectEngagement() again here — a second live-DOM read
+    // would have silently ignored sourceSnapshot for this one callout,
+    // even though everything else in the report was rendering from it.
+    const nextStepText = eng?.keyDates?.finalReport
+      ? `Informe final previsto para el ${eng.keyDates.finalReport}. Se recomienda agendar una reunión de Dirección para aprobar el plan de remediación.`
       : 'Se recomienda agendar una reunión de Dirección para aprobar el plan de remediación de los hallazgos identificados.';
 
     y = callout([185, 28, 28], [254, 242, 242], 'Riesgo Crítico Principal', criticalText, y);
@@ -5993,7 +6232,7 @@ function scopeSection(title, body, color) {
     // coverage. FRAMEWORK_TOTALS is the same reference total the scoring
     // engine itself uses, so this number and the score are never sourced
     // from two different ideas of "the whole framework."
-    const fwTotal = AssessmentEngine.FRAMEWORK_TOTALS[currentFramework];
+    const fwTotal = AssessmentEngine.FRAMEWORK_TOTALS[activeFramework];
     const coverageText = fwTotal
       ? `Se evaluó una selección de ${stats.total} de aproximadamente ${fwTotal} controles aplicables del framework ${auditData.framework} (${Math.round(stats.total/fwTotal*100)}% de cobertura). La selección de controles evaluados responde al alcance y los criterios descritos en esta página, no a una cobertura exhaustiva del framework completo.`
       : `Se evaluó una selección de ${stats.total} controles del framework ${auditData.framework}, según el alcance y los criterios descritos en esta página.`;
@@ -6490,7 +6729,9 @@ function scopeSection(title, body, color) {
         // the AI-parsed subheadings (Hallazgos/Brechas/Evidencia
         // técnica/Recomendaciones) already say what each part is, so an
         // outer label added nothing but an extra line.
-        y = pdfRenderEvidence(doc, c.evidence, margin + 12, pageWidth - 2*margin - 20, y, pageHeight, margin, COLORS);
+       y = pdfRenderEvidence( doc, c.evidence, margin + 12, pageWidth - 2 * margin - 20, y, pageHeight, margin, COLORS,
+  () => drawContinuationHeader('Anexo · Evidencia Detallada')
+);
         y += 8;
 
         doc.setDrawColor(226, 232, 240);
@@ -6635,9 +6876,15 @@ function scopeSection(title, body, color) {
     }
 
     const safeFramework = (auditData.framework || 'audit').replace(/[^a-z0-9]/gi, '_');
-    const generatedAtEl = document.getElementById('eng_generated_at');
-    if (generatedAtEl) generatedAtEl.value = new Date().toLocaleString('es-ES');
-    doc.save(`AuditSym_${safeFramework}_${auditData.id}.pdf`);
+    // Skip when rendering from a historical snapshot — this field reflects
+    // "when was the LIVE form's PDF last generated," which a background
+    // re-download of an older version's PDF must not silently overwrite,
+    // especially when the live form currently holds a different version.
+    if (!sourceSnapshot) {
+      const generatedAtEl = document.getElementById('eng_generated_at');
+      if (generatedAtEl) generatedAtEl.value = new Date().toLocaleString('es-ES');
+    }
+    doc.save(overrideFilename || `AuditSym_${safeFramework}_${auditData.id}.pdf`);
 
   } catch (e) {
     console.error('PDF Error:', e);
@@ -7190,7 +7437,9 @@ eng_exclusions_label:'Exclusiones', eng_exclusions_ph:'Qué queda fuera del alca
 eng_technique_label:'Técnica de Auditoría y Muestreo', eng_technique_ph:'Entrevistas, inspección documental, pruebas técnicas, tamaño de muestra...',
 eng_period_label:'Período Bajo Revisión',
 eng_keydates_label:'Fechas Clave',
-issue_report_btn: "📢 Emitir Informe Final",  
+issue_report_btn: "📢 Emitir Informe Final",
+post_issuance_message:'✅ Informe emitido correctamente. Descarga y conserva los dos archivos oficiales.',
+download_issued_pdf_btn:'📄 Descargar PDF emitido', download_issued_json_btn:'📦 Descargar JSON para Remediation Hub',  
 eng_kickoff_label:'Inicio del Encargo', eng_fieldwork_start_label:'Inicio del Trabajo de Campo — Previsto',
 eng_fieldwork_end_label:'Fin del Trabajo de Campo — Previsto', eng_draft_report_label:'Informe Preliminar — Previsto',
 eng_final_report_label:'Informe Final — Previsto',
@@ -7267,8 +7516,9 @@ issue_blocked_duplicate_version:'La versión {v} ya fue emitida formalmente con 
 version_history_auto_issue_note:'Emisión formal del informe.',
 doc_version_history_duplicate:'Ya existe una entrada con la versión {v} en el historial. Use un número distinto.',
 doc_version_history_remove_issued_blocked:'Esta entrada corresponde a una emisión formal y no se puede eliminar — forma parte del registro permanente de la auditoría.',
-doc_version_history_download_title:'Descargar el archivo completo de esta versión, tal como se emitió',
 doc_version_history_snapshot_missing:'No se encontró el archivo completo de esta versión en este dispositivo. Puede que la auditoría se haya importado desde otro equipo sin conservar este historial.',
+doc_version_history_download_pdf_title:'Descargar el PDF oficial de esta versión, tal como se emitió',
+doc_version_history_download_json_title:'Descargar el JSON oficial de esta versión para el Remediation Hub',
 doc_version_history_issued_badge:'EMITIDA',
 date_err_fieldwork_before_kickoff:'El trabajo de campo no puede comenzar antes de la apertura del encargo.',
 date_err_fieldwork_end_before_start:'El fin del trabajo de campo debe ser posterior o igual a su inicio.',
@@ -7308,6 +7558,8 @@ immediate_actions_label:'🔴 Immediate Actions (0–30 days)', medium_term_labe
 strategic_label:'🔵 Strategic Recommendations', close_btn:'Close',
 generate_pdf_btn:'📄 PDF', export_txt_btn:'📄 TXT',
 export_json_btn:'💾 Export JSON', import_json_btn:'📂 Import JSON', issue_report_btn: "📢 Issue Final Report",
+post_issuance_message:'✅ Report issued successfully. Download and keep both official files.',
+download_issued_pdf_btn:'📄 Download Issued PDF', download_issued_json_btn:'📦 Download JSON for Remediation Hub',
 save_progress_btn:'💾 Save', view_saved_btn:'📋 Reports',
 chart_compliance:'Compliance', chart_risk:'Risks',
 yes:'Yes', no:'No', partial:'Partial', not_applicable:'Not Applicable',
@@ -7438,8 +7690,9 @@ issue_blocked_duplicate_version:'Version {v} has already been formally issued be
 version_history_auto_issue_note:'Formal issuance of the report.',
 doc_version_history_duplicate:'An entry for version {v} already exists in the history. Use a different number.',
 doc_version_history_remove_issued_blocked:'This entry corresponds to a formal issuance and cannot be removed — it is part of the audit\'s permanent record.',
-doc_version_history_download_title:'Download the complete archive of this version, exactly as it was issued',
 doc_version_history_snapshot_missing:'The full archive for this version was not found on this device. The audit may have been imported from another machine without carrying this history along.',
+doc_version_history_download_pdf_title:'Download the official PDF of this version, exactly as it was issued',
+doc_version_history_download_json_title:'Download the official JSON of this version for the Remediation Hub',
 doc_version_history_issued_badge:'ISSUED',
 date_err_fieldwork_before_kickoff:'Fieldwork cannot start before the engagement formally opens.',
 date_err_fieldwork_end_before_start:'Fieldwork end must be on or after its start date.',
@@ -7467,6 +7720,8 @@ report_id_label:'ID rapport', report_id_ph:'Ex: INF-2025-001',
 audit_date_label:'Date', add_control_btn:'+ Ajouter Contrôle',
 generate_pdf_btn:'📄 PDF', export_txt_btn:'📄 TXT',
 export_json_btn:'💾 Exporter JSON', import_json_btn:'📂 Importer JSON', issue_report_btn: "📢 Publier le Rapport Final",
+post_issuance_message:'✅ Rapport publié avec succès. Téléchargez et conservez les deux fichiers officiels.',
+download_issued_pdf_btn:'📄 Télécharger le PDF publié', download_issued_json_btn:'📦 Télécharger le JSON pour Remediation Hub',
 save_progress_btn:'💾 Sauvegarder', view_saved_btn:'📋 Rapports',
 chart_compliance:'Conformité', chart_risk:'Risques',
 yes:'Oui', no:'Non', partial:'Partiel', not_applicable:'Non applicable',
@@ -7498,6 +7753,21 @@ approval_gov_single:'Ce rapport a été autorisé par un processus d\'approbatio
 approval_gov_self:'La personne qui a préparé ce rapport participe également à son approbation. Aucune révision véritablement indépendante n\'a été effectuée.',
 approval_missing_identity:'Indiquez le nom et la fonction de "{field}" dans le Contrôle Documentaire avant d\'approuver.',
 approval_reviewer_first:'L\'approbation du réviseur doit être complétée avant d\'approuver l\'émission.',
+doc_version_history_add:'+ Enregistrer une nouvelle version',
+doc_version_history_download_json_title:'Télécharger le JSON officiel de cette version pour le Remediation Hub',
+doc_version_history_download_pdf_title:'Télécharger le PDF officiel de cette version, tel qu\'il a été publié',
+doc_version_history_duplicate:'Une entrée pour la version {v} existe déjà dans l\'historique. Utilisez un numéro différent.',
+doc_version_history_empty:'Aucune entrée pour le moment. Ce sera la première version publiée du rapport.',
+doc_version_history_help:'Chaque révision substantielle du rapport doit être enregistrée ici, avec le motif du changement — c\'est ce qui apparaît sur la page de couverture du PDF au lieu de renvoyer vers un système externe.',
+doc_version_history_issued_badge:'PUBLIÉE',
+doc_version_history_label:'Historique des Versions',
+doc_version_history_note_required:'Vous devez indiquer le motif du changement pour enregistrer une nouvelle version.',
+doc_version_history_prompt_note:'Qu\'est-ce qui a changé dans cette version ? (obligatoire)',
+doc_version_history_prompt_version:'Numéro de version (ex. 1.1) :',
+doc_version_history_remove_confirm:'Supprimer cette entrée de l\'historique des versions ? Cette action est irréversible.',
+doc_version_history_remove_issued_blocked:'Cette entrée correspond à une publication formelle et ne peut pas être supprimée — elle fait partie du registre permanent de l\'audit.',
+doc_version_history_remove_title:'Supprimer cette entrée de l\'historique',
+doc_version_history_snapshot_missing:'L\'archive complète de cette version est introuvable sur cet appareil. L\'audit a peut-être été importé depuis une autre machine sans conserver cet historique.',
 approval_self_approval_forbidden:'Non autorisé : selon la politique "Réviseur + Approbateur", la personne qui a préparé le rapport ne peut pas également le réviser ou l\'approuver — cette politique existe précisément pour garantir une révision indépendante.',
 approval_same_person_both_roles_forbidden:'Non autorisé : le réviseur et l\'approbateur doivent être des personnes différentes selon cette politique.',
 approval_confirm_prompt:'Approuver en tant que :\\n\\nNom : {name}\\nFonction : {role}\\nRôle : {function}\\nVersion : {version}\\n\\nConfirmer ?',
@@ -7568,6 +7838,8 @@ report_id_label:'Bericht-ID', report_id_ph:'Bsp: INF-2025-001',
 audit_date_label:'Datum', add_control_btn:'+ Kontrolle hinzufügen',
 generate_pdf_btn:'📄 PDF', export_txt_btn:'📄 TXT',
 export_json_btn:'💾 JSON exportieren', import_json_btn:'📂 JSON importieren', issue_report_btn: "📢 Abschlussbericht ausstellen",
+post_issuance_message:'✅ Bericht erfolgreich ausgestellt. Laden Sie beide offiziellen Dateien herunter und bewahren Sie sie auf.',
+download_issued_pdf_btn:'📄 Ausgestelltes PDF herunterladen', download_issued_json_btn:'📦 JSON für Remediation Hub herunterladen',
 save_progress_btn:'💾 Speichern', view_saved_btn:'📋 Berichte',
 chart_compliance:'Konformität', chart_risk:'Risiken',
 yes:'Ja', no:'Nein', partial:'Teilweise', not_applicable:'Nicht anwendbar',
@@ -7599,6 +7871,21 @@ approval_gov_single:'Dieser Bericht wurde durch einen Ein-Personen-Genehmigungsw
 approval_gov_self:'Die Person, die diesen Bericht erstellt hat, ist auch an dessen Genehmigung beteiligt. Es wurde keine wirklich unabhängige Prüfung durchgeführt.',
 approval_missing_identity:'Geben Sie Name und Funktion von "{field}" in der Dokumentenkontrolle an, bevor Sie genehmigen.',
 approval_reviewer_first:'Die Genehmigung des Prüfers muss abgeschlossen sein, bevor die Freigabe genehmigt wird.',
+doc_version_history_add:'+ Neue Version erfassen',
+doc_version_history_download_json_title:'Das offizielle JSON dieser Version für den Remediation Hub herunterladen',
+doc_version_history_download_pdf_title:'Das offizielle PDF dieser Version herunterladen, genau wie ausgestellt',
+doc_version_history_duplicate:'Ein Eintrag für Version {v} existiert bereits im Verlauf. Verwenden Sie eine andere Nummer.',
+doc_version_history_empty:'Noch keine Einträge. Dies wird die erste ausgestellte Version des Berichts sein.',
+doc_version_history_help:'Jede wesentliche Überarbeitung des Berichts sollte hier mit dem Grund für die Änderung erfasst werden — dies wird auf der PDF-Titelseite angezeigt, anstatt auf ein externes System zu verweisen.',
+doc_version_history_issued_badge:'AUSGESTELLT',
+doc_version_history_label:'Versionshistorie',
+doc_version_history_note_required:'Sie müssen den Grund für die Änderung angeben, um eine neue Version zu erfassen.',
+doc_version_history_prompt_note:'Was hat sich in dieser Version geändert? (erforderlich)',
+doc_version_history_prompt_version:'Versionsnummer (z. B. 1.1):',
+doc_version_history_remove_confirm:'Diesen Eintrag aus der Versionshistorie entfernen? Dies kann nicht rückgängig gemacht werden.',
+doc_version_history_remove_issued_blocked:'Dieser Eintrag entspricht einer formellen Ausstellung und kann nicht entfernt werden — er ist Teil des dauerhaften Prüfungsprotokolls.',
+doc_version_history_remove_title:'Diesen Verlaufseintrag entfernen',
+doc_version_history_snapshot_missing:'Das vollständige Archiv für diese Version wurde auf diesem Gerät nicht gefunden. Der Bericht wurde möglicherweise von einem anderen Rechner importiert, ohne diesen Verlauf mitzubringen.',
 approval_self_approval_forbidden:'Nicht zulässig: Gemäß der Richtlinie "Prüfer + Genehmiger" darf die Person, die den Bericht erstellt hat, ihn nicht auch prüfen oder genehmigen — diese Richtlinie soll gerade eine unabhängige Prüfung gewährleisten.',
 approval_same_person_both_roles_forbidden:'Nicht zulässig: Prüfer und Genehmiger müssen gemäß dieser Richtlinie unterschiedliche Personen sein.',
 approval_confirm_prompt:'Genehmigen als:\\n\\nName: {name}\\nFunktion: {role}\\nRolle: {function}\\nVersion: {version}\\n\\nBestätigen?',
@@ -7669,6 +7956,8 @@ report_id_label:'ID relatório', report_id_ph:'Ex: INF-2025-001',
 audit_date_label:'Data', add_control_btn:'+ Adicionar Controle',
 generate_pdf_btn:'📄 PDF', export_txt_btn:'📄 TXT',
 export_json_btn:'💾 Exportar JSON', import_json_btn:'📂 Importar JSON', issue_report_btn: "📢 Emitir Relatório Final",
+post_issuance_message:'✅ Relatório emitido com sucesso. Baixe e conserve os dois arquivos oficiais.',
+download_issued_pdf_btn:'📄 Baixar PDF emitido', download_issued_json_btn:'📦 Baixar JSON para o Remediation Hub',
 save_progress_btn:'💾 Salvar', view_saved_btn:'📋 Relatórios',
 chart_compliance:'Conformidade', chart_risk:'Riscos',
 yes:'Sim', no:'Não', partial:'Parcial', not_applicable:'Não aplicável',
@@ -7700,6 +7989,21 @@ approval_gov_single:'Este relatório foi autorizado por meio de um fluxo de apro
 approval_gov_self:'A pessoa que preparou este relatório também participa de sua aprovação. Nenhuma revisão verdadeiramente independente foi realizada.',
 approval_missing_identity:'Indique o nome e o cargo de "{field}" no Controle Documental antes de aprovar.',
 approval_reviewer_first:'A aprovação do revisor deve ser concluída antes de aprovar a emissão.',
+doc_version_history_add:'+ Registrar Nova Versão',
+doc_version_history_download_json_title:'Baixar o JSON oficial desta versão para o Remediation Hub',
+doc_version_history_download_pdf_title:'Baixar o PDF oficial desta versão, tal como foi emitido',
+doc_version_history_duplicate:'Já existe uma entrada para a versão {v} no histórico. Use um número diferente.',
+doc_version_history_empty:'Ainda sem registros. Esta será a primeira versão emitida do relatório.',
+doc_version_history_help:'Cada revisão substancial do relatório deve ser registrada aqui, com o motivo da alteração — é isso que a capa do PDF mostra, em vez de remeter a um sistema externo.',
+doc_version_history_issued_badge:'EMITIDA',
+doc_version_history_label:'Histórico de Versões',
+doc_version_history_note_required:'Você deve indicar o motivo da alteração para registrar uma nova versão.',
+doc_version_history_prompt_note:'O que mudou nesta versão? (obrigatório)',
+doc_version_history_prompt_version:'Número da versão (ex. 1.1):',
+doc_version_history_remove_confirm:'Remover esta entrada do histórico de versões? Esta ação não pode ser desfeita.',
+doc_version_history_remove_issued_blocked:'Esta entrada corresponde a uma emissão formal e não pode ser removida — faz parte do registro permanente da auditoria.',
+doc_version_history_remove_title:'Remover esta entrada do histórico',
+doc_version_history_snapshot_missing:'O arquivo completo desta versão não foi encontrado neste dispositivo. A auditoria pode ter sido importada de outro computador sem manter esse histórico.',
 approval_self_approval_forbidden:'Não permitido: sob a política "Revisor + Aprovador", a pessoa que preparou o relatório não pode também revisá-lo ou aprová-lo — esta política existe justamente para garantir uma revisão independente.',
 approval_same_person_both_roles_forbidden:'Não permitido: o revisor e o aprovador devem ser pessoas diferentes sob esta política.',
 approval_confirm_prompt:'Aprovar como:\\n\\nNome: {name}\\nCargo: {role}\\nFunção: {function}\\nVersão: {version}\\n\\nConfirmar?',
@@ -7770,6 +8074,8 @@ report_id_label:'رقم التقرير', report_id_ph:'مثال: INF-2025-001',
 audit_date_label:'التاريخ', add_control_btn:'+ إضافة ضابط',
 generate_pdf_btn:'📄 PDF', export_txt_btn:'📄 TXT',
 export_json_btn:'💾 تصدير JSON', import_json_btn:'📂 استيراد JSON', issue_report_btn: "📢 إصدار التقرير النهائي",
+post_issuance_message:'✅ تم إصدار التقرير بنجاح. قم بتنزيل الملفين الرسميين والاحتفاظ بهما.',
+download_issued_pdf_btn:'📄 تنزيل ملف PDF الصادر', download_issued_json_btn:'📦 تنزيل JSON لـ Remediation Hub',
 save_progress_btn:'💾 حفظ', view_saved_btn:'📋 التقارير',
 chart_compliance:'الامتثال', chart_risk:'المخاطر',
 yes:'نعم', no:'لا', partial:'جزئي', not_applicable:'غير قابل للتطبيق',
@@ -7801,6 +8107,21 @@ approval_gov_single:'تم اعتماد هذا التقرير من خلال سي�
 approval_gov_self:'الشخص الذي أعدّ هذا التقرير يشارك أيضًا في اعتماده. لم تُجرَ مراجعة مستقلة حقيقية.',
 approval_missing_identity:'أدخل اسم ومنصب "{field}" في مراقبة المستندات قبل الاعتماد.',
 approval_reviewer_first:'يجب إكمال اعتماد المراجع قبل اعتماد الإصدار.',
+doc_version_history_add:'+ تسجيل إصدار جديد',
+doc_version_history_download_json_title:'تنزيل ملف JSON الرسمي لهذا الإصدار لـ Remediation Hub',
+doc_version_history_download_pdf_title:'تنزيل ملف PDF الرسمي لهذا الإصدار، تمامًا كما صدر',
+doc_version_history_duplicate:'يوجد بالفعل إدخال للإصدار {v} في السجل. استخدم رقمًا مختلفًا.',
+doc_version_history_empty:'لا توجد إدخالات بعد. سيكون هذا هو أول إصدار صادر من التقرير.',
+doc_version_history_help:'يجب تسجيل كل مراجعة جوهرية للتقرير هنا، مع سبب التغيير — وهذا ما تعرضه صفحة غلاف PDF بدلاً من الإشارة إلى نظام خارجي.',
+doc_version_history_issued_badge:'صادر',
+doc_version_history_label:'سجل الإصدارات',
+doc_version_history_note_required:'يجب ذكر سبب التغيير لتسجيل إصدار جديد.',
+doc_version_history_prompt_note:'ما الذي تغير في هذا الإصدار؟ (إلزامي)',
+doc_version_history_prompt_version:'رقم الإصدار (مثال 1.1):',
+doc_version_history_remove_confirm:'إزالة هذا الإدخال من سجل الإصدارات؟ لا يمكن التراجع عن هذا الإجراء.',
+doc_version_history_remove_issued_blocked:'يتوافق هذا الإدخال مع إصدار رسمي ولا يمكن إزالته — فهو جزء من السجل الدائم للتدقيق.',
+doc_version_history_remove_title:'إزالة هذا الإدخال من السجل',
+doc_version_history_snapshot_missing:'لم يتم العثور على الأرشيف الكامل لهذا الإصدار على هذا الجهاز. ربما تم استيراد التدقيق من جهاز آخر دون نقل هذا السجل.',
 approval_self_approval_forbidden:'غير مسموح: بموجب سياسة "مراجع + معتمِد"، لا يمكن للشخص الذي أعدّ التقرير أن يراجعه أو يعتمده أيضًا — توجد هذه السياسة تحديدًا لضمان مراجعة مستقلة.',
 approval_same_person_both_roles_forbidden:'غير مسموح: يجب أن يكون المراجع والمعتمِد شخصين مختلفين بموجب هذه السياسة.',
 approval_confirm_prompt:'الاعتماد باسم:\\n\\nالاسم: {name}\\nالمنصب: {role}\\nالوظيفة: {function}\\nالإصدار: {version}\\n\\nتأكيد؟',
@@ -7871,6 +8192,8 @@ report_id_label:'报告编号', report_id_ph:'例: INF-2025-001',
 audit_date_label:'日期', add_control_btn:'+ 添加控制',
 generate_pdf_btn:'📄 PDF', export_txt_btn:'📄 TXT',
 export_json_btn:'💾 导出 JSON', import_json_btn:'📂 导入 JSON', issue_report_btn: "📢 发布最终报告",
+post_issuance_message:'✅ 报告已成功发布。请下载并保存这两个正式文件。',
+download_issued_pdf_btn:'📄 下载已发布的 PDF', download_issued_json_btn:'📦 下载用于 Remediation Hub 的 JSON',
 save_progress_btn:'💾 保存', view_saved_btn:'📋 报告',
 chart_compliance:'合规性', chart_risk:'风险',
 yes:'是', no:'否', partial:'部分', not_applicable:'不适用',
@@ -7902,6 +8225,21 @@ approval_gov_single:'本报告通过单人审批流程获得授权，未进行�
 approval_gov_self:'编制本报告的人员同时参与其批准，未进行真正独立的审查。',
 approval_missing_identity:'在文档控制中批准前，请填写"{field}"的姓名和职位。',
 approval_reviewer_first:'必须先完成审阅人批准，才能批准发布。',
+doc_version_history_add:'+ 记录新版本',
+doc_version_history_download_json_title:'下载此版本用于 Remediation Hub 的正式 JSON',
+doc_version_history_download_pdf_title:'下载此版本发布时的正式 PDF',
+doc_version_history_duplicate:'版本 {v} 的记录已存在于历史记录中。请使用不同的编号。',
+doc_version_history_empty:'暂无记录。这将是报告发布的第一个版本。',
+doc_version_history_help:'报告的每次重大修订都应在此记录，并注明变更原因——这就是 PDF 封面显示的内容，而不是指向外部系统。',
+doc_version_history_issued_badge:'已发布',
+doc_version_history_label:'版本历史',
+doc_version_history_note_required:'必须说明变更原因才能记录新版本。',
+doc_version_history_prompt_note:'此版本有什么变化？（必填）',
+doc_version_history_prompt_version:'版本号（例如 1.1）：',
+doc_version_history_remove_confirm:'要从版本历史中删除此记录吗？此操作无法撤销。',
+doc_version_history_remove_issued_blocked:'此记录对应正式发布，无法删除——它是审计永久记录的一部分。',
+doc_version_history_remove_title:'删除此历史记录',
+doc_version_history_snapshot_missing:'在此设备上未找到该版本的完整存档。此审计可能是从另一台设备导入的，未携带该历史记录。',
 approval_self_approval_forbidden:'不允许：在"审阅人 + 批准人"政策下，编制报告的人员不能同时审阅或批准该报告 — 此政策的目的正是为了确保独立审阅。',
 approval_same_person_both_roles_forbidden:'不允许：在此政策下，审阅人和批准人必须是不同的人员。',
 approval_confirm_prompt:'以以下身份批准：\\n\\n姓名：{name}\\n职位：{role}\\n职能：{function}\\n版本：{version}\\n\\n确认？',
