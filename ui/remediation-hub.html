@@ -135,10 +135,37 @@ tailwind.config = {
 </div>
 
 <!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- PORTFOLIO — Issue #2 (hub-portfolio): every imported audit, isolated    -->
+<!-- from every other, one card per audit. Shown whenever 1+ audits exist   -->
+<!-- and none is currently open — the home screen for a consultancy tracking-->
+<!-- several clients, or a single organisation with several audits (NIST    -->
+<!-- this year, ISO 27001 last year, a follow-up...) — the same list serves -->
+<!-- both without any "auditor mode / company mode" distinction, since      -->
+<!-- neither would provide real data isolation in this local-only app.     -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<div id="portfolio-screen" class="container mx-auto px-4 py-10 hidden">
+  <div class="flex items-center justify-between mb-6">
+    <h2 class="text-xl font-bold text-slate-100" data-i18n="portfolio_title">Remediation Hub</h2>
+    <label class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-white text-sm font-medium cursor-pointer transition shadow-lg shadow-indigo-500/30">
+      📂 <span data-i18n="portfolio_import_btn">Importar auditoría emitida</span>
+      <input type="file" accept=".json" onchange="importHubJSON(this)" class="hidden">
+    </label>
+  </div>
+  <div id="portfolio-cards" class="grid md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
 <!-- MAIN WORKSPACE                                                          -->
 <!-- ════════════════════════════════════════════════════════════════════════ -->
 <main id="workspace" class="container mx-auto px-4 py-6 hidden">
   
+  <!-- Issue #2 (hub-portfolio): the way back to the audit list — without
+       this, once inside an audit's workspace there was no path back to
+       pick a different one except clearing everything. -->
+  <button onclick="showPortfolio()" class="mb-3 text-sm text-slate-400 hover:text-indigo-400 transition flex items-center gap-1">
+    ← <span data-i18n="back_to_portfolio">Volver al Portfolio</span>
+  </button>
+
   <!-- ── Audit Info Banner ─────────────────────────────────────────────── -->
   <div id="audit-banner" class="bg-gradient-to-r from-slate-800 to-slate-800/50 border border-slate-700 rounded-xl p-4 mb-6 fade-in">
     <div class="flex items-center justify-between flex-wrap gap-3">
@@ -458,6 +485,28 @@ tailwind.config = {
 <!-- DISPUTE FORM MODAL                                                      -->
 <!-- The finding cannot be saved as "Disputed" without a documented reason. -->
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- Issue #2 (hub-portfolio): shown when an imported JSON's audit ID
+     already exists in the portfolio — re-importing must never silently
+     overwrite existing remediation progress. Summarizes what changed
+     before the user commits to applying it. -->
+<div id="version-diff-modal" class="fixed inset-0 bg-black/80 z-50 hidden items-center justify-center p-4">
+  <div class="bg-slate-900 border border-indigo-600 rounded-xl w-full max-w-lg shadow-2xl">
+    <div class="p-5 border-b border-slate-700 flex justify-between items-center">
+      <h2 class="text-lg font-bold text-indigo-400">🔄 <span data-i18n="version_diff_title">Actualizar Auditoría</span></h2>
+      <button onclick="cancelVersionUpdate()" class="text-slate-400 hover:text-white text-2xl">&times;</button>
+    </div>
+    <div class="p-5 space-y-3">
+      <p id="version-diff-summary" class="text-sm text-slate-300"></p>
+      <button onclick="toggleVersionDiffDetails()" class="text-xs text-indigo-400 hover:text-indigo-300 font-medium" data-i18n="version_diff_review_btn">Revisar cambios</button>
+      <div id="version-diff-details" class="max-h-64 overflow-y-auto space-y-3 hidden text-xs"></div>
+    </div>
+    <div class="p-4 border-t border-slate-700 flex justify-end gap-2">
+      <button onclick="cancelVersionUpdate()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded text-sm" data-i18n="version_diff_cancel_btn">Cancelar</button>
+      <button onclick="confirmVersionUpdate()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded text-sm font-bold" data-i18n="version_diff_update_btn">Actualizar auditoría</button>
+    </div>
+  </div>
+</div>
+
 <div id="dispute-modal" class="fixed inset-0 bg-black/80 z-50 hidden items-center justify-center p-4">
   <div class="bg-slate-900 border border-orange-600 rounded-xl w-full max-w-md shadow-2xl">
     <div class="p-5 border-b border-slate-700 flex justify-between items-center">
@@ -538,10 +587,22 @@ let state = {
   // Finding id whose treatment select is temporarily unlocked for editing
   // after an explicit "reopen" action — cleared once a new choice is saved.
   treatmentUnlockedId: null,
-  history: JSON.parse(localStorage.getItem('hub_history') || '[]')
+  history: JSON.parse(localStorage.getItem('hub_history') || '[]'),
+  // Issue #2 (hub-portfolio): the catalogue of every imported audit and
+  // which one (if any) is currently open. Populated by loadHubAuditIndex()
+  // at boot — see the PERSISTENCE section below for the full per-audit
+  // storage scheme this replaces the old single hub_audit/hub_findings
+  // keys with.
+  auditIndex: [],
+  activeAuditId: null
 };
 
 let chartSeverity, chartStatus, chartAging, chartTrend;
+
+// Issue #2 (hub-portfolio): holds { data, incomingFindings, auditId, diff }
+// between showing the version-diff modal and the user's decision —
+// cleared by either confirmVersionUpdate() or cancelVersionUpdate().
+let pendingVersionUpdate = null;
 
 // ══════════════════════════════════════════════════════════════════════════
 // I18N
@@ -593,7 +654,24 @@ const I18N = {
     no_findings: 'No hay hallazgos que coincidan con los filtros',
     evidence_uploaded: 'Evidencia subida', extension_requested: 'Extensión solicitada',
     status_changed: 'Estado cambiado', assigned_to: 'Asignado a',
-    confirm_clear: '¿Seguro que quieres borrar todos los datos del Hub?',
+    confirm_clear: '¿Eliminar esta auditoría del portfolio? Se perderán sus hallazgos y su progreso de remediación.',
+    back_to_portfolio: 'Volver al Portfolio',
+    portfolio_title: 'Remediation Hub', portfolio_import_btn: 'Importar auditoría emitida',
+    portfolio_open_btn: 'Abrir remediación', portfolio_empty: 'Todavía no hay auditorías importadas.',
+    portfolio_findings_label: 'hallazgos', portfolio_critical_label: 'críticos', portfolio_overdue_label: 'vencidos',
+    portfolio_remove_title: 'Eliminar esta auditoría del portfolio',
+    portfolio_remove_confirm: '¿Eliminar la auditoría {id} del portfolio? Se perderán sus hallazgos y su progreso de remediación. Esta acción no se puede deshacer.',
+    version_diff_title: 'Actualizar Auditoría',
+    version_diff_summary: 'Ya existe la auditoría {id} en el portfolio. La nueva versión importada tiene: {coincident} hallazgo(s) coincidente(s), {added} nuevo(s), {removed} que ya no aparece(n).',
+    version_diff_review_btn: 'Revisar cambios',
+    version_diff_cancel_btn: 'Cancelar', version_diff_update_btn: 'Actualizar auditoría',
+    version_diff_added_label: 'Hallazgos nuevos', version_diff_removed_label: 'Ya no aparecen', version_diff_coincident_label: 'Coincidentes (conservan su progreso)',
+    import_unofficial_warning: 'Este archivo no parece ser el JSON oficial emitido por AuditSym (falta o no coincide el bloque remediationHandoff). Puede ser un borrador o una exportación manual. ¿Importar de todas formas como fuente no oficial?',
+    import_identity_collision: 'El ID de auditoría {id} ya existe en el portfolio, pero la empresa o el framework no coinciden con los datos guardados. Esto podría ser una colisión de identificadores entre auditorías distintas. Importación bloqueada — verifica el archivo antes de continuar.',
+    import_older_version_blocked: 'La versión importada ({new}) es anterior a la versión activa en el portfolio ({existing}). No se puede retroceder una auditoría a una versión anterior de forma silenciosa.',
+    import_refreshed_toast: 'Auditoría actualizada (misma versión, sin cambios en el historial)',
+    portfolio_legacy_title: 'Datos importados antes de que existiera el contrato oficial de emisión — no se puede verificar su procedencia.',
+    portfolio_legacy_badge: 'No oficial',
     risk_accepted: 'Riesgo Aceptado',
     effort: 'Esfuerzo', time: 'Tiempo', cost: 'Coste', score: 'Score',
     effort_low: 'Bajo', effort_medium: 'Medio', effort_high: 'Alto',
@@ -687,7 +765,24 @@ const I18N = {
     no_findings: 'No findings match the filters',
     evidence_uploaded: 'Evidence uploaded', extension_requested: 'Extension requested',
     status_changed: 'Status changed', assigned_to: 'Assigned to',
-    confirm_clear: 'Are you sure you want to clear all Hub data?',
+    confirm_clear: 'Remove this audit from the portfolio? Its findings and remediation progress will be lost.',
+    back_to_portfolio: 'Back to Portfolio',
+    portfolio_title: 'Remediation Hub', portfolio_import_btn: 'Import Issued Audit',
+    portfolio_open_btn: 'Open Remediation', portfolio_empty: 'No audits imported yet.',
+    portfolio_findings_label: 'findings', portfolio_critical_label: 'critical', portfolio_overdue_label: 'overdue',
+    portfolio_remove_title: 'Remove this audit from the portfolio',
+    portfolio_remove_confirm: 'Remove audit {id} from the portfolio? Its findings and remediation progress will be lost. This cannot be undone.',
+    version_diff_title: 'Update Audit',
+    version_diff_summary: 'Audit {id} already exists in the portfolio. The newly imported version has: {coincident} matching finding(s), {added} new, {removed} no longer present.',
+    version_diff_review_btn: 'Review changes',
+    version_diff_cancel_btn: 'Cancel', version_diff_update_btn: 'Update audit',
+    version_diff_added_label: 'New findings', version_diff_removed_label: 'No longer present', version_diff_coincident_label: 'Matching (keep their progress)',
+    import_unofficial_warning: 'This file does not look like an official AuditSym-issued JSON (the remediationHandoff block is missing or does not match). It may be a draft or a manual export. Import anyway as an unofficial source?',
+    import_identity_collision: 'Audit ID {id} already exists in the portfolio, but the company or framework does not match the stored data. This may be an identifier collision between different audits. Import blocked — verify the file before continuing.',
+    import_older_version_blocked: 'The imported version ({new}) is older than the version currently active in the portfolio ({existing}). An audit cannot be silently rolled back to an older version.',
+    import_refreshed_toast: 'Audit refreshed (same version, no new history entry)',
+    portfolio_legacy_title: 'Data imported before the official issuance contract existed — its provenance cannot be verified.',
+    portfolio_legacy_badge: 'Unofficial',
     risk_accepted: 'Risk Accepted',
     effort: 'Effort', time: 'Time', cost: 'Cost', score: 'Score',
     effort_low: 'Low', effort_medium: 'Medium', effort_high: 'High',
@@ -1669,6 +1764,52 @@ function normalizeFinding(f) {
   return f;
 }
 
+// Simple numeric-segment version comparator ("1.0" vs "1.1" vs "2.0") —
+// enough for the MVP's string version numbers. Returns -1/0/1.
+function compareVersions(a, b) {
+  const pa = String(a || '0').split('.').map(n => parseInt(n, 10) || 0);
+  const pb = String(b || '0').split('.').map(n => parseInt(n, 10) || 0);
+  const len = Math.max(pa.length, pb.length);
+  for (let i = 0; i < len; i++) {
+    const diff = (pa[i] || 0) - (pb[i] || 0);
+    if (diff !== 0) return diff > 0 ? 1 : -1;
+  }
+  return 0;
+}
+function normalizeForCompare(s) {
+  return (s || '').toString().trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+// Issue #2 review (Vandan): a matching audit ID is the primary identity
+// signal, but must not be trusted blindly — two unrelated audits could
+// accidentally share an ID (different devices, different consultancies).
+// If company or framework materially disagree, this is treated as an
+// identity collision, not a version update, and is blocked outright.
+function detectIdentityCollision(existingEntry, data) {
+  if (!existingEntry) return false;
+  const orgMismatch = existingEntry.company && data.empresa &&
+    normalizeForCompare(existingEntry.company) !== normalizeForCompare(data.empresa);
+  const fwMismatch = existingEntry.framework && data.framework &&
+    existingEntry.framework !== data.framework;
+  return orgMismatch || fwMismatch;
+}
+
+// Issue #1 provenance contract: a JSON is only an OFFICIAL issued handoff
+// artifact when all of these hold. A draft or a manual "Exportar JSON"
+// working-state export must never be silently treated as equivalent to an
+// actual issuance — see issueFinalReport()'s remediationHandoff block in
+// auditnist-local.html for the producing side of this contract.
+function validateHandoffProvenance(data) {
+  const h = data.remediationHandoff;
+  if (!h) return false;
+  const auditId = data.id || 'unknown';
+  const docVersion = data.engagement?.docControl?.version;
+  return h.eligible === true &&
+    h.sourceStatus === 'issued' &&
+    h.sourceAuditId === auditId &&
+    (!docVersion || h.sourceVersion === docVersion);
+}
+
 function processImportedData(data) {
   let incomingFindings = [];
   if (data.findings && Array.isArray(data.findings) && data.findings.length > 0) {
@@ -1713,15 +1854,140 @@ function processImportedData(data) {
   // throw and abort the whole import, leaving the Hub blank.
   incomingFindings.forEach(normalizeFinding);
 
-  const localFindings = JSON.parse(localStorage.getItem('hub_findings') || '[]');
+  const auditId = data.id || 'unknown';
+  const existingEntry = state.auditIndex.find(e => e.auditId === auditId);
+
+  // Issue #1 provenance contract: a draft or manually-exported working
+  // state must never be silently presented as an official issued
+  // remediation source. Not a hard block — there are legitimate reasons
+  // to import a non-official file (testing, an older export before this
+  // contract existed) — but it requires an explicit, informed decision
+  // rather than silent acceptance.
+  const isOfficial = validateHandoffProvenance(data);
+  if (!isOfficial) {
+    if (!confirm(t('import_unofficial_warning'))) return;
+  }
+
+  if (!existingEntry) {
+    // Brand new audit — nothing to merge against, nothing to silently
+    // overwrite. Commits immediately, same as importing always used to.
+    commitImportedAudit(data, incomingFindings, [], isOfficial);
+    return;
+  }
+
+  // A matching ID is the primary identity signal, but isn't trusted
+  // blindly — two unrelated audits could accidentally share one.
+  if (detectIdentityCollision(existingEntry, data)) {
+    alert('🛑 ' + t('import_identity_collision').replace('{id}', auditId));
+    return;
+  }
+
+  const newVersion = data.remediationHandoff?.sourceVersion || data.engagement?.docControl?.version || '';
+  const existingVersion = existingEntry.sourceVersion || '';
+  const versionCmp = compareVersions(newVersion, existingVersion);
+
+  if (versionCmp < 0) {
+    // An older version must never silently roll back a newer active one.
+    alert('🛑 ' + t('import_older_version_blocked').replace('{new}', newVersion || '?').replace('{existing}', existingVersion || '?'));
+    return;
+  }
+
+  const { findings: existingFindings } = loadAuditFromStorage(auditId);
+
+  if (versionCmp === 0) {
+    // Re-importing the SAME version must be idempotent — refresh in
+    // place without duplicating history or spamming the diff modal for
+    // a change that (by definition of "same version") shouldn't be
+    // materially different.
+    commitImportedAudit(data, incomingFindings, existingFindings, isOfficial, true);
+    return;
+  }
+
+  // Issue #2 (hub-portfolio): re-importing an audit ID that's already in
+  // the portfolio under a NEWER version — it must never silently replace
+  // existing remediation progress. Load that audit's OWN stored findings
+  // (not state.findings, which may currently belong to a completely
+  // different audit) and show the diff before touching anything.
+  const diff = computeFindingsDiff(existingFindings, incomingFindings);
+  pendingVersionUpdate = { data, incomingFindings, auditId, diff, isOfficial };
+  showVersionDiffModal(auditId, diff);
+}
+
+// Matches on id first, falling back to scfId only when present — same
+// matching rule the merge itself uses, so "coincident" here means exactly
+// the findings that WILL merge (carry forward their remediation progress),
+// not just any that happen to share a title.
+function computeFindingsDiff(existingFindings, incomingFindings) {
+  const coincident = [], added = [], removed = [];
+  const matchedExistingIds = new Set();
+  incomingFindings.forEach(newF => {
+    const existing = existingFindings.find(e => e.id === newF.id || (newF.scfId && e.scfId === newF.scfId));
+    if (existing) { coincident.push(newF); matchedExistingIds.add(existing.id); }
+    else { added.push(newF); }
+  });
+  existingFindings.forEach(e => { if (!matchedExistingIds.has(e.id)) removed.push(e); });
+  return { coincident, added, removed };
+}
+
+function showVersionDiffModal(auditId, diff) {
+  const summaryEl = document.getElementById('version-diff-summary');
+  summaryEl.textContent = t('version_diff_summary')
+    .replace('{id}', auditId)
+    .replace('{coincident}', diff.coincident.length)
+    .replace('{added}', diff.added.length)
+    .replace('{removed}', diff.removed.length);
+  const detailsEl = document.getElementById('version-diff-details');
+  detailsEl.classList.add('hidden');
+  const section = (label, list, colorClass) => list.length ? `
+    <div>
+      <p class="font-bold ${colorClass} mb-1">${label} (${list.length})</p>
+      <ul class="space-y-0.5 text-slate-400">${list.map(f => `<li>• ${escapeHTML(f.controlCode || f.title || f.id)}</li>`).join('')}</ul>
+    </div>` : '';
+  detailsEl.innerHTML = [
+    section(t('version_diff_added_label'), diff.added, 'text-emerald-400'),
+    section(t('version_diff_removed_label'), diff.removed, 'text-amber-400'),
+    section(t('version_diff_coincident_label'), diff.coincident, 'text-slate-300')
+  ].join('');
+  document.getElementById('version-diff-modal').classList.remove('hidden');
+  document.getElementById('version-diff-modal').classList.add('flex');
+}
+function toggleVersionDiffDetails() {
+  document.getElementById('version-diff-details').classList.toggle('hidden');
+}
+function cancelVersionUpdate() {
+  pendingVersionUpdate = null;
+  document.getElementById('version-diff-modal').classList.add('hidden');
+  document.getElementById('version-diff-modal').classList.remove('flex');
+}
+function confirmVersionUpdate() {
+  if (!pendingVersionUpdate) return;
+  const { data, incomingFindings, auditId, isOfficial } = pendingVersionUpdate;
+  const { findings: existingFindings } = loadAuditFromStorage(auditId);
+  commitImportedAudit(data, incomingFindings, existingFindings, isOfficial, false);
+  pendingVersionUpdate = null;
+  document.getElementById('version-diff-modal').classList.add('hidden');
+  document.getElementById('version-diff-modal').classList.remove('flex');
+}
+
+// The actual merge-and-save, shared by three callers: brand-new-audit
+// (existingFindings === []), confirmed-version-update, and idempotent
+// same-version-reimport. existingFindings always comes from that SAME
+// audit's own storage — never another audit's. This is the one and only
+// place state.activeAuditId gets pointed at the imported audit before
+// saving, so saveActiveAuditToStorage() always writes to that audit's own
+// isolated keys.
+//
+// isReimportSameVersion suppresses a new history-cycle entry (re-showing
+// the same version isn't a new remediation cycle) and skips the "toast +
+// jump to workspace" flourish that a genuine update deserves — see the
+// tail of this function.
+function commitImportedAudit(data, incomingFindings, existingFindings, isOfficial, isReimportSameVersion) {
+  const auditId = data.id || 'unknown';
+  const matchedExistingIds = new Set();
   const mergedFindings = incomingFindings.map(newF => {
-    // Match on id first. Only fall back to scfId when it is actually present:
-    // manually added controls carry scfId === '', and an unguarded comparison
-    // would make every such finding match the first one and merge them together.
-    const existing = localFindings.find(e =>
-      e.id === newF.id || (newF.scfId && e.scfId === newF.scfId)
-    );
+    const existing = existingFindings.find(e => e.id === newF.id || (newF.scfId && e.scfId === newF.scfId));
     if (existing) {
+      matchedExistingIds.add(existing.id);
       return {
         ...newF,
         owner: existing.owner || '',
@@ -1738,36 +2004,66 @@ function processImportedData(data) {
         // like owner/decision — a re-audit must not wipe who responded.
         managementResponse: existing.managementResponse || newF.managementResponse,
         createdAt: existing.createdAt || newF.createdAt,
-        updatedAt: Date.now()
+        updatedAt: Date.now(),
+        sourceLifecycleState: null,
+        lastSeenInVersion: data.engagement?.docControl?.version || null
       };
     }
-    return newF;
+    return { ...newF, sourceLifecycleState: null, lastSeenInVersion: data.engagement?.docControl?.version || null };
   });
-  // A merged finding can inherit an old-shaped managementResponse straight
-  // from localStorage (existing.managementResponse above) — normalize once
-  // more so this session's render never sees a partial M2 object.
-  mergedFindings.forEach(normalizeFinding);
 
+  // Issue #2 review (Vandan): a finding no longer present in the newly
+  // imported version is NEVER silently deleted — it may carry months of
+  // remediation progress and history. It's retained, marked with a
+  // lifecycle state, and its final disposition (superseded, resolved by
+  // reassessment, merged, or kept for follow-up) stays an explicit
+  // decision someone makes later, not something this import silently
+  // decides on their behalf.
+  const disappearedFindings = existingFindings
+    .filter(e => !matchedExistingIds.has(e.id))
+    .map(e => ({
+      ...e,
+      sourceLifecycleState: 'absent_from_latest_source',
+      // Already set on this finding from whichever earlier import last
+      // actually saw it present — that's exactly "the version it last
+      // appeared in," so it's simply carried forward here, never
+      // recomputed from the CURRENT import (which is precisely the
+      // version it's now missing from).
+      lastSeenInVersion: e.lastSeenInVersion || null
+    }));
+
+  const allFindings = [...mergedFindings, ...disappearedFindings];
+  allFindings.forEach(normalizeFinding);
+
+  state.activeAuditId = auditId;
   state.auditData = {
-    id: data.id || 'unknown',
+    id: auditId,
     empresa: data.empresa || '',
     framework: data.framework || 'N/A',
     publishedAt: data.publishedAt || null,
-    engagement: data.engagement || {}
+    engagement: data.engagement || {},
+    isOfficial: !!isOfficial
   };
-  state.findings = mergedFindings;
-  localStorage.setItem('hub_findings', JSON.stringify(mergedFindings));
-  localStorage.setItem('hub_audit', JSON.stringify(state.auditData));
+  state.findings = allFindings;
+  state.selectedId = null;
+  saveActiveAuditToStorage();
+  localStorage.setItem('hub_active_audit_id', auditId);
 
-  // Record in history
-  recordAuditCycle(mergedFindings);
+  // A same-version reimport isn't a new remediation cycle — recording one
+  // would spam the history chart with duplicate points for no actual
+  // change in the audit.
+  if (!isReimportSameVersion) {
+    recordAuditCycle(allFindings);
+  }
 
   showWorkspace();
   renderAll();
-  
+
   const toast = document.createElement('div');
   toast.className = 'fixed bottom-6 right-6 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 fade-in';
-  toast.textContent = `✅ ${mergedFindings.length} findings imported`;
+  toast.textContent = isReimportSameVersion
+    ? `✅ ${t('import_refreshed_toast')}`
+    : `✅ ${mergedFindings.length} findings imported`;
   document.body.appendChild(toast);
   setTimeout(() => toast.remove(), 3000);
 }
@@ -1794,37 +2090,206 @@ function recordAuditCycle(findings) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════
-// PERSISTENCE
-// ═════════════════════════════════════════════════════════════════════════
-function saveState() {
-  localStorage.setItem('hub_findings', JSON.stringify(state.findings));
-  if (state.auditData) localStorage.setItem('hub_audit', JSON.stringify(state.auditData));
+// PERSISTENCE — Issue #2 (hub-portfolio)
+// ══════════════════════════════════════════════════════════════════════════
+// Each imported audit gets its own isolated pair of keys, `hub_audit_${id}`
+// / `hub_findings_${id}`, replacing the old fixed `hub_audit` / `hub_findings`
+// keys that made importing a second audit silently overwrite the first.
+// `hub_audit_index` is the catalogue of every audit that's ever been
+// imported — company, framework, version, finding counts — everything the
+// portfolio screen needs to render its cards without loading each audit's
+// full findings array. `hub_active_audit_id` remembers which one was open
+// last, so a plain page reload returns straight to it instead of always
+// landing on the portfolio.
+// ══════════════════════════════════════════════════════════════════════════
+
+function loadAuditIndex() {
+  return JSON.parse(localStorage.getItem('hub_audit_index') || '[]');
+}
+function saveAuditIndex(index) {
+  localStorage.setItem('hub_audit_index', JSON.stringify(index));
+}
+
+// Computed fresh from live findings every time the active audit is saved —
+// never hand-edited, so the portfolio card's counts can never drift out of
+// sync with what's actually stored for that audit.
+function buildIndexEntry(auditId, auditData, findings) {
+  return {
+    auditId,
+    company: auditData?.empresa || '',
+    framework: auditData?.framework || 'N/A',
+    sourceVersion: auditData?.engagement?.docControl?.version || auditData?.remediationHandoff?.sourceVersion || '',
+    issuedAt: auditData?.engagement?.issuedAt || auditData?.publishedAt || null,
+    findingCount: findings.length,
+    criticalCount: findings.filter(f => (f.severity || f.riskLevel) === 'critical').length,
+    overdueCount: findings.filter(isOverdue).length,
+    // Carries forward whatever provenance was determined at import time
+    // (see validateHandoffProvenance / migrateLegacyHubStorage) so the
+    // portfolio card can flag non-official / legacy data honestly instead
+    // of presenting everything as equally authoritative.
+    isOfficial: auditData?.isOfficial !== undefined ? !!auditData.isOfficial : true,
+    updatedAt: Date.now()
+  };
+}
+
+function upsertIndexEntry(entry) {
+  const index = loadAuditIndex();
+  const pos = index.findIndex(e => e.auditId === entry.auditId);
+  if (pos >= 0) index[pos] = entry; else index.push(entry);
+  saveAuditIndex(index);
+  state.auditIndex = index;
+}
+
+// Persists whatever is CURRENTLY the active audit — this is the direct
+// replacement for the old saveState(), and every existing call site that
+// used to call saveState() now calls this instead (see the rename below).
+// Writing is always scoped to state.activeAuditId's own keys; it can never
+// touch another audit's stored data, which is the entire point of this
+// issue.
+function saveActiveAuditToStorage() {
+  if (!state.activeAuditId) return;
+  localStorage.setItem(`hub_findings_${state.activeAuditId}`, JSON.stringify(state.findings));
+  if (state.auditData) localStorage.setItem(`hub_audit_${state.activeAuditId}`, JSON.stringify(state.auditData));
+  upsertIndexEntry(buildIndexEntry(state.activeAuditId, state.auditData, state.findings));
+}
+// Old name kept as an alias so every existing call site throughout the
+// file keeps working without having to hunt down and rename each one —
+// they all now correctly save to the ACTIVE audit's own isolated keys.
+function saveState() { saveActiveAuditToStorage(); }
+
+function loadAuditFromStorage(auditId) {
+  const findings = JSON.parse(localStorage.getItem(`hub_findings_${auditId}`) || '[]');
+  const audit = JSON.parse(localStorage.getItem(`hub_audit_${auditId}`) || 'null');
+  return { findings, audit };
+}
+
+// One-time migration for anyone with data saved before this issue existed:
+// the old single-audit hub_audit/hub_findings keys become the FIRST entry
+// in the new per-audit scheme instead of being silently discarded. Runs
+// only when there's legacy data AND no index yet, so it can never
+// re-trigger or clobber a portfolio someone has already built up.
+function migrateLegacyHubStorage() {
+  const hasIndex = localStorage.getItem('hub_audit_index') !== null;
+  const legacyFindingsRaw = localStorage.getItem('hub_findings');
+  const legacyAuditRaw = localStorage.getItem('hub_audit');
+  if (hasIndex || !legacyFindingsRaw) return;
+  const legacyFindings = JSON.parse(legacyFindingsRaw);
+  if (!Array.isArray(legacyFindings) || legacyFindings.length === 0) return;
+  const legacyAudit = JSON.parse(legacyAuditRaw || 'null');
+  const auditId = legacyAudit?.id || 'legacy-import';
+  legacyFindings.forEach(normalizeFinding);
+  // Predates the remediationHandoff provenance contract entirely — always
+  // flagged as non-official rather than guessed at, per the "grandfathered
+  // and labelled as legacy" requirement.
+  if (legacyAudit) legacyAudit.isOfficial = false;
+  localStorage.setItem(`hub_findings_${auditId}`, JSON.stringify(legacyFindings));
+  if (legacyAudit) localStorage.setItem(`hub_audit_${auditId}`, JSON.stringify(legacyAudit));
+  upsertIndexEntry(buildIndexEntry(auditId, legacyAudit, legacyFindings));
+  localStorage.setItem('hub_active_audit_id', auditId);
+  localStorage.removeItem('hub_findings');
+  localStorage.removeItem('hub_audit');
+}
+
+// Loads a specific audit from the portfolio into the live workspace. Safe
+// to call for any auditId present in the index — it only ever reads that
+// audit's own keys, never another's.
+function openAudit(auditId) {
+  const { findings, audit } = loadAuditFromStorage(auditId);
+  findings.forEach(normalizeFinding);
+  state.activeAuditId = auditId;
+  state.auditData = audit;
+  state.findings = findings;
+  state.selectedId = null;
+  localStorage.setItem('hub_active_audit_id', auditId);
+  showWorkspace();
+  renderAll();
+}
+
+// Removes one audit from the portfolio entirely — its own two storage keys
+// plus its index entry. Never touches any other audit's data. If the
+// removed audit was the active one, falls back to the portfolio (or the
+// empty state if that was the last audit).
+function removeAuditFromPortfolio(auditId) {
+  localStorage.removeItem(`hub_audit_${auditId}`);
+  localStorage.removeItem(`hub_findings_${auditId}`);
+  const index = loadAuditIndex().filter(e => e.auditId !== auditId);
+  saveAuditIndex(index);
+  state.auditIndex = index;
+  if (state.activeAuditId === auditId) {
+    state.activeAuditId = null;
+    state.auditData = null;
+    state.findings = [];
+    localStorage.removeItem('hub_active_audit_id');
+  }
+  if (index.length === 0) { showEmpty(); } else { showPortfolio(); }
 }
 
 function loadState() {
-  const findings = JSON.parse(localStorage.getItem('hub_findings') || '[]');
-  const audit = JSON.parse(localStorage.getItem('hub_audit') || 'null');
-  if (findings.length > 0) {
-    // Re-run the same normalization used on import so findings saved by an
-    // older version of the Hub (pre-M2 managementResponse model) pick up the
-    // new shape on a plain page reload, not just on the next re-import.
-    findings.forEach(normalizeFinding);
-    state.findings = findings;
-    state.auditData = audit;
-    showWorkspace();
-    renderAll();
-  } else {
+  migrateLegacyHubStorage();
+  state.auditIndex = loadAuditIndex();
+  const rememberedActiveId = localStorage.getItem('hub_active_audit_id');
+  if (state.auditIndex.length === 0) {
     showEmpty();
+    return;
+  }
+  if (rememberedActiveId && state.auditIndex.some(e => e.auditId === rememberedActiveId)) {
+    openAudit(rememberedActiveId);
+  } else {
+    showPortfolio();
   }
 }
 
 function showEmpty() {
   document.getElementById('empty-state').classList.remove('hidden');
+  document.getElementById('portfolio-screen').classList.add('hidden');
   document.getElementById('workspace').classList.add('hidden');
+}
+function showPortfolio() {
+  document.getElementById('empty-state').classList.add('hidden');
+  document.getElementById('portfolio-screen').classList.remove('hidden');
+  document.getElementById('workspace').classList.add('hidden');
+  // No specific audit is open while the portfolio itself is showing —
+  // otherwise re-entering it would keep offering "back to workspace" for
+  // an audit the user may be about to abandon in favour of a different one.
+  state.activeAuditId = null;
+  localStorage.removeItem('hub_active_audit_id');
+  renderPortfolio();
 }
 function showWorkspace() {
   document.getElementById('empty-state').classList.add('hidden');
+  document.getElementById('portfolio-screen').classList.add('hidden');
   document.getElementById('workspace').classList.remove('hidden');
+}
+
+function renderPortfolio() {
+  const container = document.getElementById('portfolio-cards');
+  if (!container) return;
+  const index = [...state.auditIndex].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  container.innerHTML = index.map(entry => `
+    <div class="bg-slate-800/60 border border-slate-700 rounded-xl p-5 hover:border-indigo-500/60 transition">
+      <div class="flex items-start justify-between gap-3 mb-3">
+        <div>
+          <div class="font-bold text-slate-100 flex items-center gap-2">
+            ${escapeHTML(entry.auditId)} · ${escapeHTML(entry.company || '—')}
+            ${entry.isOfficial === false ? `<span class="px-1.5 py-0.5 rounded bg-amber-900/60 text-amber-300 text-[9px] font-bold uppercase" title="${t('portfolio_legacy_title')}">${t('portfolio_legacy_badge')}</span>` : ''}
+          </div>
+          <div class="text-xs text-slate-400 mt-0.5">${escapeHTML((entry.framework || 'N/A').toUpperCase())}${entry.sourceVersion ? ' · v' + escapeHTML(entry.sourceVersion) : ''}</div>
+        </div>
+        <button onclick="event.stopPropagation(); confirmRemoveAuditFromPortfolio('${escapeHTML(entry.auditId)}')" title="${t('portfolio_remove_title')}" class="text-slate-500 hover:text-red-400 text-sm flex-shrink-0">✕</button>
+      </div>
+      <div class="flex items-center gap-3 text-xs text-slate-400 mb-4">
+        <span>${entry.findingCount} ${t('portfolio_findings_label')}</span>
+        ${entry.criticalCount > 0 ? `<span class="text-red-400">${entry.criticalCount} ${t('portfolio_critical_label')}</span>` : ''}
+        ${entry.overdueCount > 0 ? `<span class="text-orange-400">${entry.overdueCount} ${t('portfolio_overdue_label')}</span>` : ''}
+      </div>
+      <button onclick="openAudit('${escapeHTML(entry.auditId)}')" class="w-full px-3 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm font-medium transition" data-i18n="portfolio_open_btn">Abrir remediación</button>
+    </div>
+  `).join('') || `<p class="text-sm text-slate-500 col-span-full text-center py-8">${t('portfolio_empty')}</p>`;
+}
+
+function confirmRemoveAuditFromPortfolio(auditId) {
+  if (!confirm(t('portfolio_remove_confirm').replace('{id}', auditId))) return;
+  removeAuditFromPortfolio(auditId);
 }
 
 function setView(mode) {
@@ -3284,14 +3749,16 @@ function exportHubJSON() {
   URL.revokeObjectURL(url);
 }
 
+// Issue #2 (hub-portfolio): "Clear" now removes only the CURRENTLY ACTIVE
+// audit from the portfolio, not the entire local database — with several
+// audits potentially stored, a blanket wipe would be a far more
+// destructive action than this button ever implied. Removing a specific
+// audit from the portfolio list itself (the ✕ on its card) calls the same
+// underlying removeAuditFromPortfolio().
 function clearHubData() {
+  if (!state.activeAuditId) return;
   if (!confirm(t('confirm_clear'))) return;
-  localStorage.removeItem('hub_findings');
-  localStorage.removeItem('hub_audit');
-  state.findings = [];
-  state.auditData = null;
-  state.selectedId = null;
-  showEmpty();
+  removeAuditFromPortfolio(state.activeAuditId);
 }
 
 // ══════════════════════════════════════════════════════════════════════════
