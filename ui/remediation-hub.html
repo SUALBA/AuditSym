@@ -587,7 +587,9 @@ let state = {
   // Finding id whose treatment select is temporarily unlocked for editing
   // after an explicit "reopen" action — cleared once a new choice is saved.
   treatmentUnlockedId: null,
-  history: JSON.parse(localStorage.getItem('hub_history') || '[]'),
+  // Loaded per-audit by openAudit()/commitImportedAudit() now — starts
+  // empty here since there's no active audit at module-load time.
+  history: [],
   // Issue #2 (hub-portfolio): the catalogue of every imported audit and
   // which one (if any) is currently open. Populated by loadHubAuditIndex()
   // at boot — see the PERSISTENCE section below for the full per-audit
@@ -670,6 +672,11 @@ const I18N = {
     import_identity_collision: 'El ID de auditoría {id} ya existe en el portfolio, pero la empresa o el framework no coinciden con los datos guardados. Esto podría ser una colisión de identificadores entre auditorías distintas. Importación bloqueada — verifica el archivo antes de continuar.',
     import_older_version_blocked: 'La versión importada ({new}) es anterior a la versión activa en el portfolio ({existing}). No se puede retroceder una auditoría a una versión anterior de forma silenciosa.',
     import_refreshed_toast: 'Auditoría actualizada (misma versión, sin cambios en el historial)',
+    import_unparseable_version_warning: 'No se puede determinar automáticamente si la versión importada ({new}) es más reciente que la activa ({existing}) — el formato de versión no es válido. Revisa manualmente antes de continuar. ¿Proceder con la revisión de cambios?',
+    import_inconsistent_same_version_warning: 'La versión importada ({v}) coincide con la ya guardada, pero el contenido del archivo es distinto (posible artefacto inconsistente). ¿Revisar los cambios antes de aplicarlos?',
+    version_diff_modified_label: 'Hallazgos modificados',
+    portfolio_unverified_badge: 'No verificado', portfolio_unverified_title: 'Importado sin el contrato oficial de emisión — el usuario aceptó continuar de todas formas.',
+    portfolio_last_activity: 'Última actividad',
     portfolio_legacy_title: 'Datos importados antes de que existiera el contrato oficial de emisión — no se puede verificar su procedencia.',
     portfolio_legacy_badge: 'No oficial',
     risk_accepted: 'Riesgo Aceptado',
@@ -781,6 +788,11 @@ const I18N = {
     import_identity_collision: 'Audit ID {id} already exists in the portfolio, but the company or framework does not match the stored data. This may be an identifier collision between different audits. Import blocked — verify the file before continuing.',
     import_older_version_blocked: 'The imported version ({new}) is older than the version currently active in the portfolio ({existing}). An audit cannot be silently rolled back to an older version.',
     import_refreshed_toast: 'Audit refreshed (same version, no new history entry)',
+    import_unparseable_version_warning: 'Cannot automatically determine whether the imported version ({new}) is newer than the active one ({existing}) — the version format is not valid. Review manually before continuing. Proceed to review changes?',
+    import_inconsistent_same_version_warning: 'The imported version ({v}) matches the one already stored, but the file content differs (possible inconsistent artifact). Review the changes before applying them?',
+    version_diff_modified_label: 'Modified findings',
+    portfolio_unverified_badge: 'Unverified', portfolio_unverified_title: 'Imported without the official issuance contract — the user chose to proceed anyway.',
+    portfolio_last_activity: 'Last activity',
     portfolio_legacy_title: 'Data imported before the official issuance contract existed — its provenance cannot be verified.',
     portfolio_legacy_badge: 'Unofficial',
     risk_accepted: 'Risk Accepted',
@@ -1766,9 +1778,32 @@ function normalizeFinding(f) {
 
 // Simple numeric-segment version comparator ("1.0" vs "1.1" vs "2.0") —
 // enough for the MVP's string version numbers. Returns -1/0/1.
+// Issue #2 review round 2 (Vandan, point 7): auditId is the human-facing
+// identity (shown in the UI, matched against remediationHandoff), but is
+// user/file-supplied and must never be interpolated directly into a
+// localStorage key or an HTML onclick attribute — unexpected characters
+// (quotes, slashes, unicode) could corrupt storage keys or break rendered
+// markup. storageKey is the ONE canonical, sanitized derivation used by
+// every read/write and every rendered handler, so the same audit always
+// resolves to the same key everywhere.
+function buildStorageKey(auditId) {
+  return String(auditId || 'unknown').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 100) || 'unknown';
+}
+
+// Issue #2 review round 2 (Vandan, point 3): version numbers are
+// user/file-supplied strings — "draft", "v1.A", or an empty string must
+// never be silently coerced into a numeric segment and guessed at as if
+// it were a real version. Comparison is only ever attempted between two
+// strictly-shaped "N.N" strings; anything else returns null, and callers
+// must treat null as "cannot auto-determine order," never as equal.
+const STRICT_VERSION_PATTERN = /^\d+\.\d+$/;
+function isValidVersionString(v) {
+  return typeof v === 'string' && STRICT_VERSION_PATTERN.test(v.trim());
+}
 function compareVersions(a, b) {
-  const pa = String(a || '0').split('.').map(n => parseInt(n, 10) || 0);
-  const pb = String(b || '0').split('.').map(n => parseInt(n, 10) || 0);
+  if (!isValidVersionString(a) || !isValidVersionString(b)) return null;
+  const pa = a.trim().split('.').map(Number);
+  const pb = b.trim().split('.').map(Number);
   const len = Math.max(pa.length, pb.length);
   for (let i = 0; i < len; i++) {
     const diff = (pa[i] || 0) - (pb[i] || 0);
@@ -1794,20 +1829,46 @@ function detectIdentityCollision(existingEntry, data) {
   return orgMismatch || fwMismatch;
 }
 
-// Issue #1 provenance contract: a JSON is only an OFFICIAL issued handoff
-// artifact when all of these hold. A draft or a manual "Exportar JSON"
-// working-state export must never be silently treated as equivalent to an
-// actual issuance — see issueFinalReport()'s remediationHandoff block in
-// auditnist-local.html for the producing side of this contract.
+// Issue #2 review round 2 (Vandan, point 4): the provenance contract is
+// now checked completely rather than partially — a docVersion is
+// REQUIRED and must match (not merely "if present"), generatedAt must be
+// a real parseable timestamp, the audit structure must have the minimum
+// fields a portfolio entry needs, and every finding/control must carry a
+// stable identifier the merge logic can actually match against later.
+// Returns a reason code rather than a bare boolean so callers (and this
+// suite's tests) can be specific about WHY something failed provenance.
 function validateHandoffProvenance(data) {
   const h = data.remediationHandoff;
-  if (!h) return false;
-  const auditId = data.id || 'unknown';
+  if (!h) return { valid: false, reason: 'missing_handoff' };
+  if (h.eligible !== true) return { valid: false, reason: 'not_eligible' };
+  if (h.sourceStatus !== 'issued') return { valid: false, reason: 'not_issued' };
+  if (!h.generatedAt || isNaN(Date.parse(h.generatedAt))) return { valid: false, reason: 'bad_generated_at' };
+  const auditId = data.id;
+  if (!auditId || h.sourceAuditId !== auditId) return { valid: false, reason: 'id_mismatch' };
   const docVersion = data.engagement?.docControl?.version;
-  return h.eligible === true &&
-    h.sourceStatus === 'issued' &&
-    h.sourceAuditId === auditId &&
-    (!docVersion || h.sourceVersion === docVersion);
+  if (!docVersion || !h.sourceVersion || h.sourceVersion !== docVersion) return { valid: false, reason: 'version_mismatch' };
+  if (!data.empresa || !data.framework) return { valid: false, reason: 'incomplete_audit_structure' };
+  const list = Array.isArray(data.findings) ? data.findings : (Array.isArray(data.controls) ? data.controls : null);
+  if (!list) return { valid: false, reason: 'no_findings_structure' };
+  const hasStableIds = list.every(item => item && (item.id || item.scfId));
+  if (!hasStableIds) return { valid: false, reason: 'unstable_ids' };
+  return { valid: true, reason: 'ok' };
+}
+
+// Issue #2 review round 2 (Vandan, point 2): "same version number" alone
+// doesn't guarantee "same content" — a second v1.0 file could carry
+// genuinely different data (a mistake, a corrupted re-export, tampering).
+// The fingerprint deliberately excludes remediation-progress fields
+// (owner/status/history/etc, which are EXPECTED to differ as work
+// happens against the same source version) and only reflects the fields
+// that came FROM the audit source itself.
+function computeContentFingerprint(findings) {
+  const relevant = findings.map(f => ({
+    id: f.id || '', scfId: f.scfId || '', severity: f.severity || f.riskLevel || '',
+    title: f.title || '', controlCode: f.controlCode || '',
+    evidence: f.evidence || f.reason || '', question: f.question || ''
+  })).sort((a, b) => (a.id || a.scfId).localeCompare(b.id || b.scfId));
+  return JSON.stringify(relevant);
 }
 
 function processImportedData(data) {
@@ -1863,7 +1924,8 @@ function processImportedData(data) {
   // to import a non-official file (testing, an older export before this
   // contract existed) — but it requires an explicit, informed decision
   // rather than silent acceptance.
-  const isOfficial = validateHandoffProvenance(data);
+  const provenanceCheck = validateHandoffProvenance(data);
+  const isOfficial = provenanceCheck.valid;
   if (!isOfficial) {
     if (!confirm(t('import_unofficial_warning'))) return;
   }
@@ -1871,7 +1933,7 @@ function processImportedData(data) {
   if (!existingEntry) {
     // Brand new audit — nothing to merge against, nothing to silently
     // overwrite. Commits immediately, same as importing always used to.
-    commitImportedAudit(data, incomingFindings, [], isOfficial);
+    commitImportedAudit(data, incomingFindings, [], isOfficial, false, { priorVersion: null });
     return;
   }
 
@@ -1886,20 +1948,42 @@ function processImportedData(data) {
   const existingVersion = existingEntry.sourceVersion || '';
   const versionCmp = compareVersions(newVersion, existingVersion);
 
+  const { findings: existingFindings } = loadAuditFromStorage(auditId);
+
+  if (versionCmp === null) {
+    // Neither version string is a strict "N.N" — refuse to guess at
+    // ordering. Falls through to the full review-and-confirm flow rather
+    // than either silently blocking OR silently treating it as newer.
+    if (!confirm(t('import_unparseable_version_warning').replace('{new}', newVersion || '?').replace('{existing}', existingVersion || '?'))) return;
+    const diff = computeFindingsDiff(existingFindings, incomingFindings);
+    pendingVersionUpdate = { data, incomingFindings, auditId, diff, isOfficial, priorVersion: existingVersion };
+    showVersionDiffModal(auditId, diff);
+    return;
+  }
+
   if (versionCmp < 0) {
     // An older version must never silently roll back a newer active one.
     alert('🛑 ' + t('import_older_version_blocked').replace('{new}', newVersion || '?').replace('{existing}', existingVersion || '?'));
     return;
   }
 
-  const { findings: existingFindings } = loadAuditFromStorage(auditId);
-
   if (versionCmp === 0) {
-    // Re-importing the SAME version must be idempotent — refresh in
-    // place without duplicating history or spamming the diff modal for
-    // a change that (by definition of "same version") shouldn't be
-    // materially different.
-    commitImportedAudit(data, incomingFindings, existingFindings, isOfficial, true);
+    // Same version number — but that alone doesn't guarantee the same
+    // content. Compare a content fingerprint (excluding remediation-
+    // progress fields, which are supposed to differ as work happens)
+    // before treating this as a safe, idempotent no-op refresh.
+    const sameContent = computeContentFingerprint(existingFindings) === computeContentFingerprint(incomingFindings);
+    if (sameContent) {
+      commitImportedAudit(data, incomingFindings, existingFindings, isOfficial, true, { priorVersion: existingVersion });
+      return;
+    }
+    // Same version, different content — this is exactly the "inconsistent
+    // artifact" case the review flagged. Never silently overwrite; require
+    // an explicit decision, then route through the full diff review.
+    if (!confirm(t('import_inconsistent_same_version_warning').replace('{v}', newVersion))) return;
+    const diff = computeFindingsDiff(existingFindings, incomingFindings);
+    pendingVersionUpdate = { data, incomingFindings, auditId, diff, isOfficial, priorVersion: existingVersion };
+    showVersionDiffModal(auditId, diff);
     return;
   }
 
@@ -1909,7 +1993,7 @@ function processImportedData(data) {
   // (not state.findings, which may currently belong to a completely
   // different audit) and show the diff before touching anything.
   const diff = computeFindingsDiff(existingFindings, incomingFindings);
-  pendingVersionUpdate = { data, incomingFindings, auditId, diff, isOfficial };
+  pendingVersionUpdate = { data, incomingFindings, auditId, diff, isOfficial, priorVersion: existingVersion };
   showVersionDiffModal(auditId, diff);
 }
 
@@ -1917,16 +2001,30 @@ function processImportedData(data) {
 // matching rule the merge itself uses, so "coincident" here means exactly
 // the findings that WILL merge (carry forward their remediation progress),
 // not just any that happen to share a title.
+//
+// Issue #2 review round 2 (Vandan, point 5): coincident findings are
+// further checked for MATERIAL changes to source-derived fields
+// (severity, title, control, evidence/criteria) — a finding matching by
+// ID doesn't mean nothing about it changed, and those changes deserve to
+// be visible before confirming, not silently absorbed into the merge.
+const DIFF_COMPARE_FIELDS = ['severity', 'riskLevel', 'title', 'controlCode', 'recommendation', 'evidence', 'reason', 'question'];
 function computeFindingsDiff(existingFindings, incomingFindings) {
-  const coincident = [], added = [], removed = [];
+  const coincident = [], added = [], removed = [], modified = [];
   const matchedExistingIds = new Set();
   incomingFindings.forEach(newF => {
     const existing = existingFindings.find(e => e.id === newF.id || (newF.scfId && e.scfId === newF.scfId));
-    if (existing) { coincident.push(newF); matchedExistingIds.add(existing.id); }
+    if (existing) {
+      coincident.push(newF);
+      matchedExistingIds.add(existing.id);
+      const changedFields = DIFF_COMPARE_FIELDS.filter(field => (existing[field] || '') !== (newF[field] || ''));
+      if (changedFields.length > 0) {
+        modified.push({ id: newF.id, controlCode: newF.controlCode, title: newF.title, changedFields });
+      }
+    }
     else { added.push(newF); }
   });
   existingFindings.forEach(e => { if (!matchedExistingIds.has(e.id)) removed.push(e); });
-  return { coincident, added, removed };
+  return { coincident, added, removed, modified };
 }
 
 function showVersionDiffModal(auditId, diff) {
@@ -1943,9 +2041,15 @@ function showVersionDiffModal(auditId, diff) {
       <p class="font-bold ${colorClass} mb-1">${label} (${list.length})</p>
       <ul class="space-y-0.5 text-slate-400">${list.map(f => `<li>• ${escapeHTML(f.controlCode || f.title || f.id)}</li>`).join('')}</ul>
     </div>` : '';
+  const modifiedSection = diff.modified.length ? `
+    <div>
+      <p class="font-bold text-sky-400 mb-1">${t('version_diff_modified_label')} (${diff.modified.length})</p>
+      <ul class="space-y-0.5 text-slate-400">${diff.modified.map(f => `<li>• ${escapeHTML(f.controlCode || f.title || f.id)} — ${f.changedFields.map(escapeHTML).join(', ')}</li>`).join('')}</ul>
+    </div>` : '';
   detailsEl.innerHTML = [
     section(t('version_diff_added_label'), diff.added, 'text-emerald-400'),
     section(t('version_diff_removed_label'), diff.removed, 'text-amber-400'),
+    modifiedSection,
     section(t('version_diff_coincident_label'), diff.coincident, 'text-slate-300')
   ].join('');
   document.getElementById('version-diff-modal').classList.remove('hidden');
@@ -1961,9 +2065,9 @@ function cancelVersionUpdate() {
 }
 function confirmVersionUpdate() {
   if (!pendingVersionUpdate) return;
-  const { data, incomingFindings, auditId, isOfficial } = pendingVersionUpdate;
+  const { data, incomingFindings, auditId, isOfficial, diff, priorVersion } = pendingVersionUpdate;
   const { findings: existingFindings } = loadAuditFromStorage(auditId);
-  commitImportedAudit(data, incomingFindings, existingFindings, isOfficial, false);
+  commitImportedAudit(data, incomingFindings, existingFindings, isOfficial, false, { priorVersion, diff });
   pendingVersionUpdate = null;
   document.getElementById('version-diff-modal').classList.add('hidden');
   document.getElementById('version-diff-modal').classList.remove('flex');
@@ -1981,7 +2085,13 @@ function confirmVersionUpdate() {
 // the same version isn't a new remediation cycle) and skips the "toast +
 // jump to workspace" flourish that a genuine update deserves — see the
 // tail of this function.
-function commitImportedAudit(data, incomingFindings, existingFindings, isOfficial, isReimportSameVersion) {
+//
+// reconciliationMeta ({priorVersion, diff}) feeds the auditable
+// reconciliation log (Vandan review point 9) — recorded for every commit,
+// not just contested updates, so the log is a complete history of every
+// decision made about this audit's data, including the very first import.
+function commitImportedAudit(data, incomingFindings, existingFindings, isOfficial, isReimportSameVersion, reconciliationMeta) {
+
   const auditId = data.id || 'unknown';
   const matchedExistingIds = new Set();
   const mergedFindings = incomingFindings.map(newF => {
@@ -2042,12 +2152,36 @@ function commitImportedAudit(data, incomingFindings, existingFindings, isOfficia
     framework: data.framework || 'N/A',
     publishedAt: data.publishedAt || null,
     engagement: data.engagement || {},
-    isOfficial: !!isOfficial
+    provenance: isOfficial ? PROVENANCE.OFFICIAL : PROVENANCE.UNVERIFIED,
+    isOfficial: !!isOfficial,
+    remediationHandoff: data.remediationHandoff || null
   };
   state.findings = allFindings;
+  // This audit's own history bucket, loaded fresh here (rather than only
+  // via openAudit()) because commitImportedAudit() is also the entry
+  // point for a brand-new import, which never went through openAudit().
+  state.history = loadAuditHistory(auditId);
   state.selectedId = null;
   saveActiveAuditToStorage();
   localStorage.setItem('hub_active_audit_id', auditId);
+
+  // Issue #2 review round 2 (Vandan, point 9): an explicit, auditable
+  // reconciliation record for THIS decision — distinct from
+  // recordAuditCycle()'s global compliance-trend metric, which was never
+  // meant to double as a decision log. Recorded for every commit,
+  // including the very first import of a brand-new audit (priorVersion:
+  // null identifies that case).
+  const meta = reconciliationMeta || {};
+  appendReconciliationEvent(auditId, {
+    action: isReimportSameVersion ? 'refresh_same_version' : (meta.priorVersion ? 'version_update' : 'initial_import'),
+    priorVersion: meta.priorVersion || null,
+    newVersion: data.engagement?.docControl?.version || data.remediationHandoff?.sourceVersion || null,
+    isOfficial: !!isOfficial,
+    coincidentCount: meta.diff?.coincident?.length ?? null,
+    addedCount: meta.diff?.added?.length ?? null,
+    removedCount: meta.diff?.removed?.length ?? null,
+    modifiedCount: meta.diff?.modified?.length ?? null
+  });
 
   // A same-version reimport isn't a new remediation cycle — recording one
   // would spam the history chart with duplicate points for no actual
@@ -2086,7 +2220,11 @@ function recordAuditCycle(findings) {
   };
   
   state.history.push(cycle);
-  localStorage.setItem('hub_history', JSON.stringify(state.history));
+  // Issue #2 review round 2 (Vandan, point 1): per-audit, not the old
+  // global hub_history key — two different audits' cycles must never end
+  // up mixed together, and Export History must only ever reflect the
+  // currently active audit.
+  saveAuditHistory(state.activeAuditId, state.history);
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -2110,31 +2248,41 @@ function saveAuditIndex(index) {
   localStorage.setItem('hub_audit_index', JSON.stringify(index));
 }
 
+// Issue #2 review round 2 (Vandan, point 8): a plain isOfficial boolean
+// collapsed "someone explicitly accepted importing an unofficial file"
+// and "pre-handoff legacy data nobody made a provenance decision about"
+// into the same "No oficial" bucket. They mean different things to
+// someone reviewing the portfolio later, so they get distinct labels.
+const PROVENANCE = { OFFICIAL: 'official_handoff', UNVERIFIED: 'unverified_import', LEGACY: 'legacy' };
+
 // Computed fresh from live findings every time the active audit is saved —
 // never hand-edited, so the portfolio card's counts can never drift out of
 // sync with what's actually stored for that audit.
 function buildIndexEntry(auditId, auditData, findings) {
+  const provenance = auditData?.provenance ||
+    (auditData?.isOfficial === false ? PROVENANCE.UNVERIFIED : PROVENANCE.OFFICIAL);
   return {
     auditId,
+    storageKey: buildStorageKey(auditId),
     company: auditData?.empresa || '',
     framework: auditData?.framework || 'N/A',
     sourceVersion: auditData?.engagement?.docControl?.version || auditData?.remediationHandoff?.sourceVersion || '',
     issuedAt: auditData?.engagement?.issuedAt || auditData?.publishedAt || null,
+    // Preserved distinctly from issuedAt / updatedAt — this is specifically
+    // when the OFFICIAL handoff artifact itself was produced, per issue #1.
+    handoffGeneratedAt: auditData?.remediationHandoff?.generatedAt || null,
     findingCount: findings.length,
     criticalCount: findings.filter(f => (f.severity || f.riskLevel) === 'critical').length,
     overdueCount: findings.filter(isOverdue).length,
-    // Carries forward whatever provenance was determined at import time
-    // (see validateHandoffProvenance / migrateLegacyHubStorage) so the
-    // portfolio card can flag non-official / legacy data honestly instead
-    // of presenting everything as equally authoritative.
-    isOfficial: auditData?.isOfficial !== undefined ? !!auditData.isOfficial : true,
+    provenance,
+    isOfficial: provenance === PROVENANCE.OFFICIAL,
     updatedAt: Date.now()
   };
 }
 
 function upsertIndexEntry(entry) {
   const index = loadAuditIndex();
-  const pos = index.findIndex(e => e.auditId === entry.auditId);
+  const pos = index.findIndex(e => e.storageKey === entry.storageKey);
   if (pos >= 0) index[pos] = entry; else index.push(entry);
   saveAuditIndex(index);
   state.auditIndex = index;
@@ -2143,13 +2291,14 @@ function upsertIndexEntry(entry) {
 // Persists whatever is CURRENTLY the active audit — this is the direct
 // replacement for the old saveState(), and every existing call site that
 // used to call saveState() now calls this instead (see the rename below).
-// Writing is always scoped to state.activeAuditId's own keys; it can never
-// touch another audit's stored data, which is the entire point of this
-// issue.
+// Writing is always scoped to state.activeAuditId's own sanitized
+// storageKey; it can never touch another audit's stored data, which is
+// the entire point of this issue.
 function saveActiveAuditToStorage() {
   if (!state.activeAuditId) return;
-  localStorage.setItem(`hub_findings_${state.activeAuditId}`, JSON.stringify(state.findings));
-  if (state.auditData) localStorage.setItem(`hub_audit_${state.activeAuditId}`, JSON.stringify(state.auditData));
+  const key = buildStorageKey(state.activeAuditId);
+  localStorage.setItem(`hub_findings_${key}`, JSON.stringify(state.findings));
+  if (state.auditData) localStorage.setItem(`hub_audit_${key}`, JSON.stringify(state.auditData));
   upsertIndexEntry(buildIndexEntry(state.activeAuditId, state.auditData, state.findings));
 }
 // Old name kept as an alias so every existing call site throughout the
@@ -2158,16 +2307,50 @@ function saveActiveAuditToStorage() {
 function saveState() { saveActiveAuditToStorage(); }
 
 function loadAuditFromStorage(auditId) {
-  const findings = JSON.parse(localStorage.getItem(`hub_findings_${auditId}`) || '[]');
-  const audit = JSON.parse(localStorage.getItem(`hub_audit_${auditId}`) || 'null');
+  const key = buildStorageKey(auditId);
+  const findings = JSON.parse(localStorage.getItem(`hub_findings_${key}`) || '[]');
+  const audit = JSON.parse(localStorage.getItem(`hub_audit_${key}`) || 'null');
   return { findings, audit };
 }
 
+// Issue #2 review round 2 (Vandan, point 1): audit-cycle history was
+// still a single global hub_history array, so two different audits'
+// cycles could appear mixed together, and Export History could export
+// data spanning audits that have nothing to do with each other. Each
+// audit now gets its own history bucket, loaded/saved alongside its
+// findings and audit data.
+function loadAuditHistory(auditId) {
+  return JSON.parse(localStorage.getItem(`hub_history_${buildStorageKey(auditId)}`) || '[]');
+}
+function saveAuditHistory(auditId, history) {
+  localStorage.setItem(`hub_history_${buildStorageKey(auditId)}`, JSON.stringify(history));
+}
+
+// Issue #2 review round 2 (Vandan, point 9): a plain per-audit event log
+// of every import/update decision — who/when, prior/new version, and the
+// reconciliation counts that were shown before confirming. Distinct from
+// recordAuditCycle()'s global compliance-trend metric, which was never
+// meant to serve as an auditable decision record.
+function loadReconciliationLog(auditId) {
+  return JSON.parse(localStorage.getItem(`hub_reconciliation_${buildStorageKey(auditId)}`) || '[]');
+}
+function appendReconciliationEvent(auditId, event) {
+  const log = loadReconciliationLog(auditId);
+  log.push({ ts: Date.now(), ...event });
+  localStorage.setItem(`hub_reconciliation_${buildStorageKey(auditId)}`, JSON.stringify(log));
+}
+
 // One-time migration for anyone with data saved before this issue existed:
-// the old single-audit hub_audit/hub_findings keys become the FIRST entry
-// in the new per-audit scheme instead of being silently discarded. Runs
-// only when there's legacy data AND no index yet, so it can never
-// re-trigger or clobber a portfolio someone has already built up.
+// the old single-audit hub_audit/hub_findings/hub_history keys become the
+// FIRST entry in the new per-audit scheme instead of being silently
+// discarded. Runs only when there's legacy data AND no index yet, so it
+// can never re-trigger or clobber a portfolio someone has already built
+// up.
+//
+// Issue #2 review round 2 (Vandan, point 6): writes the new keys FIRST,
+// reads them back to verify the write actually landed correctly, and only
+// THEN deletes the old keys. A quota error or partial write leaves the
+// legacy keys untouched rather than losing the only copy of the data.
 function migrateLegacyHubStorage() {
   const hasIndex = localStorage.getItem('hub_audit_index') !== null;
   const legacyFindingsRaw = localStorage.getItem('hub_findings');
@@ -2177,48 +2360,79 @@ function migrateLegacyHubStorage() {
   if (!Array.isArray(legacyFindings) || legacyFindings.length === 0) return;
   const legacyAudit = JSON.parse(legacyAuditRaw || 'null');
   const auditId = legacyAudit?.id || 'legacy-import';
+  const key = buildStorageKey(auditId);
   legacyFindings.forEach(normalizeFinding);
   // Predates the remediationHandoff provenance contract entirely — always
-  // flagged as non-official rather than guessed at, per the "grandfathered
-  // and labelled as legacy" requirement.
-  if (legacyAudit) legacyAudit.isOfficial = false;
-  localStorage.setItem(`hub_findings_${auditId}`, JSON.stringify(legacyFindings));
-  if (legacyAudit) localStorage.setItem(`hub_audit_${auditId}`, JSON.stringify(legacyAudit));
+  // flagged as legacy rather than guessed at, per the "grandfathered and
+  // labelled as legacy" requirement (distinct from "unverified_import",
+  // which is a deliberate user decision this data never went through).
+  if (legacyAudit) { legacyAudit.provenance = PROVENANCE.LEGACY; legacyAudit.isOfficial = false; }
+
+  localStorage.setItem(`hub_findings_${key}`, JSON.stringify(legacyFindings));
+  if (legacyAudit) localStorage.setItem(`hub_audit_${key}`, JSON.stringify(legacyAudit));
+
+  let verifyOk = false;
+  try {
+    const verifyFindings = JSON.parse(localStorage.getItem(`hub_findings_${key}`) || 'null');
+    verifyOk = Array.isArray(verifyFindings) && verifyFindings.length === legacyFindings.length;
+  } catch (e) { verifyOk = false; }
+  if (!verifyOk) {
+    console.error('Hub storage migration verification failed — legacy keys retained untouched, portfolio not updated.');
+    return;
+  }
+
+  const legacyHistory = JSON.parse(localStorage.getItem('hub_history') || '[]');
+  if (legacyHistory.length > 0) saveAuditHistory(auditId, legacyHistory);
+
   upsertIndexEntry(buildIndexEntry(auditId, legacyAudit, legacyFindings));
   localStorage.setItem('hub_active_audit_id', auditId);
   localStorage.removeItem('hub_findings');
   localStorage.removeItem('hub_audit');
+  localStorage.removeItem('hub_history');
 }
 
-// Loads a specific audit from the portfolio into the live workspace. Safe
-// to call for any auditId present in the index — it only ever reads that
-// audit's own keys, never another's.
-function openAudit(auditId) {
+// Loads a specific audit from the portfolio into the live workspace.
+// Takes the sanitized storageKey (as embedded in the portfolio card's
+// onclick handler, never the raw, potentially-unsafe auditId directly) —
+// looks up the real auditId from the index for storage/display purposes.
+// Safe to call for any audit present in the index — it only ever reads
+// that audit's own keys, never another's.
+function openAudit(storageKey) {
+  const entry = state.auditIndex.find(e => e.storageKey === storageKey);
+  const auditId = entry?.auditId || storageKey;
   const { findings, audit } = loadAuditFromStorage(auditId);
   findings.forEach(normalizeFinding);
   state.activeAuditId = auditId;
   state.auditData = audit;
   state.findings = findings;
+  state.history = loadAuditHistory(auditId);
   state.selectedId = null;
   localStorage.setItem('hub_active_audit_id', auditId);
   showWorkspace();
   renderAll();
 }
 
-// Removes one audit from the portfolio entirely — its own two storage keys
-// plus its index entry. Never touches any other audit's data. If the
-// removed audit was the active one, falls back to the portfolio (or the
-// empty state if that was the last audit).
-function removeAuditFromPortfolio(auditId) {
-  localStorage.removeItem(`hub_audit_${auditId}`);
-  localStorage.removeItem(`hub_findings_${auditId}`);
-  const index = loadAuditIndex().filter(e => e.auditId !== auditId);
+// Removes one audit from the portfolio entirely — its own storage keys
+// (findings, audit data, history, reconciliation log) plus its index
+// entry. Never touches any other audit's data. If the removed audit was
+// the active one, falls back to the portfolio (or the empty state if
+// that was the last audit).
+function removeAuditFromPortfolio(storageKey) {
+  const entry = state.auditIndex.find(e => e.storageKey === storageKey);
+  const auditId = entry?.auditId || storageKey;
+  const key = buildStorageKey(auditId);
+  localStorage.removeItem(`hub_audit_${key}`);
+  localStorage.removeItem(`hub_findings_${key}`);
+  localStorage.removeItem(`hub_history_${key}`);
+  localStorage.removeItem(`hub_reconciliation_${key}`);
+  const index = loadAuditIndex().filter(e => e.storageKey !== storageKey);
   saveAuditIndex(index);
   state.auditIndex = index;
   if (state.activeAuditId === auditId) {
     state.activeAuditId = null;
     state.auditData = null;
     state.findings = [];
+    state.history = [];
     localStorage.removeItem('hub_active_audit_id');
   }
   if (index.length === 0) { showEmpty(); } else { showPortfolio(); }
@@ -2232,8 +2446,9 @@ function loadState() {
     showEmpty();
     return;
   }
-  if (rememberedActiveId && state.auditIndex.some(e => e.auditId === rememberedActiveId)) {
-    openAudit(rememberedActiveId);
+  const rememberedEntry = rememberedActiveId && state.auditIndex.find(e => e.auditId === rememberedActiveId);
+  if (rememberedEntry) {
+    openAudit(rememberedEntry.storageKey);
   } else {
     showPortfolio();
   }
@@ -2265,31 +2480,40 @@ function renderPortfolio() {
   const container = document.getElementById('portfolio-cards');
   if (!container) return;
   const index = [...state.auditIndex].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  const provenanceBadge = (entry) => {
+    if (entry.provenance === PROVENANCE.OFFICIAL) return '';
+    const label = entry.provenance === PROVENANCE.LEGACY ? t('portfolio_legacy_badge') : t('portfolio_unverified_badge');
+    const title = entry.provenance === PROVENANCE.LEGACY ? t('portfolio_legacy_title') : t('portfolio_unverified_title');
+    return `<span class="px-1.5 py-0.5 rounded bg-amber-900/60 text-amber-300 text-[9px] font-bold uppercase" title="${escapeHTML(title)}">${escapeHTML(label)}</span>`;
+  };
   container.innerHTML = index.map(entry => `
     <div class="bg-slate-800/60 border border-slate-700 rounded-xl p-5 hover:border-indigo-500/60 transition">
       <div class="flex items-start justify-between gap-3 mb-3">
         <div>
           <div class="font-bold text-slate-100 flex items-center gap-2">
             ${escapeHTML(entry.auditId)} · ${escapeHTML(entry.company || '—')}
-            ${entry.isOfficial === false ? `<span class="px-1.5 py-0.5 rounded bg-amber-900/60 text-amber-300 text-[9px] font-bold uppercase" title="${t('portfolio_legacy_title')}">${t('portfolio_legacy_badge')}</span>` : ''}
+            ${provenanceBadge(entry)}
           </div>
           <div class="text-xs text-slate-400 mt-0.5">${escapeHTML((entry.framework || 'N/A').toUpperCase())}${entry.sourceVersion ? ' · v' + escapeHTML(entry.sourceVersion) : ''}</div>
+          ${entry.updatedAt ? `<div class="text-[10px] text-slate-500 mt-0.5">${t('portfolio_last_activity')}: ${new Date(entry.updatedAt).toLocaleString()}</div>` : ''}
         </div>
-        <button onclick="event.stopPropagation(); confirmRemoveAuditFromPortfolio('${escapeHTML(entry.auditId)}')" title="${t('portfolio_remove_title')}" class="text-slate-500 hover:text-red-400 text-sm flex-shrink-0">✕</button>
+        <button onclick="event.stopPropagation(); confirmRemoveAuditFromPortfolio('${escapeHTML(entry.storageKey)}')" title="${t('portfolio_remove_title')}" class="text-slate-500 hover:text-red-400 text-sm flex-shrink-0">✕</button>
       </div>
       <div class="flex items-center gap-3 text-xs text-slate-400 mb-4">
         <span>${entry.findingCount} ${t('portfolio_findings_label')}</span>
         ${entry.criticalCount > 0 ? `<span class="text-red-400">${entry.criticalCount} ${t('portfolio_critical_label')}</span>` : ''}
         ${entry.overdueCount > 0 ? `<span class="text-orange-400">${entry.overdueCount} ${t('portfolio_overdue_label')}</span>` : ''}
       </div>
-      <button onclick="openAudit('${escapeHTML(entry.auditId)}')" class="w-full px-3 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm font-medium transition" data-i18n="portfolio_open_btn">Abrir remediación</button>
+      <button onclick="openAudit('${escapeHTML(entry.storageKey)}')" class="w-full px-3 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm font-medium transition" data-i18n="portfolio_open_btn">Abrir remediación</button>
     </div>
   `).join('') || `<p class="text-sm text-slate-500 col-span-full text-center py-8">${t('portfolio_empty')}</p>`;
 }
 
-function confirmRemoveAuditFromPortfolio(auditId) {
+function confirmRemoveAuditFromPortfolio(storageKey) {
+  const entry = state.auditIndex.find(e => e.storageKey === storageKey);
+  const auditId = entry?.auditId || storageKey;
   if (!confirm(t('portfolio_remove_confirm').replace('{id}', auditId))) return;
-  removeAuditFromPortfolio(auditId);
+  removeAuditFromPortfolio(storageKey);
 }
 
 function setView(mode) {
