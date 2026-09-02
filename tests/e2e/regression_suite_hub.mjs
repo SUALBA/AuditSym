@@ -312,6 +312,44 @@ async function main() {
     }
 
     // ═══════════════════════════════════════════════════════════════════
+    section('5b. normalizeFinding() idempotency — no spurious auto-confirmation');
+    // Regression covered: normalizeFinding() legitimately runs more than
+    // once on the same finding within a single import (once in
+    // processImportedData(), again inside commitImportedAudit()'s merge).
+    // A finding with no decision/validationStatus at all must stay
+    // unvalidated after BOTH passes — the first pass's own 'mitigate'
+    // display fallback must never be misread by the second pass as a
+    // genuine historical decision that silently auto-confirms the finding.
+    {
+      const ctx = await browser.newContext();
+      const page = await newPage(browser, ctx);
+      const untouchedFinding = {
+        id: 'F-IDEMPOTENT', controlCode: 'AST.01', title: 'AST.01 – Idempotency check', severity: 'low', riskLevel: 'low', status: 'open',
+        managementResponse: {
+          validationStatus: null, disputeReason: '', disputeEvidence: '', auditorAdjudication: '',
+          responder: '', responderRole: '', responseDate: '', source: 'manual_entry',
+          receivedVia: 'Informal meeting', comments: 'A comment exists, but nobody validated this finding.',
+          treatment: null, treatmentOwner: '', treatmentOwnerRole: '', riskAcceptance: null
+        },
+        history: []
+      };
+      const audit = officialAudit('AUD-IDEMPOTENT', 'Idempotency Co', '1.0', [untouchedFinding]);
+      await page.evaluate((d) => processImportedData(d), audit);
+      await page.waitForTimeout(150);
+      const after = await page.evaluate(() => {
+        const f = state.findings.find(f => f.id === 'F-IDEMPOTENT');
+        return { validationStatus: f.managementResponse.validationStatus, treatment: f.managementResponse.treatment, decision: f.decision, comments: f.managementResponse.comments };
+      });
+      check('A finding with no real decision stays unvalidated (validationStatus) after passing through normalizeFinding() twice during import',
+        after.validationStatus === null, `got ${JSON.stringify(after)}`);
+      check('...and its treatment stays null too — not silently defaulted to "mitigate"', after.treatment === null, `got "${after.treatment}"`);
+      check('...while decision keeps its harmless top-level display fallback ("mitigate", per the function\'s own documented contract)', after.decision === 'mitigate', `got "${after.decision}"`);
+      check('...and the comment itself survives both normalization passes intact', after.comments === 'A comment exists, but nobody validated this finding.');
+
+      await page.close(); await ctx.close();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
     section('6. Legacy migration — write, verify, only then delete');
     {
       const ctx = await browser.newContext();

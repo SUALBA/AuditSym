@@ -651,6 +651,9 @@ const I18N = {
     owner: 'Responsable', deadline: 'Plazo', decision: 'Decisión', status: 'Estado',
     decision_avoid: 'Evitar', decision_mitigate: 'Mitigar', decision_transfer: 'Transferir', decision_risk_accepted: 'Riesgo Aceptado', decision_false_positive: 'Falso Positivo',
     mgmt_response: 'Respuesta de la Dirección', responder: 'Responde', responder_role: 'Cargo', response_date: 'Fecha de Respuesta', received_via: 'Recibido por', response_comments: 'Comentarios', source: 'Origen',
+    status_open: 'Abierto', status_assigned: 'Asignado', status_in_progress: 'En Progreso', status_pending_validation: 'Pendiente', status_closed: 'Cerrado', status_risk_accepted: 'Riesgo Aceptado',
+    classification_confidential: 'CONFIDENCIAL', classification_internal: 'USO INTERNO', classification_public: 'PÚBLICO',
+    source_value_manual_entry: 'Registrado manualmente', source_value_email_integration: 'Recibido por integración de correo', source_value_api: 'Recibido por API',
     finding: 'Hallazgo', control: 'Control', risk: 'Riesgo', reason: 'Razón',
     days_open: 'días abierto', overdue_label: 'VENCIDO',
     no_findings: 'No hay hallazgos que coincidan con los filtros',
@@ -677,6 +680,36 @@ const I18N = {
     version_diff_modified_label: 'Hallazgos modificados',
     portfolio_unverified_badge: 'No verificado', portfolio_unverified_title: 'Importado sin el contrato oficial de emisión — el usuario aceptó continuar de todas formas.',
     portfolio_last_activity: 'Última actividad',
+    // ── PDF report i18n (issue #27 completion + reporting improvements) ──
+    pdf_report_subtitle: 'Informe de Remediación · Plataforma de Auditoría de Ciberseguridad',
+    pdf_continuation_subtitle: 'Informe de Remediación (continuación)',
+    pdf_footer_audit_label: 'Auditoría', pdf_footer_page_label: 'Página', pdf_footer_of_label: 'de',
+    pdf_based_on_label: 'Basado en', pdf_findings_detail_title: 'Detalle de Hallazgos',
+    pdf_source_audit_report_label: 'Informe de Auditoría', pdf_source_issued_label: 'Emitido',
+    pdf_meta_audit_id: 'ID de Auditoría', pdf_meta_company: 'Empresa', pdf_meta_framework: 'Framework', pdf_meta_generated: 'Generado',
+    pdf_kpi_total: 'Total', pdf_kpi_critical: 'Críticos', pdf_kpi_open: 'Abiertos', pdf_kpi_closed: 'Cerrados', pdf_kpi_overdue: 'Vencidos',
+    pdf_section_open: 'Abiertos', pdf_section_pending: 'Pendientes de Validación', pdf_section_disputed: 'Discrepancias en Curso', pdf_section_resolved: 'Resueltos',
+    pdf_col_id: 'ID', pdf_col_severity: 'Severidad', pdf_col_control: 'Control', pdf_col_owner: 'Responsable', pdf_col_treatment: 'Tratamiento', pdf_col_status: 'Estado', pdf_col_days: 'Días',
+    pdf_excluded_findings_note: '{n} hallazgo(s) excluido(s) por discrepancia aceptada por el auditor: {ids}',
+    pdf_status_disputed_badge: 'Discrepante', pdf_status_open_default: 'Abierto',
+    pdf_exec_summary_title: 'Síntesis Ejecutiva',
+    pdf_exec_objective_label: 'Objetivo', pdf_exec_objective_body: 'Este informe documenta el estado de remediación de los hallazgos identificados en la auditoría de origen indicada a continuación, incluyendo la respuesta registrada de Dirección para cada uno.',
+    pdf_exec_source_audit_label: 'Auditoría de Origen',
+    pdf_exec_scope_label: 'Alcance del Seguimiento',
+    pdf_exec_cutoff_label: 'Fecha de Corte',
+    pdf_exec_progress_label: 'Progreso Global',
+    pdf_exec_blockers_label: 'Principales Bloqueos',
+    pdf_exec_blockers_pending: '{n} hallazgo(s) pendiente(s) de validación por Dirección.',
+    pdf_exec_blockers_disputed: '{n} discrepancia(s) en curso, pendiente(s) de adjudicación del auditor.',
+    pdf_exec_blockers_none: 'Sin bloqueos activos identificados.',
+    pdf_exec_overdue_label: 'Riesgos Vencidos',
+    pdf_exec_overdue_body: '{n} hallazgo(s) vencido(s) según el plazo acordado, de los cuales {c} de severidad crítica.',
+    pdf_exec_overdue_none: 'No hay hallazgos vencidos a fecha de corte.',
+    pdf_exec_decisions_label: 'Decisiones Requeridas de Dirección',
+    pdf_exec_decisions_body: '{n} hallazgo(s) todavía sin respuesta registrada de Dirección.',
+    pdf_exec_decisions_none: 'Todos los hallazgos activos cuentan con una respuesta registrada de Dirección.',
+    pdf_exec_limitations_label: 'Limitaciones',
+    pdf_exec_limitations_body: 'Esta síntesis refleja únicamente las respuestas y estados registrados en AuditSym a la fecha de generación de este informe. La ausencia de respuesta no implica necesariamente ausencia de tratamiento por parte de la organización auditada.',
     portfolio_legacy_title: 'Datos importados antes de que existiera el contrato oficial de emisión — no se puede verificar su procedencia.',
     portfolio_legacy_badge: 'No oficial',
     risk_accepted: 'Riesgo Aceptado',
@@ -767,6 +800,9 @@ const I18N = {
     owner: 'Owner', deadline: 'Deadline', decision: 'Decision', status: 'Status',
     decision_avoid: 'Avoid', decision_mitigate: 'Mitigate', decision_transfer: 'Transfer', decision_risk_accepted: 'Risk Accepted', decision_false_positive: 'False Positive',
     mgmt_response: 'Management Response', responder: 'Responder', responder_role: 'Role', response_date: 'Response Date', received_via: 'Received Via', response_comments: 'Comments', source: 'Source',
+    status_open: 'Open', status_assigned: 'Assigned', status_in_progress: 'In Progress', status_pending_validation: 'Pending Validation', status_closed: 'Closed', status_risk_accepted: 'Risk Accepted',
+    classification_confidential: 'CONFIDENTIAL', classification_internal: 'INTERNAL USE', classification_public: 'PUBLIC',
+    source_value_manual_entry: 'Manually recorded', source_value_email_integration: 'Received via email integration', source_value_api: 'Received via API',
     finding: 'Finding', control: 'Control', risk: 'Risk', reason: 'Reason',
     days_open: 'days open', overdue_label: 'OVERDUE',
     no_findings: 'No findings match the filters',
@@ -793,6 +829,36 @@ const I18N = {
     version_diff_modified_label: 'Modified findings',
     portfolio_unverified_badge: 'Unverified', portfolio_unverified_title: 'Imported without the official issuance contract — the user chose to proceed anyway.',
     portfolio_last_activity: 'Last activity',
+    // ── PDF report i18n (issue #27 completion + reporting improvements) ──
+    pdf_report_subtitle: 'Remediation Report · Cybersecurity Audit Platform',
+    pdf_continuation_subtitle: 'Remediation Report (continued)',
+    pdf_footer_audit_label: 'Audit', pdf_footer_page_label: 'Page', pdf_footer_of_label: 'of',
+    pdf_based_on_label: 'Based on', pdf_findings_detail_title: 'Findings Detail',
+    pdf_source_audit_report_label: 'Audit Report', pdf_source_issued_label: 'Issued',
+    pdf_meta_audit_id: 'Audit ID', pdf_meta_company: 'Company', pdf_meta_framework: 'Framework', pdf_meta_generated: 'Generated',
+    pdf_kpi_total: 'Total', pdf_kpi_critical: 'Critical', pdf_kpi_open: 'Open', pdf_kpi_closed: 'Closed', pdf_kpi_overdue: 'Overdue',
+    pdf_section_open: 'Open', pdf_section_pending: 'Pending Validation', pdf_section_disputed: 'Disputes in Progress', pdf_section_resolved: 'Resolved',
+    pdf_col_id: 'ID', pdf_col_severity: 'Severity', pdf_col_control: 'Control', pdf_col_owner: 'Owner', pdf_col_treatment: 'Treatment', pdf_col_status: 'Status', pdf_col_days: 'Days',
+    pdf_excluded_findings_note: '{n} finding(s) excluded by an auditor-accepted dispute: {ids}',
+    pdf_status_disputed_badge: 'Disputed', pdf_status_open_default: 'Open',
+    pdf_exec_summary_title: 'Executive Summary',
+    pdf_exec_objective_label: 'Objective', pdf_exec_objective_body: 'This report documents the remediation status of the findings identified in the source audit referenced below, including the recorded management response for each.',
+    pdf_exec_source_audit_label: 'Source Audit',
+    pdf_exec_scope_label: 'Tracking Scope',
+    pdf_exec_cutoff_label: 'Cutoff Date',
+    pdf_exec_progress_label: 'Overall Progress',
+    pdf_exec_blockers_label: 'Key Blockers',
+    pdf_exec_blockers_pending: '{n} finding(s) pending management validation.',
+    pdf_exec_blockers_disputed: '{n} dispute(s) in progress, pending auditor adjudication.',
+    pdf_exec_blockers_none: 'No active blockers identified.',
+    pdf_exec_overdue_label: 'Overdue Risks',
+    pdf_exec_overdue_body: '{n} finding(s) overdue against the agreed timeframe, of which {c} are critical severity.',
+    pdf_exec_overdue_none: 'No findings overdue as of the cutoff date.',
+    pdf_exec_decisions_label: 'Decisions Required from Management',
+    pdf_exec_decisions_body: '{n} finding(s) still without a recorded management response.',
+    pdf_exec_decisions_none: 'All active findings have a recorded management response.',
+    pdf_exec_limitations_label: 'Limitations',
+    pdf_exec_limitations_body: 'This summary reflects only the responses and statuses recorded in AuditSym as of this report\'s generation date. The absence of a response does not necessarily imply the absence of remediation activity by the audited organisation.',
     portfolio_legacy_title: 'Data imported before the official issuance contract existed — its provenance cannot be verified.',
     portfolio_legacy_badge: 'Unofficial',
     risk_accepted: 'Risk Accepted',
@@ -905,6 +971,63 @@ const I18N = {
                 status_open: 'Ouvert',
                 status_assigned: 'Assigné',
                 status_in_progress: 'En Cours',
+                pdf_based_on_label:'Basé sur',
+                pdf_col_control:'Contrôle',
+                pdf_col_days:'Jours',
+                pdf_col_id:'ID',
+                pdf_col_owner:'Responsable',
+                pdf_col_severity:'Gravité',
+                pdf_col_status:'Statut',
+                pdf_col_treatment:'Traitement',
+                pdf_continuation_subtitle:'Rapport de Remédiation (suite)',
+                pdf_excluded_findings_note:'{n} constat(s) exclu(s) suite à une contestation acceptée par l\'auditeur : {ids}',
+                pdf_exec_blockers_disputed:'{n} contestation(s) en cours, en attente d\'arbitrage de l\'auditeur.',
+                pdf_exec_blockers_label:'Principaux Blocages',
+                pdf_exec_blockers_none:'Aucun blocage actif identifié.',
+                pdf_exec_blockers_pending:'{n} constat(s) en attente de validation par la Direction.',
+                pdf_exec_cutoff_label:'Date d\'Arrêté',
+                pdf_exec_decisions_body:'{n} constat(s) encore sans réponse enregistrée de la Direction.',
+                pdf_exec_decisions_label:'Décisions Requises de la Direction',
+                pdf_exec_decisions_none:'Tous les constats actifs disposent d\'une réponse enregistrée de la Direction.',
+                pdf_exec_limitations_body:'Cette synthèse reflète uniquement les réponses et statuts enregistrés dans AuditSym à la date de génération de ce rapport. L\'absence de réponse n\'implique pas nécessairement l\'absence de traitement par l\'organisation auditée.',
+                pdf_exec_limitations_label:'Limites',
+                pdf_exec_objective_body:'Ce rapport documente l\'état de remédiation des constats identifiés lors de l\'audit source indiqué ci-dessous, y compris la réponse enregistrée de la Direction pour chacun.',
+                pdf_exec_objective_label:'Objectif',
+                pdf_exec_overdue_body:'{n} constat(s) en retard par rapport au délai convenu, dont {c} de gravité critique.',
+                pdf_exec_overdue_label:'Risques en Retard',
+                pdf_exec_overdue_none:'Aucun constat en retard à la date d\'arrêté.',
+                pdf_exec_progress_label:'Progression Globale',
+                pdf_exec_scope_label:'Périmètre du Suivi',
+                pdf_exec_source_audit_label:'Audit d\'Origine',
+                pdf_exec_summary_title:'Synthèse Exécutive',
+                pdf_findings_detail_title:'Détail des Constats',
+                pdf_footer_audit_label:'Audit',
+                pdf_footer_of_label:'sur',
+                pdf_footer_page_label:'Page',
+                pdf_kpi_closed:'Clôturés',
+                pdf_kpi_critical:'Critiques',
+                pdf_kpi_open:'Ouverts',
+                pdf_kpi_overdue:'En Retard',
+                pdf_kpi_total:'Total',
+                pdf_meta_audit_id:'ID d\'Audit',
+                pdf_meta_company:'Entreprise',
+                pdf_meta_framework:'Référentiel',
+                pdf_meta_generated:'Généré',
+                pdf_report_subtitle:'Rapport de Remédiation · Plateforme d\'Audit de Cybersécurité',
+                pdf_section_disputed:'Contestations en Cours',
+                pdf_section_open:'Ouverts',
+                pdf_section_pending:'En Attente de Validation',
+                pdf_section_resolved:'Résolus',
+                pdf_source_audit_report_label:'Rapport d\'Audit',
+                pdf_source_issued_label:'Publié',
+                pdf_status_disputed_badge:'Contesté',
+                pdf_status_open_default:'Ouvert',
+                classification_confidential:'CONFIDENTIEL',
+                classification_internal:'USAGE INTERNE',
+                classification_public:'PUBLIC',
+                source_value_manual_entry:'Saisi manuellement',
+                source_value_email_integration:'Reçu par intégration e-mail',
+                source_value_api:'Reçu par API',
                 status_pending_validation: 'En Attente de Validation',
                 status_closed: 'Clôturé',
                 status_risk_accepted: 'Risque Accepté',
@@ -1042,6 +1165,63 @@ const I18N = {
                 status_open: 'Offen',
                 status_assigned: 'Zugewiesen',
                 status_in_progress: 'In Bearbeitung',
+                pdf_based_on_label:'Basierend auf',
+                pdf_col_control:'Kontrolle',
+                pdf_col_days:'Tage',
+                pdf_col_id:'ID',
+                pdf_col_owner:'Verantwortlicher',
+                pdf_col_severity:'Schweregrad',
+                pdf_col_status:'Status',
+                pdf_col_treatment:'Behandlung',
+                pdf_continuation_subtitle:'Sanierungsbericht (Fortsetzung)',
+                pdf_excluded_findings_note:'{n} Feststellung(en) ausgeschlossen aufgrund eines vom Prüfer akzeptierten Einspruchs: {ids}',
+                pdf_exec_blockers_disputed:'{n} laufende(r) Einspruch/Einsprüche, ausstehend zur Entscheidung des Prüfers.',
+                pdf_exec_blockers_label:'Wesentliche Hindernisse',
+                pdf_exec_blockers_none:'Keine aktiven Hindernisse identifiziert.',
+                pdf_exec_blockers_pending:'{n} Feststellung(en) ausstehend zur Validierung durch die Geschäftsführung.',
+                pdf_exec_cutoff_label:'Stichtag',
+                pdf_exec_decisions_body:'{n} Feststellung(en) noch ohne erfasste Rückmeldung der Geschäftsführung.',
+                pdf_exec_decisions_label:'Erforderliche Entscheidungen der Geschäftsführung',
+                pdf_exec_decisions_none:'Alle aktiven Feststellungen verfügen über eine erfasste Rückmeldung der Geschäftsführung.',
+                pdf_exec_limitations_body:'Diese Zusammenfassung spiegelt ausschließlich die in AuditSym zum Erstellungsdatum dieses Berichts erfassten Antworten und Status wider. Das Fehlen einer Antwort bedeutet nicht zwangsläufig, dass die geprüfte Organisation keine Maßnahmen ergriffen hat.',
+                pdf_exec_limitations_label:'Einschränkungen',
+                pdf_exec_objective_body:'Dieser Bericht dokumentiert den Sanierungsstatus der im unten genannten Ursprungsaudit identifizierten Feststellungen, einschließlich der erfassten Rückmeldung der Geschäftsführung zu jeder einzelnen.',
+                pdf_exec_objective_label:'Zielsetzung',
+                pdf_exec_overdue_body:'{n} Feststellung(en) überfällig gegenüber der vereinbarten Frist, davon {c} mit kritischem Schweregrad.',
+                pdf_exec_overdue_label:'Überfällige Risiken',
+                pdf_exec_overdue_none:'Keine überfälligen Feststellungen zum Stichtag.',
+                pdf_exec_progress_label:'Gesamtfortschritt',
+                pdf_exec_scope_label:'Umfang der Nachverfolgung',
+                pdf_exec_source_audit_label:'Ursprungsaudit',
+                pdf_exec_summary_title:'Zusammenfassung für die Geschäftsführung',
+                pdf_findings_detail_title:'Detaillierte Feststellungen',
+                pdf_footer_audit_label:'Audit',
+                pdf_footer_of_label:'von',
+                pdf_footer_page_label:'Seite',
+                pdf_kpi_closed:'Geschlossen',
+                pdf_kpi_critical:'Kritisch',
+                pdf_kpi_open:'Offen',
+                pdf_kpi_overdue:'Überfällig',
+                pdf_kpi_total:'Gesamt',
+                pdf_meta_audit_id:'Audit-ID',
+                pdf_meta_company:'Unternehmen',
+                pdf_meta_framework:'Rahmenwerk',
+                pdf_meta_generated:'Erstellt',
+                pdf_report_subtitle:'Sanierungsbericht · Cybersicherheits-Audit-Plattform',
+                pdf_section_disputed:'Laufende Einsprüche',
+                pdf_section_open:'Offen',
+                pdf_section_pending:'Ausstehende Validierung',
+                pdf_section_resolved:'Gelöst',
+                pdf_source_audit_report_label:'Auditbericht',
+                pdf_source_issued_label:'Ausgestellt',
+                pdf_status_disputed_badge:'Angefochten',
+                pdf_status_open_default:'Offen',
+                classification_confidential:'VERTRAULICH',
+                classification_internal:'INTERNE NUTZUNG',
+                classification_public:'ÖFFENTLICH',
+                source_value_manual_entry:'Manuell erfasst',
+                source_value_email_integration:'Über E-Mail-Integration empfangen',
+                source_value_api:'Über API empfangen',
                 status_pending_validation: 'Ausstehende Validierung',
                 status_closed: 'Geschlossen',
                 status_risk_accepted: 'Risiko akzeptiert',
@@ -1179,6 +1359,63 @@ const I18N = {
                 status_open: 'Aberto',
                 status_assigned: 'Atribuído',
                 status_in_progress: 'Em Andamento',
+                pdf_based_on_label:'Baseado em',
+                pdf_col_control:'Controle',
+                pdf_col_days:'Dias',
+                pdf_col_id:'ID',
+                pdf_col_owner:'Responsável',
+                pdf_col_severity:'Severidade',
+                pdf_col_status:'Status',
+                pdf_col_treatment:'Tratamento',
+                pdf_continuation_subtitle:'Relatório de Remediação (continuação)',
+                pdf_excluded_findings_note:'{n} achado(s) excluído(s) por contestação aceita pelo auditor: {ids}',
+                pdf_exec_blockers_disputed:'{n} contestação(ões) em andamento, pendente(s) de adjudicação do auditor.',
+                pdf_exec_blockers_label:'Principais Bloqueios',
+                pdf_exec_blockers_none:'Nenhum bloqueio ativo identificado.',
+                pdf_exec_blockers_pending:'{n} achado(s) pendente(s) de validação pela Direção.',
+                pdf_exec_cutoff_label:'Data de Corte',
+                pdf_exec_decisions_body:'{n} achado(s) ainda sem resposta registrada da Direção.',
+                pdf_exec_decisions_label:'Decisões Necessárias da Direção',
+                pdf_exec_decisions_none:'Todos os achados ativos possuem resposta registrada da Direção.',
+                pdf_exec_limitations_body:'Esta síntese reflete apenas as respostas e status registrados no AuditSym até a data de geração deste relatório. A ausência de resposta não implica necessariamente ausência de tratamento por parte da organização auditada.',
+                pdf_exec_limitations_label:'Limitações',
+                pdf_exec_objective_body:'Este relatório documenta o estado de remediação dos achados identificados na auditoria de origem indicada abaixo, incluindo a resposta registrada da Direção para cada um.',
+                pdf_exec_objective_label:'Objetivo',
+                pdf_exec_overdue_body:'{n} achado(s) vencido(s) em relação ao prazo acordado, dos quais {c} de severidade crítica.',
+                pdf_exec_overdue_label:'Riscos Vencidos',
+                pdf_exec_overdue_none:'Nenhum achado vencido na data de corte.',
+                pdf_exec_progress_label:'Progresso Global',
+                pdf_exec_scope_label:'Escopo do Acompanhamento',
+                pdf_exec_source_audit_label:'Auditoria de Origem',
+                pdf_exec_summary_title:'Síntese Executiva',
+                pdf_findings_detail_title:'Detalhe dos Achados',
+                pdf_footer_audit_label:'Auditoria',
+                pdf_footer_of_label:'de',
+                pdf_footer_page_label:'Página',
+                pdf_kpi_closed:'Encerrados',
+                pdf_kpi_critical:'Críticos',
+                pdf_kpi_open:'Abertos',
+                pdf_kpi_overdue:'Vencidos',
+                pdf_kpi_total:'Total',
+                pdf_meta_audit_id:'ID da Auditoria',
+                pdf_meta_company:'Empresa',
+                pdf_meta_framework:'Framework',
+                pdf_meta_generated:'Gerado',
+                pdf_report_subtitle:'Relatório de Remediação · Plataforma de Auditoria de Cibersegurança',
+                pdf_section_disputed:'Contestações em Andamento',
+                pdf_section_open:'Abertos',
+                pdf_section_pending:'Pendentes de Validação',
+                pdf_section_resolved:'Resolvidos',
+                pdf_source_audit_report_label:'Relatório de Auditoria',
+                pdf_source_issued_label:'Emitido',
+                pdf_status_disputed_badge:'Contestado',
+                pdf_status_open_default:'Aberto',
+                classification_confidential:'CONFIDENCIAL',
+                classification_internal:'USO INTERNO',
+                classification_public:'PÚBLICO',
+                source_value_manual_entry:'Registrado manualmente',
+                source_value_email_integration:'Recebido por integração de e-mail',
+                source_value_api:'Recebido por API',
                 status_pending_validation: 'Aguardando Validação',
                 status_closed: 'Fechado',
                 status_risk_accepted: 'Risco Aceito',
@@ -1316,6 +1553,63 @@ const I18N = {
                 status_open: 'مفتوح',
                 status_assigned: 'مخصص',
                 status_in_progress: 'قيد التقدم',
+                pdf_based_on_label:'استنادًا إلى',
+                pdf_col_control:'الضابط',
+                pdf_col_days:'الأيام',
+                pdf_col_id:'المعرف',
+                pdf_col_owner:'المسؤول',
+                pdf_col_severity:'الخطورة',
+                pdf_col_status:'الحالة',
+                pdf_col_treatment:'المعالجة',
+                pdf_continuation_subtitle:'تقرير المعالجة (تابع)',
+                pdf_excluded_findings_note:'تم استبعاد {n} ملاحظة (ملاحظات) بسبب اعتراض قبله المدقق: {ids}',
+                pdf_exec_blockers_disputed:'{n} اعتراض(ات) قيد المعالجة، في انتظار حكم المدقق.',
+                pdf_exec_blockers_label:'العوائق الرئيسية',
+                pdf_exec_blockers_none:'لم يتم تحديد عوائق نشطة.',
+                pdf_exec_blockers_pending:'{n} ملاحظة (ملاحظات) في انتظار تحقق الإدارة.',
+                pdf_exec_cutoff_label:'تاريخ القطع',
+                pdf_exec_decisions_body:'{n} ملاحظة (ملاحظات) لا تزال بلا استجابة مسجلة من الإدارة.',
+                pdf_exec_decisions_label:'القرارات المطلوبة من الإدارة',
+                pdf_exec_decisions_none:'جميع الملاحظات النشطة لديها استجابة مسجلة من الإدارة.',
+                pdf_exec_limitations_body:'يعكس هذا الملخص فقط الاستجابات والحالات المسجلة في AuditSym حتى تاريخ إنشاء هذا التقرير. لا يعني عدم وجود استجابة بالضرورة عدم وجود معالجة من قبل المؤسسة الخاضعة للتدقيق.',
+                pdf_exec_limitations_label:'القيود',
+                pdf_exec_objective_body:'يوثق هذا التقرير حالة معالجة الملاحظات المحددة في التدقيق المصدر المشار إليه أدناه، بما في ذلك استجابة الإدارة المسجلة لكل منها.',
+                pdf_exec_objective_label:'الهدف',
+                pdf_exec_overdue_body:'{n} ملاحظة (ملاحظات) متأخرة عن الإطار الزمني المتفق عليه، منها {c} بخطورة حرجة.',
+                pdf_exec_overdue_label:'المخاطر المتأخرة',
+                pdf_exec_overdue_none:'لا توجد ملاحظات متأخرة حتى تاريخ القطع.',
+                pdf_exec_progress_label:'التقدم الإجمالي',
+                pdf_exec_scope_label:'نطاق المتابعة',
+                pdf_exec_source_audit_label:'التدقيق المصدر',
+                pdf_exec_summary_title:'الملخص التنفيذي',
+                pdf_findings_detail_title:'تفاصيل الملاحظات',
+                pdf_footer_audit_label:'التدقيق',
+                pdf_footer_of_label:'من',
+                pdf_footer_page_label:'صفحة',
+                pdf_kpi_closed:'مغلقة',
+                pdf_kpi_critical:'حرجة',
+                pdf_kpi_open:'مفتوحة',
+                pdf_kpi_overdue:'متأخرة',
+                pdf_kpi_total:'الإجمالي',
+                pdf_meta_audit_id:'معرف التدقيق',
+                pdf_meta_company:'الشركة',
+                pdf_meta_framework:'الإطار',
+                pdf_meta_generated:'تاريخ الإنشاء',
+                pdf_report_subtitle:'تقرير المعالجة · منصة تدقيق الأمن السيبراني',
+                pdf_section_disputed:'اعتراضات قيد المعالجة',
+                pdf_section_open:'مفتوحة',
+                pdf_section_pending:'في انتظار التحقق',
+                pdf_section_resolved:'محلولة',
+                pdf_source_audit_report_label:'تقرير التدقيق',
+                pdf_source_issued_label:'صادر',
+                pdf_status_disputed_badge:'معترض عليه',
+                pdf_status_open_default:'مفتوح',
+                classification_confidential:'سري',
+                classification_internal:'استخدام داخلي',
+                classification_public:'عام',
+                source_value_manual_entry:'مُسجَّل يدويًا',
+                source_value_email_integration:'مستلم عبر تكامل البريد الإلكتروني',
+                source_value_api:'مستلم عبر واجهة برمجة التطبيقات',
                 status_pending_validation: 'في انتظار التحقق',
                 status_closed: 'مغلق',
                 status_risk_accepted: 'مخاطرة مقبولة',
@@ -1453,6 +1747,63 @@ const I18N = {
                 status_open: '开放',
                 status_assigned: '已分配',
                 status_in_progress: '进行中',
+                pdf_based_on_label:'基于',
+                pdf_col_control:'控制项',
+                pdf_col_days:'天数',
+                pdf_col_id:'ID',
+                pdf_col_owner:'负责人',
+                pdf_col_severity:'严重程度',
+                pdf_col_status:'状态',
+                pdf_col_treatment:'处理方式',
+                pdf_continuation_subtitle:'整改报告（续）',
+                pdf_excluded_findings_note:'因审计师接受的争议而排除的 {n} 项发现：{ids}',
+                pdf_exec_blockers_disputed:'{n} 项争议正在处理中，等待审计师裁定。',
+                pdf_exec_blockers_label:'主要阻碍',
+                pdf_exec_blockers_none:'未发现活跃的阻碍因素。',
+                pdf_exec_blockers_pending:'{n} 项发现等待管理层验证。',
+                pdf_exec_cutoff_label:'截止日期',
+                pdf_exec_decisions_body:'{n} 项发现仍无管理层记录的回应。',
+                pdf_exec_decisions_label:'需要管理层决策的事项',
+                pdf_exec_decisions_none:'所有活跃发现均已有管理层记录的回应。',
+                pdf_exec_limitations_body:'本摘要仅反映截至本报告生成日期在 AuditSym 中记录的回应和状态。缺乏回应并不必然意味着被审计组织未采取整改行动。',
+                pdf_exec_limitations_label:'局限性',
+                pdf_exec_objective_body:'本报告记录了下方所列来源审计中识别出的发现事项的整改状态，包括每项发现所记录的管理层回应。',
+                pdf_exec_objective_label:'目标',
+                pdf_exec_overdue_body:'{n} 项发现已超出约定的时限，其中 {c} 项为严重级别。',
+                pdf_exec_overdue_label:'逾期风险',
+                pdf_exec_overdue_none:'截至截止日期没有逾期发现。',
+                pdf_exec_progress_label:'总体进度',
+                pdf_exec_scope_label:'跟踪范围',
+                pdf_exec_source_audit_label:'来源审计',
+                pdf_exec_summary_title:'执行摘要',
+                pdf_findings_detail_title:'发现事项详情',
+                pdf_footer_audit_label:'审计',
+                pdf_footer_of_label:'共',
+                pdf_footer_page_label:'第',
+                pdf_kpi_closed:'已关闭',
+                pdf_kpi_critical:'严重',
+                pdf_kpi_open:'开放中',
+                pdf_kpi_overdue:'已逾期',
+                pdf_kpi_total:'总计',
+                pdf_meta_audit_id:'审计编号',
+                pdf_meta_company:'公司',
+                pdf_meta_framework:'框架',
+                pdf_meta_generated:'生成时间',
+                pdf_report_subtitle:'整改报告 · 网络安全审计平台',
+                pdf_section_disputed:'正在处理的争议',
+                pdf_section_open:'开放中',
+                pdf_section_pending:'待验证',
+                pdf_section_resolved:'已解决',
+                pdf_source_audit_report_label:'审计报告',
+                pdf_source_issued_label:'已发布',
+                pdf_status_disputed_badge:'有争议',
+                pdf_status_open_default:'开放',
+                classification_confidential:'机密',
+                classification_internal:'内部使用',
+                classification_public:'公开',
+                source_value_manual_entry:'手动记录',
+                source_value_email_integration:'通过邮件集成接收',
+                source_value_api:'通过 API 接收',
                 status_pending_validation: '待验证',
                 status_closed: '已关闭',
                 status_risk_accepted: '风险已接受',
@@ -1685,8 +2036,20 @@ function normalizeFinding(f) {
   // choice, or a brand-new, never-touched finding gets silently "confirmed"
   // with treatment "Mitigate" the instant it's imported, before anyone has
   // looked at it. That was a real bug in an earlier version of this function.
-  const hadRealDecision = !!f.decision && f.decision !== 'accept';
-  f.decision  = f.decision || 'mitigate';
+  //
+  // The __decisionWasDefaulted marker is what makes this genuinely
+  // idempotent — normalizeFinding() legitimately gets called more than
+  // once on the same finding object across a single import (once for
+  // freshly-incoming findings, again inside commitImportedAudit() for the
+  // full merged set). Without the marker, a SECOND call would see
+  // f.decision already sitting at 'mitigate' from the FIRST call's own
+  // fallback and misread it as a genuine historical decision, silently
+  // auto-confirming a finding nobody ever actually reviewed.
+  const hadRealDecision = !!f.decision && f.decision !== 'accept' && !f.__decisionWasDefaulted;
+  if (!f.decision) {
+    f.decision = 'mitigate';
+    f.__decisionWasDefaulted = true;
+  }
   // Migrate the legacy 'accept' value (from the old duplicate dropdown) to
   // the 'risk_accepted' the status enum and Risk Acceptance Form already use.
   if (f.decision === 'accept') f.decision = 'risk_accepted';
@@ -3308,7 +3671,7 @@ function renderManagementResponsePanel(f) {
     <label class="text-[10px] text-slate-400 uppercase">${t('response_comments')}</label>
     <textarea rows="2" onchange="updateResponseField('${escapeHTML(f.id)}', 'comments', this.value, this)"
       class="w-full mt-1 p-2 rounded bg-slate-900 border border-slate-600 text-xs focus:border-indigo-400 outline-none">${escapeHTML(mr.comments || '')}</textarea>
-    <p class="text-[9px] text-slate-500 mt-1">${t('source')}: ${escapeHTML(mr.source || 'manual_entry')}</p>
+    <p class="text-[9px] text-slate-500 mt-1">${t('source')}: ${escapeHTML(t('source_value_' + (mr.source || 'manual_entry')))}</p>
     <p class="text-[9px] text-slate-600 mt-1 italic">${t('provenance_hint')}</p>
   </div>
   `;
@@ -4054,6 +4417,13 @@ const PDF_COLORS = {
 
 function generateHubPDF() {
   try {
+    // Maps state.lang to a BCP-47 tag so dates in the PDF render in the
+    // report's own language/convention (DD/MM/YYYY, 日期 order, etc.)
+    // rather than whatever the generating browser's OS happens to be set
+    // to — a French report generated on a Spanish-locale machine should
+    // still show French date conventions.
+    const PDF_LOCALES = { es: 'es-ES', en: 'en-US', fr: 'fr-FR', de: 'de-DE', pt: 'pt-PT', ar: 'ar-SA', zh: 'zh-CN' };
+    const pdfLocale = PDF_LOCALES[state.lang] || 'en-US';
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit: 'pt', format: 'a4' });
     registerReportFont(doc);
@@ -4114,7 +4484,7 @@ function generateHubPDF() {
       doc.setFont('Roboto', 'normal');
       doc.setFontSize(9.5);
       doc.setTextColor(...C.textLight);
-      txt('Informe de Remediación · Plataforma de Auditoría de Ciberseguridad', margin + 58, 62);
+      txt(t('pdf_report_subtitle'), margin + 58, 62);
 
       doc.setFontSize(8.5);
       const metaX = pageWidth - margin;
@@ -4128,10 +4498,10 @@ function generateHubPDF() {
         txt(value, metaX, metaY, { align: 'right' });
         metaY += 13;
       };
-      metaLine('ID de Auditoría:  ', auditData?.id || 'N/A');
-      metaLine('Empresa:  ', auditData?.empresa || '—');
-      metaLine('Framework:  ', (auditData?.framework || '—').toUpperCase());
-      metaLine('Generado:  ', new Date().toLocaleString());
+      metaLine(`${t('pdf_meta_audit_id')}:  `, auditData?.id || 'N/A');
+      metaLine(`${t('pdf_meta_company')}:  `, auditData?.empresa || '—');
+      metaLine(`${t('pdf_meta_framework')}:  `, (auditData?.framework || '—').toUpperCase());
+      metaLine(`${t('pdf_meta_generated')}:  `, new Date().toLocaleString(pdfLocale));
     }
 
     function drawContinuationHeader() {
@@ -4146,7 +4516,7 @@ function generateHubPDF() {
       doc.setFont('Roboto', 'normal');
       doc.setFontSize(8);
       doc.setTextColor(...C.textLight);
-      txt('Informe de Remediación (continuación)', margin + 34, 36);
+      txt(t('pdf_continuation_subtitle'), margin + 34, 36);
     }
 
     function drawFooter(pageNo, totalPages, auditData) {
@@ -4156,8 +4526,12 @@ function generateHubPDF() {
       doc.setFontSize(7.5);
       doc.setFont('Roboto', 'normal');
       doc.setTextColor(...C.textMuted);
-      txt(`AuditSym · Confidencial · Auditoría ${auditData?.id || ''}`, margin, pageHeight - 20);
-      txt(`Página ${pageNo} de ${totalPages}`, pageWidth - margin, pageHeight - 20, { align: 'right' });
+      // Reuses the SAME classLabel the top banner shows — a hardcoded
+      // "Confidencial" here meant a report from a Público or Uso Interno
+      // audit displayed a contradictory footer, undermining the very
+      // classification the top banner just declared.
+      txt(`AuditSym · ${classLabel} · ${t('pdf_footer_audit_label')} ${auditData?.id || ''}`, margin, pageHeight - 20);
+      txt(`${t('pdf_footer_page_label')} ${pageNo} ${t('pdf_footer_of_label')} ${totalPages}`, pageWidth - margin, pageHeight - 20, { align: 'right' });
     }
 
     function kpiCard(x, y, w, h, value, label, color) {
@@ -4196,9 +4570,9 @@ function generateHubPDF() {
     // report built from a Confidencial audit is never accidentally
     // presented as anything less strict, and one from a Público audit
     // isn't overstated either.
-    const CLASS_LABELS = { confidential: 'CONFIDENCIAL', internal: 'USO INTERNO', public: 'PÚBLICO' };
+    const CLASS_LABEL_KEYS = { confidential: 'classification_confidential', internal: 'classification_internal', public: 'classification_public' };
     const docControl = state.auditData?.engagement?.docControl || {};
-    const classLabel = CLASS_LABELS[docControl.classification] || 'CONFIDENCIAL';
+    const classLabel = t(CLASS_LABEL_KEYS[docControl.classification] || 'classification_confidential');
     drawGradientRect(0, 108, pageWidth, 20, [153, 27, 27], [127, 29, 29]);
     doc.setTextColor(255, 255, 255);
     doc.setFont('Roboto', 'bold').setFontSize(9.5);
@@ -4215,20 +4589,106 @@ function generateHubPDF() {
       doc.rect(0, 128, pageWidth, 16, 'F');
       doc.setTextColor(...C.textMuted);
       doc.setFont('Roboto', 'italic').setFontSize(7.5);
-      const traceParts = [`Informe de Auditoría ${state.auditData?.id || ''}`];
+      const traceParts = [`${t('pdf_source_audit_report_label')} ${state.auditData?.id || ''}`];
       if (sourceVersion) traceParts.push(`v${sourceVersion}`);
-      if (sourceIssuedAt) traceParts.push(`Emitido ${new Date(sourceIssuedAt).toLocaleDateString()}`);
-      txt(`Basado en: ${traceParts.join(' · ')}`, pageWidth/2, 139, { align: 'center' });
+      if (sourceIssuedAt) traceParts.push(`${t('pdf_source_issued_label')} ${new Date(sourceIssuedAt).toLocaleDateString(pdfLocale)}`);
+      txt(`${t('pdf_based_on_label')}: ${traceParts.join(' · ')}`, pageWidth/2, 139, { align: 'center' });
     }
 
     let y = (sourceVersion || sourceIssuedAt) ? 160 : 144;
 
+    // ── Executive Summary — point 4 of the reporting review: a narrative
+    // synthesis a CISO or board can read in 30 seconds, built entirely from
+    // data already collected above (no new data model needed). KPI cards
+    // are useful, but numbers without a sentence around them don't answer
+    // "so what should I do about this."
+    {
+      const pendingValidationCount = reportFindings.filter(f => !f.managementResponse?.validationStatus && f.status !== 'closed').length;
+      const disputedInProgressCount = reportFindings.filter(f => f.managementResponse?.validationStatus === 'disputed').length;
+      const criticalOverdueCount = reportFindings.filter(f => isOverdue(f) && (f.severity || '').toLowerCase() === 'critical').length;
+      const noResponseCount = reportFindings.filter(f => !f.managementResponse?.validationStatus).length;
+      const progressPct = reportFindings.length > 0 ? Math.round((closed / reportFindings.length) * 100) : 0;
+
+      const blockersParts = [];
+      if (pendingValidationCount > 0) blockersParts.push(t('pdf_exec_blockers_pending').replace('{n}', pendingValidationCount));
+      if (disputedInProgressCount > 0) blockersParts.push(t('pdf_exec_blockers_disputed').replace('{n}', disputedInProgressCount));
+      const blockersBody = blockersParts.length ? blockersParts.join(' ') : t('pdf_exec_blockers_none');
+
+      const overdueBody = overdue > 0
+        ? t('pdf_exec_overdue_body').replace('{n}', overdue).replace('{c}', criticalOverdueCount)
+        : t('pdf_exec_overdue_none');
+
+      const decisionsBody = noResponseCount > 0
+        ? t('pdf_exec_decisions_body').replace('{n}', noResponseCount)
+        : t('pdf_exec_decisions_none');
+
+      const execItems = [
+        { label: t('pdf_exec_objective_label'), body: t('pdf_exec_objective_body') },
+        { label: t('pdf_exec_source_audit_label'), body: [state.auditData?.id, state.auditData?.empresa, (state.auditData?.framework || '').toUpperCase(), sourceVersion ? `v${sourceVersion}` : ''].filter(Boolean).join(' · ') },
+        { label: t('pdf_exec_scope_label'), body: `${reportFindings.length}` },
+        { label: t('pdf_exec_cutoff_label'), body: new Date().toLocaleDateString(pdfLocale) },
+        { label: t('pdf_exec_progress_label'), body: `${progressPct}% (${closed}/${reportFindings.length})` },
+        { label: t('pdf_exec_blockers_label'), body: blockersBody },
+        { label: t('pdf_exec_overdue_label'), body: overdueBody },
+        { label: t('pdf_exec_decisions_label'), body: decisionsBody },
+      ];
+
+      const execMaxW = contentWidth - 16;
+      doc.setFillColor(...C.rowAlt);
+      doc.setDrawColor(...C.border);
+
+      // Pre-measure every line so the box height and the draw pass never
+      // disagree — same pattern used for finding-card detail blocks below.
+      doc.setFont('Roboto', 'bold').setFontSize(8);
+      const measuredExec = execItems.map(item => {
+        const labelStr = `${item.label}: `;
+        const labelW = doc.getTextWidth(pdfSafe(labelStr));
+        doc.setFont('Roboto', 'normal');
+        const bodyLines = doc.splitTextToSize(pdfSafe(item.body), Math.max(execMaxW - labelW, 80));
+        doc.setFont('Roboto', 'bold');
+        return { labelStr, labelW, bodyLines };
+      });
+      const execLineH = 11;
+      const execLineCount = measuredExec.reduce((n, m) => n + m.bodyLines.length, 0);
+      doc.setFont('Roboto', 'italic').setFontSize(7);
+      const limitationsLines = doc.splitTextToSize(pdfSafe(t('pdf_exec_limitations_body')), execMaxW);
+      const execBoxH = 16 + execLineCount * execLineH + 8 + (limitationsLines.length + 1) * 9 + 10;
+
+      doc.roundedRect(margin, y, contentWidth, execBoxH, 4, 4, 'FD');
+      doc.setTextColor(...C.textDark);
+      doc.setFont('Roboto', 'bold').setFontSize(10);
+      txt(t('pdf_exec_summary_title'), margin + 8, y + 16);
+
+      let ey = y + 32;
+      measuredExec.forEach(m => {
+        doc.setFont('Roboto', 'bold').setFontSize(8);
+        doc.setTextColor(...C.textDark);
+        txt(m.labelStr, margin + 8, ey);
+        doc.setFont('Roboto', 'normal').setFontSize(8);
+        doc.setTextColor(...C.textMuted);
+        m.bodyLines.forEach((line, i) => txt(line, margin + 8 + m.labelW, ey + i * execLineH));
+        ey += m.bodyLines.length * execLineH;
+      });
+
+      ey += 6;
+      doc.setDrawColor(...C.border);
+      doc.setLineWidth(0.5);
+      doc.line(margin + 8, ey, margin + contentWidth - 8, ey);
+      ey += 10;
+      doc.setFont('Roboto', 'italic').setFontSize(7);
+      doc.setTextColor(...C.textMuted);
+      txt(`${t('pdf_exec_limitations_label')}:`, margin + 8, ey);
+      limitationsLines.forEach((line, i) => txt(line, margin + 8, ey + 9 + i * 9));
+
+      y += execBoxH + 16;
+    }
+
     const cards = [
-      { value: reportFindings.length, label: 'Total', color: C.brandIndigo },
-      { value: critical, label: 'Críticos', color: C.danger },
-      { value: open, label: 'Abiertos', color: C.warning },
-      { value: closed, label: 'Cerrados', color: C.success },
-      { value: overdue, label: 'Vencidos', color: C.danger },
+      { value: reportFindings.length, label: t('pdf_kpi_total'), color: C.brandIndigo },
+      { value: critical, label: t('pdf_kpi_critical'), color: C.danger },
+      { value: open, label: t('pdf_kpi_open'), color: C.warning },
+      { value: closed, label: t('pdf_kpi_closed'), color: C.success },
+      { value: overdue, label: t('pdf_kpi_overdue'), color: C.danger },
     ];
     const cardGap = 8;
     const cardW = (contentWidth - cardGap * (cards.length - 1)) / cards.length;
@@ -4237,7 +4697,8 @@ function generateHubPDF() {
 
     if (excludedFindings.length > 0) {
       const idsPreview = excludedFindings.map(f => f.controlCode || f.id).join(', ');
-      const excludedLines = doc.splitTextToSize(pdfSafe(`${excludedFindings.length} hallazgo(s) excluido(s) por discrepancia aceptada por el auditor: ${idsPreview}`), contentWidth - 16);
+      const excludedNote = t('pdf_excluded_findings_note').replace('{n}', excludedFindings.length).replace('{ids}', idsPreview);
+      const excludedLines = doc.splitTextToSize(pdfSafe(excludedNote), contentWidth - 16);
       const boxH = excludedLines.length * 10 + 12;
       doc.setFillColor(...C.rowAlt);
       doc.setDrawColor(...C.border);
@@ -4255,7 +4716,7 @@ function generateHubPDF() {
     doc.setTextColor(...C.textDark);
     doc.setFont('Roboto', 'bold');
     doc.setFontSize(12);
-    txt('Detalle de Hallazgos', margin, y);
+    txt(t('pdf_findings_detail_title'), margin, y);
     y += 18;
 
     // ── Status categorization ────────────────────────────────────────────
@@ -4266,8 +4727,8 @@ function generateHubPDF() {
     // field, since a disputed finding's workflow status is secondary to
     // the fact that it's stuck in a validation disagreement.
     const STATUS_LABELS = {
-      open: 'Abierto', assigned: 'Asignado', in_progress: 'En Progreso',
-      pending_validation: 'Pendiente', closed: 'Cerrado', risk_accepted: 'Riesgo Aceptado'
+      open: t('status_open'), assigned: t('status_assigned'), in_progress: t('status_in_progress'),
+      pending_validation: t('status_pending_validation'), closed: t('status_closed'), risk_accepted: t('status_risk_accepted')
     };
     function findingCategory(f) {
       const mr = f.managementResponse || {};
@@ -4277,22 +4738,22 @@ function generateHubPDF() {
       return 'open';
     }
     const SECTIONS = [
-      { key: 'open',     title: 'Abiertos',                color: C.danger,  bg: [254, 242, 242] },
-      { key: 'pending',  title: 'Pendientes de Validación', color: C.warning, bg: [255, 251, 235] },
-      { key: 'disputed', title: 'Discrepancias en Curso',   color: [100, 116, 139], bg: [248, 250, 252] },
-      { key: 'resolved', title: 'Resueltos',                color: C.success, bg: C.closedBg },
+      { key: 'open',     title: t('pdf_section_open'),     color: C.danger,  bg: [254, 242, 242] },
+      { key: 'pending',  title: t('pdf_section_pending'),   color: C.warning, bg: [255, 251, 235] },
+      { key: 'disputed', title: t('pdf_section_disputed'),  color: [100, 116, 139], bg: [248, 250, 252] },
+      { key: 'resolved', title: t('pdf_section_resolved'),  color: C.success, bg: C.closedBg },
     ];
     const grouped = { open: [], pending: [], disputed: [], resolved: [] };
     reportFindings.forEach(f => grouped[findingCategory(f)].push(f));
 
     const cols = [
-      { key: 'id',      label: 'ID',          x: margin + 8,   w: 56 },
-      { key: 'sev',     label: 'Severidad',   x: margin + 68,  w: 46 },
-      { key: 'control', label: 'Control',     x: margin + 118, w: 128 },
-      { key: 'owner',   label: 'Responsable', x: margin + 250, w: 64 },
-      { key: 'treat',   label: 'Tratamiento', x: margin + 318, w: 60 },
-      { key: 'status',  label: 'Estado',      x: margin + 382, w: 76 },
-      { key: 'days',    label: 'Días',       x: pageWidth - margin - 8, w: 0, align: 'right' },
+      { key: 'id',      label: t('pdf_col_id'),        x: margin + 8,   w: 56 },
+      { key: 'sev',     label: t('pdf_col_severity'),  x: margin + 68,  w: 46 },
+      { key: 'control', label: t('pdf_col_control'),   x: margin + 118, w: 128 },
+      { key: 'owner',   label: t('pdf_col_owner'),     x: margin + 250, w: 64 },
+      { key: 'treat',   label: t('pdf_col_treatment'), x: margin + 318, w: 60 },
+      { key: 'status',  label: t('pdf_col_status'),    x: margin + 382, w: 76 },
+      { key: 'days',    label: t('pdf_col_days'),      x: pageWidth - margin - 8, w: 0, align: 'right' },
     ];
 
     // Truncates with an ellipsis so a string never overflows its column and
@@ -4369,7 +4830,7 @@ function generateHubPDF() {
       // the badge text and its gray color must agree, or the badge itself
       // becomes exactly the kind of confusing signal this redesign is
       // meant to fix.
-      const statusLabel = mr.validationStatus === 'disputed' ? 'Discrepante' : (STATUS_LABELS[f.status] || (f.status || 'Abierto'));
+      const statusLabel = mr.validationStatus === 'disputed' ? t('pdf_status_disputed_badge') : (STATUS_LABELS[f.status] || (f.status || t('pdf_status_open_default')));
 
       // Build the rich "who decided what" detail lines — this is the whole
       // point of the M2 governance model, and the old export dropped almost
@@ -4385,8 +4846,26 @@ function generateHubPDF() {
         const bits = [who, mr.responseDate].filter(Boolean).join(' · ');
         detailItems.push({ label: t('validation_' + mr.validationStatus), body: bits });
       }
+      // Deliberately OUTSIDE the validationStatus check above — an older or
+      // incomplete JSON could carry comments/receivedVia/source without a
+      // validationStatus ever having been set, and this is exactly the
+      // content issue #27 exists to surface. Gating it behind
+      // validationStatus meant such a response would be silently dropped
+      // from the report entirely, even though the data was right there.
+      if (mr.receivedVia) detailItems.push({ label: t('received_via'), body: mr.receivedVia });
+      // The raw value ('manual_entry', 'email_integration', 'api') is
+      // translated for the reader rather than printed verbatim — a source
+      // key is an internal implementation detail, not something a client
+      // reading a PDF should have to decode.
+      if (mr.source) detailItems.push({ label: t('source'), body: t('source_value_' + mr.source) });
+      // The actual words Management used — this is the whole point of
+      // capturing a response at all. Showing only "who decided what"
+      // without this is the exact gap issue #27 flagged: the report knew
+      // WHO responded and WHAT they chose, but not what they actually said.
+      if (mr.comments) detailItems.push({ label: t('response_comments'), body: mr.comments });
       if (mr.validationStatus === 'disputed' || mr.validationStatus === 'closed_disputed') {
         if (mr.disputeReason) detailItems.push({ label: t('dispute_reason_label'), body: mr.disputeReason });
+        if (mr.disputeEvidence) detailItems.push({ label: t('dispute_evidence_label'), body: mr.disputeEvidence });
         if (mr.auditorAdjudication) detailItems.push({ label: t('auditor_adjudication'), body: t('adjudication_' + mr.auditorAdjudication) });
       }
       if (mr.treatment) {
@@ -4522,7 +5001,17 @@ function generateHubPDF() {
       drawFooter(p, totalPages, state.auditData);
     }
 
-    doc.save(`RemediationReport_${state.auditData?.id || 'export'}_${Date.now()}.pdf`);
+    // Deterministic — no Date.now(). "source-v" makes clear v1.0 belongs to
+    // the SOURCE audit, not to a version system this remediation report
+    // doesn't have yet (see the deferred document-control issue). Two
+    // downloads of the same state now produce the same filename, correctly
+    // implying they're the same document rather than two different ones.
+    // Periods are deliberately preserved (unlike the stricter storage-key
+    // sanitizer) so "v1.0" reads as "v1.0" in the filename, not "v1_0" —
+    // only characters that are genuinely unsafe in a filename are stripped.
+    const safeAuditId = String(state.auditData?.id || 'export').replace(/[^a-zA-Z0-9._-]/g, '_');
+    const safeVersion = String(sourceVersion || 'unversioned').replace(/[^a-zA-Z0-9._-]/g, '_');
+    doc.save(`AuditSym_Remediation_${safeAuditId}_source-v${safeVersion}.pdf`);
   } catch (e) {
     alert('PDF Error: ' + e.message);
   }
