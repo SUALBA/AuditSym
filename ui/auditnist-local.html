@@ -3890,7 +3890,25 @@ function findEmptyEvidenceNAControls() {
     .filter(c => c.compliance === 'na' && !c.evidence.trim());
 }
 
-// Single-control version of the same two checks above, combined — this is
+// Issue #29 (remaining work — "Prevent final issuance while evidence or AI
+// validation remains pending"): a control with a REAL verdict
+// (Cumple/Parcial/No Cumple) but no evidence text was previously allowed
+// through issuance — the PDF now honestly marks it "Evidencia Pendiente"
+// instead of silently hiding it, but Generar PDF (a working preview) and
+// Emitir Informe Final (the official act) have different obligations here.
+// A preview may legitimately show pending evidence; a final, official
+// issuance must not.
+function findAssessedControlsWithoutEvidence() {
+  return Array.from(document.querySelectorAll('.control'))
+    .map(blk => ({
+      code: blk.querySelector('.ctrl')?.value || '',
+      compliance: blk.querySelector('.cumple')?.value || '',
+      evidence: blk.querySelector('.evidencia')?.value || ''
+    }))
+    .filter(c => ['yes', 'partial', 'no'].includes(c.compliance) && !c.evidence.trim());
+}
+
+// Single-control version of the same checks above, combined — this is
 // what the Work View sidebar's "⚠️ Solo pendientes de validar" filter uses,
 // so what shows up there is exactly what would otherwise only surface as a
 // blocking alert the moment the auditor tries to Guardar or Emitir.
@@ -3899,6 +3917,7 @@ function controlHasPendingIssue(controlEl) {
   const evidence = controlEl.querySelector('.evidencia')?.value || '';
   if (evidence.includes(AI_DRAFT_MARKER)) return true;
   if (compliance === 'na' && !evidence.trim()) return true;
+  if (['yes', 'partial', 'no'].includes(compliance) && !evidence.trim()) return true;
   return false;
 }
 
@@ -3916,6 +3935,16 @@ function issueFinalReport() {
   const emptyNA = findEmptyEvidenceNAControls();
   if (emptyNA.length > 0) {
     alert('🛑 ' + T('na_evidence_required') + '\n\n' + emptyNA.map(c => `• ${c.code}`).join('\n'));
+    return;
+  }
+  // Issue #29 (remaining work): "Generar PDF" is a working preview and may
+  // legitimately show assessed controls with pending evidence — the PDF
+  // marks them honestly. "Emitir Informe Final" is the official act, and
+  // must not let evidence-pending findings out the door as if the report
+  // were complete.
+  const missingEvidence = findAssessedControlsWithoutEvidence();
+  if (missingEvidence.length > 0) {
+    alert('🛑 ' + T('issue_blocked_missing_evidence') + '\n\n' + missingEvidence.map(c => `• ${c.code}`).join('\n'));
     return;
   }
 
@@ -6240,6 +6269,14 @@ function scopeSection(title, body, color) {
 
     scopeSection('Modelo de Puntuación', `Este informe presenta dos cifras de cumplimiento con significados distintos, que no deben confundirse entre sí: el "% Cumple" del gráfico de tarta es la proporción simple de controles evaluados marcados como conformes. La puntuación de postura (p. ej. "${pdfAssess.overallScorePct}%" en Evaluación Final) es un score ponderado por criticidad, calculado en dos pasos. Primero, cada resultado de cumplimiento aporta un valor: Cumple = 1,0; Parcial = 0,5; No Cumple = 0,0; No Evaluado = 0,0 (y no cuenta en el total, ya que solo se puntúan los controles realmente evaluados). Segundo, ese valor se multiplica por la criticidad del control (crítico ×3.5, alto ×2.5, medio ×1.5, bajo ×1.0), de modo que los hallazgos en áreas más críticas pesan más que los de áreas de baja criticidad. Un control marcado como "No Aplicable" queda excluido por completo de ambas cifras del informe — nunca puntúa como incumplimiento ni como cumplimiento — ya que refleja una decisión deliberada de alcance, no un hallazgo; el motivo del descarte se documenta en la evidencia del propio control. Ambas cifras del informe (% Cumple y puntuación de postura) son correctas; miden cosas diferentes.`);
 
+    // Issue #29 (remaining work): the "worst-case wins" merge behavior
+    // already existed in mergeControlsByCode() — this section is what was
+    // missing, explaining IN THE REPORT ITSELF why a single row in the
+    // domain table can represent more than one internal SCF control, so a
+    // reader never mistakes consolidation for the report simply omitting
+    // controls.
+    scopeSection('Regla de Consolidación', 'Cuando varios controles internos se asignan a un mismo resultado del framework, AuditSym presenta una conclusión consolidada utilizando el estado de cumplimiento y la criticidad más desfavorables de entre los controles agrupados. El anexo conserva la trazabilidad individual de cada control interno y su evidencia, de modo que la fila consolidada nunca oculta información — solo la resume bajo el criterio más exigente.');
+
     scopeSection('Definición de Resultados', 'Cumple: el control está implementado y operativo según lo esperado. Parcial: el control existe pero presenta brechas de diseño, implementación o efectividad operativa. No Cumple: no hay evidencia de que el control esté implementado. No Aplicable: el control no corresponde al alcance, la infraestructura o el modelo de negocio de la organización auditada; el motivo se documenta en la evidencia del control.');
 
     scopeSection('Definición de Criticidad', 'Crítico / Alto / Medio / Bajo indican la importancia del área de control para la organización, evaluada por el auditor con independencia de si el control está o no implementado — ver nota en Detalle Técnico por Dominio.');
@@ -6580,10 +6617,16 @@ function scopeSection(title, body, color) {
     // its own exposed findings/evidence still leaves the reader taking it
     // on faith. Both groups now get the same full card, just clearly
     // separated into their own labeled sections so nobody has to guess
-    // which group a card belongs to. A control with no evidence at all
-    // simply isn't listed here (it still appears in the domain table
-    // above), rather than being padded with a canned phrase that would
-    // assert something nobody actually recorded.
+    // which group a card belongs to.
+    //
+    // Issue #29 (remaining work — "prevent issuance without evidence" /
+    // acceptance criterion "each conclusion references supporting
+    // evidence or is marked as pending"): a control with a REAL verdict
+    // (Cumple/Parcial/No Cumple) but no evidence text used to simply not
+    // be listed here at all — present in the domain table above, silently
+    // absent from this annex, satisfying NEITHER half of that criterion.
+    // It now gets its own explicit "Evidencia Pendiente" section instead
+    // of vanishing.
     const controlsWithContent = controlsData.filter(c => c.hasEvidence);
     const compliantWithEvidence = controlsWithContent.filter(c => c.compliance === 'yes');
     // "No Aplicable" controls get their own section, separate from real
@@ -6591,6 +6634,11 @@ function scopeSection(title, body, color) {
     // misread as if something was wrong with them.
     const notApplicableWithEvidence = controlsWithContent.filter(c => c.compliance === 'na');
     const narrativeControls = controlsWithContent.filter(c => c.compliance !== 'yes' && c.compliance !== 'na');
+    // Sourced from the FULL controlsData (not controlsWithContent) — this
+    // is specifically the set that controlsWithContent's filter excludes.
+    const pendingEvidenceControls = controlsData.filter(c =>
+      !c.hasEvidence && (c.compliance === 'yes' || c.compliance === 'partial' || c.compliance === 'no')
+    );
     // Unlike the domain table above, the appendix intentionally does NOT
     // merge — each SCF control keeps its own full card, since each can
     // carry distinct evidence. When more than one entry here shares the
@@ -6612,7 +6660,7 @@ function scopeSection(title, body, color) {
     });
     const COMPLIANCE_LABEL_ES_ANNEX = { yes: 'Cumple', no: 'No Cumple', partial: 'Parcial', na: 'No Aplicable', '': 'Sin Evaluar' };
 
-    if (controlsWithContent.length > 0) {
+    if (controlsWithContent.length > 0 || pendingEvidenceControls.length > 0) {
       doc.addPage();
       y = margin;
       drawHeader('Anexo · Evidencia Detallada');
@@ -6620,8 +6668,24 @@ function scopeSection(title, body, color) {
       y = 100;
       doc.setFont('Roboto', 'italic').setFontSize(8.5);
       doc.setTextColor(COLORS.textLight[0], COLORS.textLight[1], COLORS.textLight[2]);
-      txt(`${narrativeControls.length} control(es) no conformes o parciales · ${compliantWithEvidence.length} control(es) conformes · ${notApplicableWithEvidence.length} control(es) no aplicable(s) — evidencia completa para todos los grupos.`, margin, y);
-      y += 22;
+      // Honest summary line — no longer claims "evidencia completa para
+      // todos los grupos" unconditionally, since that could be false the
+      // moment pendingEvidenceControls has anything in it.
+      const summaryParts = [
+        `${narrativeControls.length} control(es) no conformes o parciales`,
+        `${compliantWithEvidence.length} control(es) conformes`,
+        `${notApplicableWithEvidence.length} control(es) no aplicable(s)`
+      ];
+      const summaryLine = pendingEvidenceControls.length > 0
+        ? `${summaryParts.join(' · ')} — ${pendingEvidenceControls.length} control(es) evaluado(s) sin evidencia registrada (ver "Evidencia Pendiente").`
+        : `${summaryParts.join(' · ')} — evidencia completa para todos los grupos.`;
+      // Wrapped, not a single txt() call — with pendingEvidenceControls
+      // added, this line can run long enough to overflow past the right
+      // margin instead of wrapping, exactly the kind of clipping issue #29
+      // calls out as still needing automated coverage.
+      const summaryLines = doc.splitTextToSize(pdfSafe(summaryLine), contentWidth);
+      summaryLines.forEach((l, i) => txt(l, margin, y + i * 11));
+      y += summaryLines.length * 11 + 11;
 
       // A colored section banner — full-width, with a left accent tab and
       // a rule beneath — is the "fehaciente" (unmistakable) visual break
@@ -6807,6 +6871,57 @@ function scopeSection(title, body, color) {
         const byDomainNA = groupByDomainOrdered(notApplicableWithEvidence);
         Object.keys(byDomainNA).sort().forEach(domainKey => {
           byDomainNA[domainKey].forEach(c => renderControlCard(c));
+        });
+      }
+
+      // Issue #29: a fourth section, deliberately distinct in tone from
+      // the three above — this is not a finding, not a compliant control,
+      // not a scoping decision. It's a gap in the audit record itself: a
+      // real verdict was recorded, but no supporting evidence was ever
+      // attached. A compact row (not a full card, since there's no
+      // evidence text to show) rather than silence, per the acceptance
+      // criterion that every conclusion must reference evidence OR be
+      // explicitly marked as pending.
+      function renderPendingEvidenceRow(c) {
+        // Two lines, not one row with left/right-aligned text sharing the
+        // same line — a long control name would otherwise run into the
+        // right-aligned status label with no room to wrap, exactly the
+        // "long recipients / clipped text" class of bug issue #29 flags as
+        // still needing coverage. The heading wraps like any other heading
+        // in this report; the status label always gets its own line.
+        const riskCol = getRiskColor(c.risk);
+        const codeHeading = (codeOccurrences[c.code] > 1 && c.scfId) ? `${c.code} (${c.scfId})` : c.code;
+        const complianceLabel = COMPLIANCE_LABEL_ES_ANNEX[c.compliance] || c.compliance;
+        const headingLines = doc.splitTextToSize(pdfSafe(`${codeHeading} — ${c.name}`), pageWidth - 2*margin - 20);
+        const rowH = headingLines.length * 11 + 12;
+        if (y + rowH > pageHeight - 90) { doc.addPage(); y = drawContinuationHeader('Anexo · Evidencia Detallada'); }
+
+        doc.setFillColor(riskCol[0], riskCol[1], riskCol[2]);
+        doc.rect(margin - 8, y - 3, 4, rowH - 4, 'F');
+        doc.setFont('Roboto', 'bold').setFontSize(9.5);
+        doc.setTextColor(COLORS.text[0], COLORS.text[1], COLORS.text[2]);
+        headingLines.forEach((l, i) => txt(l, margin + 12, y + 6 + i * 11));
+        doc.setFont('Roboto', 'italic').setFontSize(8);
+        doc.setTextColor(COLORS.warning[0], COLORS.warning[1], COLORS.warning[2]);
+        txt(`⏳ Evidencia Pendiente · Estado registrado: ${complianceLabel}`, margin + 12, y + 6 + headingLines.length * 11);
+        y += rowH;
+      }
+      if (pendingEvidenceControls.length > 0) {
+        if (y > pageHeight - 200) { doc.addPage(); y = drawContinuationHeader('Anexo · Evidencia Detallada'); }
+        else { y += 12; }
+        renderSectionBanner(
+          `EVIDENCIA PENDIENTE (${pendingEvidenceControls.length})`,
+          COLORS.warning, [255, 251, 235], pendingEvidenceControls.length,
+          '5.4 Evidencia Pendiente'
+        );
+        doc.setFont('Roboto', 'italic').setFontSize(8);
+        doc.setTextColor(COLORS.textLight[0], COLORS.textLight[1], COLORS.textLight[2]);
+        const pendingNoteLines = doc.splitTextToSize(pdfSafe('Los siguientes controles tienen un veredicto de cumplimiento registrado pero carecen de evidencia documentada en el sistema al momento de emitir este informe. Se listan explícitamente en lugar de omitirse, para que su ausencia de evidencia sea una constancia visible del informe, no un vacío silencioso.'), contentWidth);
+        pendingNoteLines.forEach(l => { txt(l, margin, y); y += 10; });
+        y += 8;
+        const byDomainPending = groupByDomainOrdered(pendingEvidenceControls);
+        Object.keys(byDomainPending).sort().forEach(domainKey => {
+          byDomainPending[domainKey].forEach(c => renderPendingEvidenceRow(c));
         });
       }
     }
@@ -7391,6 +7506,7 @@ library_loaded:'Biblioteca cargada',
 validate_draft_btn:'Validar Borrador', ia_evidence_btn:'IA Evidencia',
 dash_not_applicable:'No Aplicable 🚫',
 na_evidence_required:'Se requiere una justificación en Evidencia cuando un control se marca como No Aplicable.',
+issue_blocked_missing_evidence:'No se puede emitir el informe: los siguientes controles tienen un veredicto de cumplimiento (Cumple, Parcial o No Cumple) pero carecen de evidencia registrada:',
 compliance_not_calculated:'Sin controles aplicables evaluados',
 template_library_btn:'📚 Biblioteca',
 template_loading:'Cargando...',
@@ -7570,6 +7686,7 @@ library_loaded:'Library loaded',
 validate_draft_btn:'Validate Draft', ia_evidence_btn:'AI Evidence',
 dash_not_applicable:'Not Applicable 🚫',
 na_evidence_required:'A justification in Evidence is required when a control is marked Not Applicable.',
+issue_blocked_missing_evidence:'Cannot issue the report: the following controls have a compliance verdict (Yes, Partial or No) but no recorded evidence:',
 compliance_not_calculated:'No applicable controls assessed',
 template_library_btn:'📚 Library',
 template_loading:'Loading...',
@@ -7802,6 +7919,7 @@ dashboard_title:'📊 Tableau de Bord Multi-Framework',
 dash_total:'Total Évalués', dash_compliant:'Conformes', partial_label:'Partiel',
 dash_noncompliant:'Non Conformes', dash_not_applicable:'Non applicable 🚫',
 na_evidence_required:'Une justification dans le champ Preuve est requise lorsqu’un contrôle est marqué Non applicable.',
+issue_blocked_missing_evidence:'Impossible de publier le rapport : les contrôles suivants ont un verdict de conformité (Conforme, Partiel ou Non conforme) mais aucune preuve enregistrée :',
 compliance_not_calculated:'Aucun contrôle applicable évalué',
 dash_critical_risk:'Risques Critiques', dash_high_risk:'Risques Élevés',
 framework_progress_title:'📊 Progression par Framework',
@@ -7920,6 +8038,7 @@ dashboard_title:'📊 Multi-Framework Dashboard',
 dash_total:'Gesamt Bewertet', dash_compliant:'Konform', partial_label:'Teilweise',
 dash_noncompliant:'Nicht Konform', dash_not_applicable:'Nicht anwendbar 🚫',
 na_evidence_required:'Wenn eine Kontrolle als Nicht anwendbar markiert wird, ist eine Begründung im Nachweisfeld erforderlich.',
+issue_blocked_missing_evidence:'Der Bericht kann nicht ausgestellt werden: Die folgenden Kontrollen haben ein Konformitätsurteil (Erfüllt, Teilweise oder Nicht erfüllt), aber keinen erfassten Nachweis:',
 compliance_not_calculated:'Keine anwendbaren Kontrollen bewertet',
 dash_critical_risk:'Kritische Risiken', dash_high_risk:'Hohe Risiken',
 framework_progress_title:'📊 Framework Fortschritt',
@@ -8038,6 +8157,7 @@ dashboard_title:'📊 Dashboard Multi-Framework',
 dash_total:'Total Avaliados', dash_compliant:'Conformes', partial_label:'Parcial',
 dash_noncompliant:'Não Conformes', dash_not_applicable:'Não aplicável 🚫',
 na_evidence_required:'É necessária uma justificativa no campo Evidência quando um controle é marcado como Não aplicável.',
+issue_blocked_missing_evidence:'Não é possível emitir o relatório: os seguintes controles têm um veredito de conformidade (Cumpre, Parcial ou Não Cumpre) mas não têm evidência registrada:',
 compliance_not_calculated:'Nenhum controle aplicável avaliado',
 dash_critical_risk:'Riscos Críticos', dash_high_risk:'Riscos Altos',
 framework_progress_title:'📊 Progresso por Framework',
@@ -8156,6 +8276,7 @@ dashboard_title:'📊 لوحة التحكم متعددة الأطر',
 dash_total:'إجمالي المقيّمين', dash_compliant:'ممتثل', partial_label:'جزئي',
 dash_noncompliant:'غير ممتثل', dash_not_applicable:'غير قابل للتطبيق 🚫',
 na_evidence_required:'يلزم تقديم مبرر في حقل الدليل عند وضع علامة غير قابل للتطبيق على أحد الضوابط.',
+issue_blocked_missing_evidence:'لا يمكن إصدار التقرير: الضوابط التالية لديها حكم امتثال (متوافق أو جزئي أو غير متوافق) ولكن بدون دليل مسجل:',
 compliance_not_calculated:'لم يتم تقييم أي ضوابط قابلة للتطبيق',
 dash_critical_risk:'مخاطر حرجة', dash_high_risk:'مخاطر عالية',
 framework_progress_title:'📊 تقدم الإطار',
@@ -8274,6 +8395,7 @@ dashboard_title:'📊 多框架仪表板',
 dash_total:'总评估数', dash_compliant:'合规', partial_label:'部分',
 dash_noncompliant:'不合规', dash_not_applicable:'不适用 🚫',
 na_evidence_required:'将控制项标记为不适用时，必须在证据字段中填写理由。',
+issue_blocked_missing_evidence:'无法发布报告：以下控制项已有合规结论（符合、部分符合或不符合），但尚未记录证据：',
 compliance_not_calculated:'尚未评估适用的控制项',
 dash_critical_risk:'严重风险', dash_high_risk:'高风险',
 framework_progress_title:'📊 框架进度',

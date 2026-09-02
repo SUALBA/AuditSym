@@ -512,6 +512,7 @@ async function main() {
         const blk = document.querySelector('.control');
         blk.querySelector('.cumple').value = 'no';
         blk.querySelector('.cumple').dispatchEvent(new Event('change'));
+        blk.querySelector('.evidencia').value = 'v1.0 evidence — original unresolved finding.';
       });
       await page.waitForTimeout(150);
       await page.evaluate(() => issueFinalReport());
@@ -534,6 +535,7 @@ async function main() {
         const blk = document.querySelector('.control');
         blk.querySelector('.cumple').value = 'yes';
         blk.querySelector('.cumple').dispatchEvent(new Event('change'));
+        blk.querySelector('.evidencia').value = 'v1.1 evidence — issue fixed.';
         document.getElementById('doc_version').value = '1.1';
       });
       await page.evaluate(() => issueFinalReport());
@@ -599,6 +601,7 @@ async function main() {
         const blk = document.querySelector('.control');
         blk.querySelector('.cumple').value = 'yes';
         blk.querySelector('.cumple').dispatchEvent(new Event('change'));
+        blk.querySelector('.evidencia').value = 'Test evidence — isolated from the evidence-block feature on purpose.';
       });
       await page.waitForTimeout(150);
 
@@ -882,6 +885,7 @@ async function main() {
         const blk = document.querySelector('.control');
         blk.querySelector('.cumple').value = 'no';
         blk.querySelector('.cumple').dispatchEvent(new Event('change'));
+        blk.querySelector('.evidencia').value = 'Test evidence — isolated from the evidence-block feature on purpose.';
       });
       await page.waitForTimeout(150);
 
@@ -1059,6 +1063,77 @@ async function main() {
       } else {
         console.log('  ⚠️  jsPDF unavailable (no internet access in this environment) — skipping the PDF filename check. Isolation is still fully proven at the data level above, which is what generatePDF(sourceSnapshot) actually reads from.');
       }
+
+      await page.close();
+      await ctx.close();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    section('14. Evidence required for real verdicts on final issuance (issue #29)');
+    // Regression covered: a control marked Cumple/Parcial/No Cumple with no
+    // evidence text must not silently make it out as an officially issued
+    // report. "Generar PDF" (a working preview) may still show it — the
+    // PDF itself marks it honestly as "Evidencia Pendiente" — but "Emitir
+    // Informe Final" is the official act and must block outright.
+    {
+      const ctx = await browser.newContext();
+      const page = await newPage(browser, ctx);
+
+      await page.evaluate(() => {
+        document.getElementById('empresa_auditada').value = 'Evidence Block Co';
+        document.getElementById('empresa_auditora').value = 'Evidence Block Firm';
+        document.getElementById('auditor').value = 'Regression Tester';
+        document.getElementById('id_informe').value = 'REG-EVIDENCE-BLOCK';
+        document.getElementById('doc_author').value = 'Regression Tester';
+        document.getElementById('doc_version').value = '1.0';
+        approvals.policy = 'none';
+        document.getElementById('controls').innerHTML = '';
+        addControl(false, 'Q1', 'GOV-01', 'GOV-01', 'Control sin evidencia', '');
+        const blk = document.querySelector('.control');
+        blk.querySelector('.cumple').value = 'yes';
+        blk.querySelector('.cumple').dispatchEvent(new Event('change'));
+        // Evidence deliberately left empty.
+      });
+      await page.waitForTimeout(150);
+
+      const detectorResult = await page.evaluate(() => findAssessedControlsWithoutEvidence().length);
+      check('findAssessedControlsWithoutEvidence() correctly detects a real verdict with no evidence', detectorResult === 1, `got ${detectorResult}`);
+
+      const pendingFilterResult = await page.evaluate(() => controlHasPendingIssue(document.querySelector('.control')));
+      check('The Work View "pending" filter (controlHasPendingIssue) also detects this case', pendingFilterResult === true);
+
+      const jspdfAvailable = await page.waitForFunction(() => !!window.jspdf, { timeout: 5000 }).then(() => true).catch(() => false);
+      if (jspdfAvailable) {
+        const [previewDownload] = await Promise.all([
+          page.waitForEvent('download', { timeout: 10000 }),
+          page.evaluate(() => generatePDF()),
+        ]);
+        check('Generar PDF (a working preview) still succeeds despite the missing evidence', !!previewDownload.suggestedFilename());
+      } else {
+        console.log('  ⚠️  jsPDF unavailable in this environment — skipping the "preview still works" check specifically; the block-on-issuance check below does not depend on jsPDF.');
+      }
+
+      // newPage() already installs a persistent page.on('dialog', accept)
+      // handler — adding a second listener that ALSO calls .accept() would
+      // race it and throw ("dialog already handled"). This listener only
+      // reads the message; the existing persistent handler is what
+      // actually resolves the dialog.
+      let issueAlertMsg = '';
+      page.once('dialog', d => { issueAlertMsg = d.message(); });
+      await page.evaluate(() => issueFinalReport());
+      await page.waitForTimeout(150);
+      check('Emitir Informe Final is blocked with a message naming the missing-evidence control',
+        issueAlertMsg.includes('evidencia') || issueAlertMsg.toLowerCase().includes('evidence'), `got "${issueAlertMsg.slice(0, 80)}"`);
+      const statusAfterBlock = await page.evaluate(() => document.getElementById('eng_status').value);
+      check('The audit remains a draft after the blocked attempt — never silently issued', statusAfterBlock === 'draft', `got "${statusAfterBlock}"`);
+
+      await page.evaluate(() => {
+        document.querySelector('.evidencia').value = 'Evidencia añadida en la prueba de regresión.';
+      });
+      await page.evaluate(() => issueFinalReport());
+      await page.waitForTimeout(150);
+      const statusAfterFix = await page.evaluate(() => document.getElementById('eng_status').value);
+      check('Once evidence is provided, issuance succeeds normally', statusAfterFix === 'issued', `got "${statusAfterFix}"`);
 
       await page.close();
       await ctx.close();
