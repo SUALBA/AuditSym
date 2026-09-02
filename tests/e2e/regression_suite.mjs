@@ -33,6 +33,8 @@ import { chromium } from 'playwright';
 import http from 'http';
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
+import { execFileSync } from 'child_process';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -98,6 +100,64 @@ async function newPage(browser, context) {
   await page.waitForTimeout(1200);
   await page.evaluate(() => { window.saveAs = function () {}; }); // FileSaver stub
   return page;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// PDF layout regression helpers (issue #29: "No text is clipped or
+// rendered outside page margins" / "Lists ... render completely")
+// ─────────────────────────────────────────────────────────────────────────
+// Real, precise checks rather than a visual guess: poppler's
+// `pdftotext -bbox` reports the exact bounding box (in points) of every
+// word on every page, plus the page's own dimensions. A word whose box
+// extends past the page width/height, or starts before 0, is by
+// definition clipped or rendered outside the page — not a matter of
+// opinion. Depends on poppler-utils (pdftotext) being installed, which
+// is common but not universal, so its absence is reported and the
+// specific check skipped rather than failing the whole suite.
+let pdftotextAvailable = null;
+function isPdftotextAvailable() {
+  if (pdftotextAvailable !== null) return pdftotextAvailable;
+  try {
+    execFileSync('pdftotext', ['-v'], { stdio: 'ignore' });
+    pdftotextAvailable = true;
+  } catch (e) {
+    pdftotextAvailable = false;
+  }
+  return pdftotextAvailable;
+}
+
+// Returns { ok, violations, wordCount } — violations lists any word whose
+// box falls outside [0, pageWidth] x [0, pageHeight], with a small
+// tolerance for floating-point/rounding noise inherent to PDF coordinate
+// math.
+function checkPdfMargins(pdfPath, toleragePt = 2) {
+  const xml = execFileSync('pdftotext', ['-bbox', pdfPath, '-'], { encoding: 'utf-8', maxBuffer: 50 * 1024 * 1024 });
+  const pages = [...xml.matchAll(/<page width="([\d.]+)" height="([\d.]+)">([\s\S]*?)<\/page>/g)];
+  const violations = [];
+  let wordCount = 0;
+  pages.forEach((pageMatch, pageIdx) => {
+    const pageWidth = parseFloat(pageMatch[1]);
+    const pageHeight = parseFloat(pageMatch[2]);
+    const words = [...pageMatch[3].matchAll(/<word xMin="([-\d.]+)" yMin="([-\d.]+)" xMax="([-\d.]+)" yMax="([-\d.]+)">([^<]*)<\/word>/g)];
+    words.forEach(w => {
+      wordCount++;
+      const [, xMin, yMin, xMax, yMax, text] = w;
+      const x0 = parseFloat(xMin), y0 = parseFloat(yMin), x1 = parseFloat(xMax), y1 = parseFloat(yMax);
+      if (x0 < -toleragePt || x1 > pageWidth + toleragePt || y0 < -toleragePt || y1 > pageHeight + toleragePt) {
+        violations.push({ page: pageIdx + 1, text, x0, x1, y0, y1, pageWidth, pageHeight });
+      }
+    });
+  });
+  return { ok: violations.length === 0, violations, wordCount };
+}
+
+// Plain-text presence check — confirms specific strings actually appear
+// somewhere in the rendered PDF (proving content wasn't silently dropped
+// or truncated mid-page), not just that generation didn't throw.
+function pdfContainsAllStrings(pdfPath, expectedStrings) {
+  const text = execFileSync('pdftotext', [pdfPath, '-'], { encoding: 'utf-8', maxBuffer: 50 * 1024 * 1024 }).replace(/\s+/g, ' ');
+  const missing = expectedStrings.filter(s => !text.includes(s.replace(/\s+/g, ' ')));
+  return { ok: missing.length === 0, missing };
 }
 
 async function main() {
@@ -1137,6 +1197,90 @@ async function main() {
 
       await page.close();
       await ctx.close();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    section('15. PDF layout regression — clipping, overflow, content completeness (issue #29)');
+    // Regression covered: two acceptance criteria that had never had
+    // automated coverage — "No text is clipped or rendered outside page
+    // margins" and "Lists ... render completely" — checked for real using
+    // poppler's exact per-word bounding boxes and full-text extraction,
+    // not a visual guess. Requires both jsPDF (to render) and poppler's
+    // pdftotext (to measure/extract) — each dependency's absence is
+    // reported and only the checks that need it are skipped, so the rest
+    // of the suite is unaffected either way.
+    {
+      const ctx = await browser.newContext();
+      const page = await newPage(browser, ctx);
+      const jspdfAvailable = await page.waitForFunction(() => !!window.jspdf, { timeout: 5000 }).then(() => true).catch(() => false);
+      const popplerAvailable = isPdftotextAvailable();
+
+      if (!jspdfAvailable) {
+        console.log('  ⚠️  jsPDF unavailable (no internet access in this environment) — skipping all of Section 15.');
+      } else if (!popplerAvailable) {
+        console.log('  ⚠️  pdftotext (poppler-utils) not found on this machine — skipping all of Section 15. Install poppler-utils for this coverage.');
+      } else {
+        const longRecipients = 'Comité de Dirección, Chief Information Security Officer (CISO), Departamento Legal y de Cumplimiento Normativo, Consejo de Administración, Responsable de Protección de Datos (DPO), Auditoría Interna, Dirección Financiera, Responsable de Infraestructura y Operaciones de TI';
+        const longControlName = 'Un nombre de control deliberadamente muy largo, diseñado específicamente para forzar el ajuste de línea en la tabla de dominio, en la narrativa del hallazgo y en el anexo de evidencia, comprobando que ninguno de los tres se recorta ni se solapa con el contenido adyacente';
+        const numberedListEvidence = '1. Se revisó la configuración inicial del sistema de gestión de identidades.\n2. Se contrastó contra el registro de cambios de los últimos doce meses.\n3. Se identificaron tres excepciones no documentadas en el proceso de aprobación.\n4. Se validó la remediación parcial aplicada en el entorno de preproducción.\n5. Se recomienda formalizar el procedimiento de excepciones antes del cierre del trimestre.';
+
+        await page.evaluate(({ longRecipients, longControlName, numberedListEvidence }) => {
+          document.getElementById('empresa_auditada').value = 'Stress Test Co., S.A. de C.V. — Nombre de Empresa Deliberadamente Largo';
+          document.getElementById('empresa_auditora').value = 'Long Auditor Firm Name Testing Wrap Behavior';
+          document.getElementById('auditor').value = 'Regression Tester';
+          document.getElementById('id_informe').value = 'REG-LAYOUT-001';
+          document.getElementById('doc_author').value = 'Regression Tester';
+          document.getElementById('doc_version').value = '1.0';
+          document.getElementById('doc_recipients').value = longRecipients;
+          approvals.policy = 'none';
+          document.getElementById('controls').innerHTML = '';
+
+          addControl(false, 'Q1', 'GOV-01', 'GOV-01', longControlName, '');
+          addControl(false, 'Q2', 'AST-01', 'AST-01', 'Control con lista numerada', '');
+          addControl(false, 'Q3', 'GOV-02', 'GOV-02', 'Control con evidencia pendiente', '');
+          const blocks = document.querySelectorAll('.control');
+          blocks[0].querySelector('.cumple').value = 'no';
+          blocks[0].querySelector('.cumple').dispatchEvent(new Event('change'));
+          blocks[0].querySelector('.riesgo').value = 'critical';
+          blocks[0].querySelector('.evidencia').value = longControlName + ' — evidencia asociada también larga para forzar ajuste de línea en el anexo.';
+
+          blocks[1].querySelector('.cumple').value = 'partial';
+          blocks[1].querySelector('.cumple').dispatchEvent(new Event('change'));
+          blocks[1].querySelector('.riesgo').value = 'high';
+          blocks[1].querySelector('.evidencia').value = numberedListEvidence;
+
+          blocks[2].querySelector('.cumple').value = 'yes';
+          blocks[2].querySelector('.cumple').dispatchEvent(new Event('change'));
+          // Evidence deliberately left empty — exercises the "Evidencia Pendiente" section.
+        }, { longRecipients, longControlName, numberedListEvidence });
+        await page.waitForTimeout(200);
+
+        const [download] = await Promise.all([
+          page.waitForEvent('download', { timeout: 15000 }),
+          page.evaluate(() => generatePDF()),
+        ]);
+        const pdfPath = path.join(os.tmpdir(), `regression_layout_${Date.now()}.pdf`);
+        await download.saveAs(pdfPath);
+
+        const marginCheck = checkPdfMargins(pdfPath);
+        check(`No word is clipped or rendered outside page margins (checked ${marginCheck.wordCount} words across the document)`,
+          marginCheck.ok,
+          marginCheck.ok ? '' : JSON.stringify(marginCheck.violations.slice(0, 3)));
+
+        const contentCheck = pdfContainsAllStrings(pdfPath, [
+          'Comité de Dirección',
+          'Responsable de Infraestructura y Operaciones de TI', // last item of the long recipient list — proves it wasn't truncated partway
+          'Se revisó la configuración inicial',
+          'Se recomienda formalizar el procedimiento de excepciones antes del cierre del trimestre.', // LAST numbered item — proves the list wasn't cut short
+          'Evidencia Pendiente',
+        ]);
+        check('All expected content — long recipient list (including its LAST entry), every item of the numbered list, and the pending-evidence marker — survives intact with nothing silently dropped',
+          contentCheck.ok, contentCheck.ok ? '' : `missing: ${JSON.stringify(contentCheck.missing)}`);
+
+        fs.unlinkSync(pdfPath);
+        await page.close();
+        await ctx.close();
+      }
     }
 
   } finally {

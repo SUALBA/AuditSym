@@ -6464,8 +6464,13 @@ function scopeSection(title, body, color) {
 
     doc.setFont('Roboto', 'bold').setFontSize(9).setTextColor(COLORS.text[0], COLORS.text[1], COLORS.text[2]);
     const infoLine = [auditData.company, auditData.auditorFirm, auditData.auditor, auditData.framework].filter(Boolean).join('  ·  ');
-    txt(infoLine, margin, y);
-    y += 14;
+    // Wrapped, not a single txt() call — a long company/auditor-firm/
+    // auditor name combination could otherwise run off the right margin
+    // uncut, exactly the kind of clipping issue #29's automated PDF
+    // layout checks now catch.
+    const infoLineWrapped = doc.splitTextToSize(pdfSafe(infoLine), contentWidth);
+    infoLineWrapped.forEach((l, i) => txt(l, margin, y + i * 11));
+    y += infoLineWrapped.length * 11 + 3;
     doc.setFont('Roboto', 'italic').setFontSize(7.5).setTextColor(COLORS.textLight[0], COLORS.textLight[1], COLORS.textLight[2]);
     const critNoteLines = doc.splitTextToSize(pdfSafe('"Criticidad" indica la importancia del área de control, con independencia de si está o no implementada — un control Cumple + Crítico no es un error: es un control importante que sí funciona.'), contentWidth);
     critNoteLines.forEach(l => { txt(l, margin, y); y += 10; });
