@@ -409,7 +409,7 @@ Return ONLY valid JSON with no markdown, no code fences, no text outside the JSO
   <span data-i18n="new_audit_btn" class="relative hidden sm:inline">Nueva Auditoría</span>
   
   <!-- Tooltip en móvil -->
-  <span class="absolute -bottom-8 left-1/2 -translate-x-1/2 text-[10px] bg-gray-800 text-gray-300 px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap sm:hidden">
+  <span data-i18n="new_audit_tooltip" class="absolute -bottom-8 left-1/2 -translate-x-1/2 text-[10px] bg-gray-800 text-gray-300 px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap sm:hidden">
     Nueva
   </span>
 </button>
@@ -463,7 +463,7 @@ data-i18n="history_btn">📜 Historial
      compact index + a single large focused panel. -->
 <button id="work-view-toggle-btn" onclick="toggleWorkView()"
 class="px-3 py-1 bg-gray-700 text-cyberaccent font-bold rounded text-sm hover:bg-gray-600 border border-cyberaccent/40"
-title="Alternar entre la vista de dashboard y una vista compacta para trabajar control a control">
+title="Alternar entre la vista de dashboard y una vista compacta para trabajar control a control" data-i18n-title="work_view_toggle_title">
 <span data-i18n="work_view_btn">📝 Vista de Trabajo</span>
 </button>
 </div>
@@ -915,16 +915,16 @@ placeholder="Ej: INF-2025-001" class="w-full mt-1 p-2 rounded bg-gray-700 text-g
          auditor as a blocking alert only once they try to save or issue. -->
     <button id="work-view-filter-toggle" type="button" onclick="toggleWorkViewFilter()"
       class="w-full mb-2 px-2 py-1.5 rounded text-xs font-medium bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700 flex items-center justify-between transition-colors">
-      <span>⚠️ Solo pendientes de validar</span>
+      <span data-i18n="work_filter_pending">⚠️ Solo pendientes de validar</span>
       <span id="work-view-filter-count" class="text-gray-500"></span>
     </button>
     <div id="work-view-sidebar" class="bg-gray-800 border border-gray-700 rounded-lg p-2 space-y-1 max-h-[70vh] overflow-y-auto"></div>
   </div>
   <div class="flex-1 min-w-0">
     <div class="flex items-center justify-between mb-2 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2">
-      <button onclick="workViewNav(-1)" class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm">◀ Anterior</button>
+      <button onclick="workViewNav(-1)" class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm" data-i18n="nav_prev">◀ Anterior</button>
       <span id="work-view-position" class="text-sm text-gray-400"></span>
-      <button onclick="workViewNav(1)" class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm">Siguiente ▶</button>
+      <button onclick="workViewNav(1)" class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm" data-i18n="nav_next">Siguiente ▶</button>
     </div>
     <div id="work-view-panel-slot"></div>
   </div>
@@ -1737,7 +1737,7 @@ document.getElementById('dash-high-risk').textContent = stats.highRisk;
 const pending = stats.nonCompliant + stats.partial;
 const pendingEl = document.getElementById('dash-total-remaining');
 if (pendingEl) {
-pendingEl.textContent = `${pending} pendiente${pending !== 1 ? 's' : ''}`;
+pendingEl.textContent = `${pending} ${T('dash_remaining')}`;
 }
 
 // "No Aplicable" is a deliberate scoping decision, not a finding — it must
@@ -1757,7 +1757,7 @@ rateEl.textContent = hasApplicable ? `${complianceRate}%` : '—';
 rateEl.className = `text-lg font-bold ${!hasApplicable ? 'text-gray-500' : complianceRate >= 80 ? 'text-cyberok' : complianceRate >= 50 ? 'text-cyberwarn' : 'text-cyberevil'}`;
 }
 if (barEl) barEl.style.width = `${complianceRate || 0}%`;
-if (textEl) textEl.textContent = hasApplicable ? `${stats.compliant}/${applicableTotal} controles` : T('compliance_not_calculated');
+if (textEl) textEl.textContent = hasApplicable ? `${stats.compliant}/${applicableTotal} ${T('dash_controls')}` : T('compliance_not_calculated');
 
 const timestampEl = document.getElementById('dashboard-timestamp');
 if (timestampEl) {
@@ -1998,7 +1998,7 @@ wrapper.innerHTML = `
 ${startCollapsed ? '▶' : '▼'}
 </span>
 <span class="status-dot w-2 h-2 rounded-full flex-shrink-0" style="background-color:${COMPLIANCE_STATE_COLORS['']}"
-      title="Estado de cumplimiento"></span>
+      title="${T('status_dot_title')}" data-i18n-title="status_dot_title"></span>
 <input class="ctrl flex-1 bg-transparent text-cyberaccent font-mono text-sm font-bold
 border-b border-gray-600 focus:outline-none"
 value="${displayCode} – ${displayName}"
@@ -2008,7 +2008,7 @@ data-vertical="${safeVertical}"
 onclick="event.stopPropagation()" readonly />
 <div class="flex items-center gap-2 text-xs">
 <div class="flex flex-col items-start">
-<span class="text-gray-400 text-[10px]">${T('status_label')}</span>
+<span class="text-gray-400 text-[10px]" data-i18n="status_label">${T('status_label')}</span>
 <select class="cumple bg-gray-700 text-white rounded px-1 py-1" onchange="onComplianceChange(this)">
 <option value="">--</option>
 <option value="yes" data-i18n="yes">${T('yes')}</option>
@@ -2018,7 +2018,7 @@ onclick="event.stopPropagation()" readonly />
 </select>
 </div>
 <div class="flex flex-col items-start">
-<span class="text-gray-400 text-[10px]">${T('risk_label')}</span>
+<span class="text-gray-400 text-[10px]" data-i18n="risk_label">${T('risk_label')}</span>
 <select class="riesgo bg-gray-700 text-white rounded px-1 py-1">
 <option value="">--</option>
 <option value="critical" data-i18n="critical">${T('critical')}</option>
@@ -2034,28 +2034,28 @@ onclick="removeControl(this); event.stopPropagation()">×</button>
 <div class="control-body border-t border-gray-700 p-5 space-y-4 ${startCollapsed ? 'hidden' : ''}">
 ${question ? `
 <div class="p-3 bg-gray-900/60 rounded border-l-2 border-cyberaccent/60">
-<label class="text-[10px] uppercase tracking-wide text-cyberaccent/80 font-bold">${T('audit_question_label')}</label>
+<label class="text-[10px] uppercase tracking-wide text-cyberaccent/80 font-bold" data-i18n="audit_question_label">${T('audit_question_label')}</label>
 <p class="text-sm text-gray-300 mt-1 leading-relaxed">${safeQuestion}</p>
 </div>
 ` : ''}
 
 <div class="field-group">
 <div class="flex items-center justify-between mb-1">
-<label class="text-[10px] uppercase tracking-wide text-gray-400 font-bold">${T('auditor_notes_label')}</label>
-<button type="button" onclick="openFocusMode(this)" title="Modo Enfoque — editor a pantalla completa"
+<label class="text-[10px] uppercase tracking-wide text-gray-400 font-bold" data-i18n="auditor_notes_label">${T('auditor_notes_label')}</label>
+<button type="button" onclick="openFocusMode(this)" title="${T('focus_mode_btn_title')}" data-i18n-title="focus_mode_btn_title"
 class="text-gray-400 hover:text-cyberaccent text-sm px-2 py-0.5 rounded hover:bg-gray-700/50 leading-none">⛶</button>
 </div>
 <textarea class="notes w-full mt-1 p-3 rounded bg-gray-900/40 border border-gray-700 text-gray-300 text-base leading-relaxed resize-y focus:outline-none focus:border-cyberaccent/60"
-rows="3" style="min-height:76px;" spellcheck="true" lang="es" placeholder="${T('notes_ph')}" oninput="autoGrowTextarea(this)"></textarea>
+rows="3" style="min-height:76px;" spellcheck="true" lang="es" placeholder="${T('notes_ph')}" data-i18n-placeholder="notes_ph" oninput="autoGrowTextarea(this)"></textarea>
 </div>
 
 <!-- Evidence gets the most visual weight of the three fields — it is the
      actual audit deliverable for this control, not a working note. -->
 <div class="field-group p-3.5 bg-gray-900/70 rounded-lg border border-cyberaccent/30">
 <div class="flex items-center justify-between mb-1.5">
-<label class="text-[10px] uppercase tracking-wide text-cyberaccent font-bold">${T('evidence_label')}</label>
+<label class="text-[10px] uppercase tracking-wide text-cyberaccent font-bold" data-i18n="evidence_label">${T('evidence_label')}</label>
 <div class="flex items-center gap-2">
-<button type="button" onclick="openFocusMode(this)" title="Modo Enfoque — editor a pantalla completa"
+<button type="button" onclick="openFocusMode(this)" title="${T('focus_mode_btn_title')}" data-i18n-title="focus_mode_btn_title"
 class="text-gray-400 hover:text-cyberaccent text-sm px-2 py-0.5 rounded hover:bg-gray-700/50 leading-none">⛶</button>
 <button type="button"
 onclick="validateAIDraft(this)"
@@ -2070,8 +2070,8 @@ class="px-2.5 py-1 bg-cyberwarn text-black rounded hover:bg-yellow-400 text-xs f
 </div>
 </div>
 <textarea class="evidencia w-full p-3 rounded bg-gray-800 border border-gray-600 text-gray-100 text-base leading-relaxed resize-y focus:outline-none focus:border-cyberaccent"
-rows="4" style="min-height:100px;" spellcheck="true" lang="es" placeholder="${T('evidence_ph')}" oninput="toggleValidateBtn(this); autoGrowTextarea(this); updateNAEvidenceWarning(this);"></textarea>
-<p class="na-evidence-warning hidden text-xs text-cyberwarn mt-1">⚠ ${T('na_evidence_required')}</p>
+rows="4" style="min-height:100px;" spellcheck="true" lang="es" placeholder="${T('evidence_ph')}" data-i18n-placeholder="evidence_ph" oninput="toggleValidateBtn(this); autoGrowTextarea(this); updateNAEvidenceWarning(this);"></textarea>
+<p class="na-evidence-warning hidden text-xs text-cyberwarn mt-1">⚠ <span data-i18n="na_evidence_required">${T('na_evidence_required')}</span></p>
 </div>
 
 <!-- Issue #34: structured evidence register (EVD-####) — an optional
@@ -2080,8 +2080,8 @@ rows="4" style="min-height:100px;" spellcheck="true" lang="es" placeholder="${T(
      control starts with none, same as every other field here. -->
 <div class="field-group">
 <div class="flex items-center justify-between mb-1.5">
-<label class="text-[10px] uppercase tracking-wide text-gray-400 font-bold">${T('evidence_register_label')}</label>
-<button type="button" onclick="openAddEvidenceItemModal(this)" class="add-evidence-item-btn text-xs px-2 py-1 bg-cyberaccent/20 hover:bg-cyberaccent/30 text-cyberaccent rounded font-medium">+ ${T('evidence_register_add_btn')}</button>
+<label class="text-[10px] uppercase tracking-wide text-gray-400 font-bold" data-i18n="evidence_register_label">${T('evidence_register_label')}</label>
+<button type="button" onclick="openAddEvidenceItemModal(this)" class="add-evidence-item-btn text-xs px-2 py-1 bg-cyberaccent/20 hover:bg-cyberaccent/30 text-cyberaccent rounded font-medium">+ <span data-i18n="evidence_register_add_btn">${T('evidence_register_add_btn')}</span></button>
 </div>
 <div class="evidence-items-list space-y-2"></div>
 </div>
@@ -2861,14 +2861,14 @@ function clearData() {
   
   // Limpiar elementos nuevos del dashboard
   const pendingEl = document.getElementById('dash-total-remaining');
-  if (pendingEl) pendingEl.textContent = '0 pendientes';
+  if (pendingEl) pendingEl.textContent = `0 ${T('dash_remaining')}`;
   
   const rateEl = document.getElementById('dash-compliance-rate');
   const barEl = document.getElementById('dash-compliance-bar');
   const textEl = document.getElementById('dash-compliance-text');
   if (rateEl) rateEl.textContent = '0%';
   if (barEl) barEl.style.width = '0%';
-  if (textEl) textEl.textContent = '0/0 controles';
+  if (textEl) textEl.textContent = `0/0 ${T('dash_controls')}`;
   
   const timestampEl = document.getElementById('dashboard-timestamp');
   if (timestampEl) timestampEl.textContent = '';
@@ -7817,7 +7817,7 @@ function updateFrameworkProgressBars() {
     return `
       <div class="bg-gray-800/80 rounded-lg p-3 border-2 ${borderColor} ${glowColor} shadow-lg hover:shadow-xl transition-all cursor-pointer"
            onclick="switchToFramework('${fw}')"
-           title="Click para cambiar a ${fwInfo.name}">
+           title="${T('fw_switch_title')} ${fwInfo.name}">
         
         <!-- Header: Framework Name + Icon -->
         <div class="flex items-center justify-between mb-2">
@@ -7854,7 +7854,7 @@ function updateFrameworkProgressBars() {
             ${stats.compliant > 0 ? `<div class="bg-cyberok h-full" style="width: ${(stats.compliant/stats.total)*100}%" title="Compliant: ${stats.compliant}"></div>` : ''}
             ${stats.partial > 0 ? `<div class="bg-cyberwarn h-full" style="width: ${(stats.partial/stats.total)*100}%" title="Partial: ${stats.partial}"></div>` : ''}
             ${stats.nonCompliant > 0 ? `<div class="bg-cyberevil h-full" style="width: ${(stats.nonCompliant/stats.total)*100}%" title="Non-Compliant: ${stats.nonCompliant}"></div>` : ''}
-            ${stats.notApplicable > 0 ? `<div class="bg-violet-400 h-full" style="width: ${(stats.notApplicable/stats.total)*100}%" title="No Aplicable: ${stats.notApplicable}"></div>` : ''}
+            ${stats.notApplicable > 0 ? `<div class="bg-violet-400 h-full" style="width: ${(stats.notApplicable/stats.total)*100}%" title="${T('not_applicable')}: ${stats.notApplicable}"></div>` : ''}
             ${stats.pending > 0 ? `<div class="bg-gray-600 h-full" style="width: ${(stats.pending/stats.total)*100}%" title="Pending: ${stats.pending}"></div>` : ''}
           </div>
         </div>
@@ -7885,7 +7885,7 @@ function updateFrameworkProgressBars() {
         
         <!-- Evaluated Rate -->
         <div class="mt-2 text-[10px] text-gray-500 text-right">
-          ${evaluationRate}% evaluado
+          ${evaluationRate}% ${T('evaluated_label')}
         </div>
       </div>
     `;
@@ -7972,6 +7972,12 @@ function changeFramework() {
 const TRANSLATIONS = {
 es: {
 clear_data:'Limpiar datos', nist_function_label:'Dominio',
+new_audit_tooltip:'Nueva', dash_remaining:'pendientes', dash_controls:'controles',
+work_filter_pending:'⚠️ Solo pendientes de validar', nav_prev:'◀ Anterior', nav_next:'Siguiente ▶',
+focus_close:'✕ Cerrar', focus_autosave_note:'Los cambios se guardan automáticamente al escribir — puedes cerrar en cualquier momento.',
+work_view_toggle_title:'Alternar entre la vista de dashboard y una vista compacta para trabajar control a control',
+fw_switch_title:'Click para cambiar a', status_dot_title:'Estado de cumplimiento',
+focus_mode_btn_title:'Modo Enfoque — editor a pantalla completa', evaluated_label:'evaluado', focus_mode_title:'Modo Enfoque',
 new_audit_btn:'Nueva Auditoría',
 new_audit_confirm:'⚠️ Esto borrará por completo el espacio de trabajo actual: empresa, auditor, controles, evaluaciones y paneles — sin posibilidad de deshacer. Si tienes cambios sin guardar, expórtalos primero. ¿Continuar con una nueva auditoría en blanco?',
 ia_suggest_btn:'🤖 IA Suggest', generating:'Generando...',
@@ -8184,6 +8190,12 @@ issue_blocked_ai_drafts:'No se puede emitir el informe: los siguientes controles
 },
 en: {
 clear_data:'Clear Data', nist_function_label:'Domain',
+new_audit_tooltip:'New', dash_remaining:'remaining', dash_controls:'controls',
+work_filter_pending:'⚠️ Pending validation only', nav_prev:'◀ Previous', nav_next:'Next ▶',
+focus_close:'✕ Close', focus_autosave_note:'Changes are saved automatically as you type — you can close at any time.',
+work_view_toggle_title:'Toggle between the dashboard view and a compact per-control view',
+fw_switch_title:'Click to switch to', status_dot_title:'Compliance status',
+focus_mode_btn_title:'Focus Mode — full-screen editor', evaluated_label:'evaluated', focus_mode_title:'Focus Mode',
 new_audit_btn:'New Audit',
 new_audit_confirm:'⚠️ This will completely erase the current workspace: company, auditor, controls, evaluations, and dashboards — with no way to undo it. If you have unsaved changes, export them first. Continue with a new, blank audit?',
 ia_suggest_btn:'🤖 AI Suggest', generating:'Generating...',
@@ -9187,6 +9199,9 @@ el.textContent = T(el.getAttribute('data-i18n'));
 document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
 el.placeholder = T(el.getAttribute('data-i18n-placeholder'));
 });
+document.querySelectorAll('[data-i18n-title]').forEach(el => {
+el.title = T(el.getAttribute('data-i18n-title'));
+});
 document.querySelectorAll('[data-i18n-dynamic]').forEach(el => {
 setSuggestStatus(el.getAttribute('data-i18n-dynamic'));
 });
@@ -9194,6 +9209,11 @@ setSuggestStatus(el.getAttribute('data-i18n-dynamic'));
 if (chartComp) { chartComp.data.labels = [T('yes'), T('no'), T('partial')]; chartComp.update(); }
 if (chartRisk) { chartRisk.data.labels = [T('critical'), T('high'), T('medium'), T('low')]; chartRisk.update(); }
 if (document.getElementById('vertical-tabs')?.children.length) renderVerticalTabs();
+if (typeof updateFrameworkProgressBars === 'function') updateFrameworkProgressBars();
+// The live dashboard counters ("N pendientes", "N/N controles") are rendered
+// by EvaluationRegistry.updateDashboard(), not updateSummary() — refresh them
+// too so those T()-built strings re-translate on a language switch.
+if (typeof EvaluationRegistry !== 'undefined') EvaluationRegistry.updateDashboard();
 
 const ls = document.getElementById('lang-select');
 if (ls) ls.value = lang;
@@ -9721,15 +9741,15 @@ window.addEventListener('beforeunload', function (e) {
 <div id="focus-mode-overlay" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 md:p-10">
   <div class="bg-gray-800 rounded-lg border border-gray-600 w-full h-full max-w-5xl flex flex-col shadow-2xl">
     <div class="flex items-center justify-between px-5 py-3 border-b border-gray-700">
-      <h3 id="focus-mode-title" class="font-bold text-cyberaccent text-sm truncate pr-4">Modo Enfoque</h3>
-      <button onclick="closeFocusMode()" class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm font-medium flex-shrink-0">
+      <h3 id="focus-mode-title" data-i18n="focus_mode_title" class="font-bold text-cyberaccent text-sm truncate pr-4">Modo Enfoque</h3>
+      <button onclick="closeFocusMode()" class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm font-medium flex-shrink-0" data-i18n="focus_close">
         ✕ Cerrar
       </button>
     </div>
     <div class="flex-1 p-4 overflow-hidden">
       <textarea id="focus-mode-textarea" oninput="syncFocusModeBack()" class="w-full h-full p-4 rounded bg-gray-800 border border-cyberaccent text-gray-100 text-base leading-relaxed focus:outline-none resize-none"></textarea>
     </div>
-    <div class="px-5 py-2.5 border-t border-gray-700 text-xs text-gray-400">
+    <div class="px-5 py-2.5 border-t border-gray-700 text-xs text-gray-400" data-i18n="focus_autosave_note">
       Los cambios se guardan automáticamente al escribir — puedes cerrar en cualquier momento.
     </div>
   </div>
