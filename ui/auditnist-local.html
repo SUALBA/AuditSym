@@ -1392,7 +1392,7 @@ function parseAIResponse(response, domain) {
       if (code && justification) {
         recommendations.push({
           code: code,
-          name: name || 'Control recomendado',
+          name: name || T('recommended_control'),
           justification: justification,
           domain: domain
         });
@@ -1407,7 +1407,7 @@ function parseAIResponse(response, domain) {
     for (const code of uniqueCodes) {
       recommendations.push({
         code: code,
-        name: 'Control de ' + domain,
+        name: T('control_of') + domain,
         justification: response.substring(0, 200) + '...',
         domain: domain
       });
@@ -1533,12 +1533,12 @@ suggestionsContainer.classList.remove('hidden');
 
 function loadAuditById(key) {
   if (isDirty) {
-  const confirmLeave = confirm('⚠️ Tienes cambios sin guardar. ¿Quieres continuar sin guardar?');
+  const confirmLeave = confirm(T('alert_unsaved_changes'));
   if (!confirmLeave) return;
 }
   const saved = localStorage.getItem(key);
   if (!saved) { 
-    alert('⚠️ No se encontró la auditoría'); 
+    alert(T('alert_audit_not_found')); 
     return; 
   }
 
@@ -1621,7 +1621,7 @@ updateAll();
 // Re-apply now that the real control set exists, closing that gap.
 applyEditLock();
 
-alert(`✅ Auditoría "${data.empresa}" cargada correctamente`);
+alert(T('alert_audit_loaded').replace('{name}', data.empresa));
 isDirty = false;
 }
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1843,7 +1843,7 @@ async function loadScfDataAndCountControls() {
     scfData = null;
     // Show a persistent warning in the UI
     const status = document.getElementById('suggest-status');
-    if (status) status.innerHTML = '⚠️ No se pudo cargar la biblioteca de controles.';
+    if (status) status.innerHTML = T('alert_library_load_failed');
     return false;
   }
 }
@@ -1942,7 +1942,7 @@ async function suggestControls() {
 function addControlFromJSON({ scfId, fwCode, name, question, vertical, reuseEvaluation = null }) {
 if (isAuditLocked()) { alert('🔒 ' + T('locked_action_blocked')); return; }
 if (evaluatedControls[scfId] && !reuseEvaluation) {
-alert('⚠️ Este control ya ha sido evaluado. Debes eliminarlo para volver a evaluarlo.');
+alert(T('alert_control_already_evaluated'));
 return;
 }
 
@@ -1953,7 +1953,7 @@ ctrl.value.split(' – ')[0].trim() === fwCode
 );
 
 if (alreadyExists) {
-alert('⚠️ Este control ya está añadido a la auditoría actual.');
+alert(T('alert_control_already_added'));
 return;
 }
 
@@ -2263,11 +2263,11 @@ Reglas estrictas (no las incumplas bajo ninguna circunstancia):
       evidenciaField.value = disclaimer + aiResponse;
       toggleValidateBtn(evidenciaField);
     } else {
-      alert('⚠️ La IA no generó una respuesta válida');
+      alert(T('alert_ai_no_valid_response'));
     }
     
   } catch (err) {
-    alert(`❌ Error: ${err.message}\n\nAsegúrate de que Ollama esté corriendo con:\nOLLAMA_ORIGINS="*" ollama serve\n\nY el modelo descargado:\nollama pull qwen2.5:3b`);
+    alert(T('alert_ollama_error').replace('{err}', err.message));
     console.error('Ollama Error:', err);
   } finally {
     btn.disabled = false;
@@ -2471,11 +2471,11 @@ function renderWorkViewSidebar() {
       class="w-full text-left px-2 py-1.5 rounded text-sm flex items-center gap-2 ${isSelected ? 'bg-cyberaccent/20 border border-cyberaccent text-white' : 'hover:bg-gray-700/60 text-gray-300 border border-transparent'}">
       <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color:${dotColor}"></span>
       <span class="truncate flex-1">${code}</span>
-      ${hasIssue ? '<span class="text-[10px] flex-shrink-0" title="Pendiente de validar">⚠️</span>' : ''}
+      ${hasIssue ? `<span class="text-[10px] flex-shrink-0" title="${T('pending_validation')}" data-i18n-title="pending_validation">⚠️</span>` : ''}
     </button>`;
   }).join('') : (workViewFilterActive
-    ? '<p class="text-xs text-gray-500 p-2">✅ Nada pendiente de validar.</p>'
-    : '<p class="text-xs text-gray-500 p-2">Sin controles añadidos todavía.</p>');
+    ? `<p class="text-xs text-gray-500 p-2" data-i18n="work_filter_none">${T('work_filter_none')}</p>`
+    : `<p class="text-xs text-gray-500 p-2" data-i18n="work_no_controls">${T('work_no_controls')}</p>`);
 
   allControls.forEach(c => {
     const selected = c === workViewSelectedControl;
@@ -2628,7 +2628,7 @@ return `
 <div class="ctrl-box text-xs p-2 rounded border border-gray-600 ${statusClass} ${extraClass} cursor-pointer relative"
 data-scf-id="${c.id}"
 data-fw-code="${fwCode}"
-title="${isAddedPending ? 'Ya está en tu lista de controles, pendiente de valorar — ' + c.name : c.name}"
+title="${isAddedPending ? T('grid_already_added') + c.name : c.name}"
 onclick="addControlFromGrid('${c.id}','${fwCode}','${c.name.replace(/'/g,'&#39;')}')">
 <div class="font-bold">${fwCode}</div>
 <div class="text-[10px] opacity-70 truncate">${c.name}</div>
@@ -4515,7 +4515,7 @@ if (emptyNA.length > 0) {
 }
 const data = collectAuditData();
 localStorage.setItem(`auditnist_${data.id}`, JSON.stringify(data));
-alert('✅ Informe guardado localmente.');
+alert(T('alert_report_saved'));
 isDirty = false;
 }
 
@@ -4524,7 +4524,7 @@ const container = document.getElementById('saved-reports');
 const audits = getSavedAudits();
 
 if (audits.length === 0) { 
-container.innerHTML = `<em>No hay informes guardados aún.</em>`; 
+container.innerHTML = `<em data-i18n="no_saved_reports">${T('no_saved_reports')}</em>`; 
 return; 
 }
 
@@ -4538,8 +4538,8 @@ container.innerHTML = audits.map(audit => `
 </div>
 </div>
 <button onclick="loadAuditById('${audit.key}')"
-class="px-3 py-1 bg-cyberaccent text-black text-xs rounded hover:bg-blue-300">
-▶ Cargar
+class="px-3 py-1 bg-cyberaccent text-black text-xs rounded hover:bg-blue-300" data-i18n="search_audit_load_btn">
+▶ ${T('search_audit_load_btn')}
 </button>
 </div>
 </div>
@@ -4622,9 +4622,9 @@ updateAll();
 // Same gap as loadAuditById: these controls were rebuilt AFTER
 // applyEngagement() already applied the lock, so they were never disabled.
 applyEditLock();
-alert('✅ JSON importado correctamente.');
+alert(T('alert_json_imported'));
 } catch (err) {
-alert('❌ Error al importar JSON: ' + err.message);
+alert(T('alert_json_import_error') + err.message);
 }
 };
 reader.readAsText(file);
@@ -5786,7 +5786,7 @@ function generatePDF(overrideFilename, sourceSnapshot = null) {
     };
 
     if (!auditData.company || !auditData.auditorFirm) {
-      alert('🛑 Completa empresa auditada y auditora para generar el informe');
+      alert(T('alert_fill_company'));
       return;
     }
 
@@ -7500,7 +7500,7 @@ function scopeSection(title, body, color) {
 
   } catch (e) {
     console.error('PDF Error:', e);
-    alert('⚠️ Error generando PDF: ' + e.message);
+    alert(T('alert_pdf_gen_error') + e.message);
   }
 }
 
@@ -7529,7 +7529,7 @@ modal.style.display = 'flex';
 
 if (!scfData) {
 document.getElementById('template-controls-list').innerHTML =
-`<p class="text-cyberwarn text-center py-8">Cargando biblioteca...</p>`;
+`<p class="text-cyberwarn text-center py-8">${T('template_loading')}</p>`;
 await loadScfDataAndCountControls();
 if (!scfData) {
 document.getElementById('template-controls-list').innerHTML =
@@ -7631,7 +7631,7 @@ document.querySelectorAll('.template-ctrl-check:not(:disabled)').forEach(cb => c
 async function loadSelectedTemplateControls() {
 const selected = [...document.querySelectorAll('.template-ctrl-check:checked:not(:disabled)')];
 if (selected.length === 0) {
-alert('🛑 No hay controles seleccionados');
+alert(T('alert_no_controls_selected'));
 return;
 }
 
@@ -7658,7 +7658,7 @@ closeTemplateLibrary();
 updateAll();
 
 if (skipped.length) {
-alert(`⚠️ Saltados (ya evaluados): ${skipped.join(', ')}`);
+alert(T('alert_skipped_evaluated') + skipped.join(', '));
 }
 }
 
@@ -7688,7 +7688,7 @@ allEvaluations.push({ scfId, ...ev });
 allEvaluations.sort((a, b) => b.timestamp - a.timestamp);
 
 if (allEvaluations.length === 0) {
-list.innerHTML = `<p class="text-gray-400 text-center py-8">No hay evaluaciones guardadas.</p>`;
+list.innerHTML = `<p class="text-gray-400 text-center py-8" data-i18n="no_saved_evaluations">${T('no_saved_evaluations')}</p>`;
 return;
 }
 
@@ -7978,6 +7978,7 @@ focus_close:'✕ Cerrar', focus_autosave_note:'Los cambios se guardan automátic
 work_view_toggle_title:'Alternar entre la vista de dashboard y una vista compacta para trabajar control a control',
 fw_switch_title:'Click para cambiar a', status_dot_title:'Estado de cumplimiento',
 focus_mode_btn_title:'Modo Enfoque — editor a pantalla completa', evaluated_label:'evaluado', focus_mode_title:'Modo Enfoque',
+alert_unsaved_changes:'⚠️ Tienes cambios sin guardar. ¿Quieres continuar sin guardar?', alert_audit_not_found:'⚠️ No se encontró la auditoría', alert_audit_loaded:'✅ Auditoría "{name}" cargada correctamente', alert_library_load_failed:'⚠️ No se pudo cargar la biblioteca de controles.', alert_control_already_evaluated:'⚠️ Este control ya ha sido evaluado. Debes eliminarlo para volver a evaluarlo.', alert_control_already_added:'⚠️ Este control ya está añadido a la auditoría actual.', alert_ai_no_valid_response:'⚠️ La IA no generó una respuesta válida', alert_ollama_error:'❌ Error: {err}\n\nAsegúrate de que Ollama esté corriendo con:\nOLLAMA_ORIGINS=\'*\' ollama serve\n\nY el modelo descargado:\nollama pull qwen2.5:3b', alert_report_saved:'✅ Informe guardado localmente.', alert_json_imported:'✅ JSON importado correctamente.', alert_json_import_error:'❌ Error al importar JSON: ', alert_fill_company:'🛑 Completa empresa auditada y auditora para generar el informe', alert_pdf_gen_error:'⚠️ Error generando PDF: ', alert_no_controls_selected:'🛑 No hay controles seleccionados', alert_skipped_evaluated:'⚠️ Saltados (ya evaluados): ', no_saved_reports:'No hay informes guardados aún.', no_saved_evaluations:'No hay evaluaciones guardadas.', work_no_controls:'Sin controles añadidos todavía.', pending_validation:'Pendiente de validar', grid_already_added:'Ya está en tu lista de controles, pendiente de valorar — ', recommended_control:'Control recomendado', control_of:'Control de ', work_filter_none:'✅ Nada pendiente de validar.',
 new_audit_btn:'Nueva Auditoría',
 new_audit_confirm:'⚠️ Esto borrará por completo el espacio de trabajo actual: empresa, auditor, controles, evaluaciones y paneles — sin posibilidad de deshacer. Si tienes cambios sin guardar, expórtalos primero. ¿Continuar con una nueva auditoría en blanco?',
 ia_suggest_btn:'🤖 IA Suggest', generating:'Generando...',
@@ -8196,6 +8197,7 @@ focus_close:'✕ Close', focus_autosave_note:'Changes are saved automatically as
 work_view_toggle_title:'Toggle between the dashboard view and a compact per-control view',
 fw_switch_title:'Click to switch to', status_dot_title:'Compliance status',
 focus_mode_btn_title:'Focus Mode — full-screen editor', evaluated_label:'evaluated', focus_mode_title:'Focus Mode',
+alert_unsaved_changes:'⚠️ You have unsaved changes. Continue without saving?', alert_audit_not_found:'⚠️ Audit not found', alert_audit_loaded:'✅ Audit "{name}" loaded successfully', alert_library_load_failed:'⚠️ Could not load the control library.', alert_control_already_evaluated:'⚠️ This control has already been evaluated. Remove it to evaluate it again.', alert_control_already_added:'⚠️ This control is already added to the current audit.', alert_ai_no_valid_response:'⚠️ The AI did not generate a valid response', alert_ollama_error:'❌ Error: {err}\n\nMake sure Ollama is running with:\nOLLAMA_ORIGINS=\'*\' ollama serve\n\nAnd the model is downloaded:\nollama pull qwen2.5:3b', alert_report_saved:'✅ Report saved locally.', alert_json_imported:'✅ JSON imported successfully.', alert_json_import_error:'❌ Error importing JSON: ', alert_fill_company:'🛑 Fill in the audited and auditing companies to generate the report', alert_pdf_gen_error:'⚠️ Error generating PDF: ', alert_no_controls_selected:'🛑 No controls selected', alert_skipped_evaluated:'⚠️ Skipped (already evaluated): ', no_saved_reports:'No saved reports yet.', no_saved_evaluations:'No saved evaluations.', work_no_controls:'No controls added yet.', pending_validation:'Pending validation', grid_already_added:'Already in your control list, pending assessment — ', recommended_control:'Recommended control', control_of:'Control for ', work_filter_none:'✅ Nothing pending validation.',
 new_audit_btn:'New Audit',
 new_audit_confirm:'⚠️ This will completely erase the current workspace: company, auditor, controls, evaluations, and dashboards — with no way to undo it. If you have unsaved changes, export them first. Continue with a new, blank audit?',
 ia_suggest_btn:'🤖 AI Suggest', generating:'Generating...',
@@ -9214,6 +9216,14 @@ if (typeof updateFrameworkProgressBars === 'function') updateFrameworkProgressBa
 // by EvaluationRegistry.updateDashboard(), not updateSummary() — refresh them
 // too so those T()-built strings re-translate on a language switch.
 if (typeof EvaluationRegistry !== 'undefined') EvaluationRegistry.updateDashboard();
+// Dynamic panels whose innerHTML is built with T() at render time (no
+// data-i18n) don't re-translate on their own — re-render them here. Each
+// guards internally for missing elements, so this is safe on initial load.
+if (typeof updateDatesValidation === 'function') updateDatesValidation();
+if (typeof renderVersionHistoryRows === 'function') renderVersionHistoryRows();
+if (typeof renderApprovalTable === 'function') renderApprovalTable();
+if (typeof listSavedReports === 'function') listSavedReports();
+if (typeof renderControlGrid === 'function') renderControlGrid();
 
 const ls = document.getElementById('lang-select');
 if (ls) ls.value = lang;
