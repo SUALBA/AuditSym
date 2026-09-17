@@ -256,6 +256,100 @@ async function main() {
       await ctx.close();
     }
 
+    // ═══════════════════════════════════════════════════════════════════
+    section('7. Landing feature-parity — contact form, LinkedIn, and Problem/Solution table brought over from the static auditsym.com page');
+    // The static page previously deployed at auditsym.com had real
+    // functional value this interactive landing didn't yet have: a
+    // working Formspree contact form and a LinkedIn link. Bringing that
+    // content over is what makes this page a genuine drop-in replacement
+    // rather than just a functional demo missing real business content.
+    {
+      const ctx = await browser.newContext();
+      const page = await ctx.newPage();
+      await page.goto(`http://localhost:${PORT}/index.html`, { waitUntil: 'domcontentloaded' });
+      await page.waitForTimeout(500);
+
+      const formAction = await page.evaluate(() => document.getElementById('contactForm')?.action);
+      check('Contact form posts to the real, already-live Formspree endpoint', formAction === 'https://formspree.io/f/xeajvpyd');
+
+      const requiredFields = await page.evaluate(() => ({
+        name: document.getElementById('contact-name')?.required,
+        email: document.getElementById('contact-email')?.required,
+        message: document.getElementById('contact-message')?.required,
+      }));
+      check('Contact form marks name/email/message as required', requiredFields.name && requiredFields.email && requiredFields.message);
+
+      const linkedinPresent = await page.evaluate(() => !!document.querySelector('a[href*="linkedin.com/in/susana-alba"]'));
+      check('LinkedIn link is present (was missing entirely from the interactive landing before)', linkedinPresent);
+
+      const rowCount = await page.evaluate(() => document.querySelectorAll('.problem-table tbody tr').length);
+      check('Problem/Solution table renders all 6 rows', rowCount === 6);
+
+      // The static page's own copy for this exact table said "sube
+      // evidencias y cierra" and "100% Local-First — nunca sale del
+      // navegador" — the same category of overclaiming already fixed
+      // elsewhere in the landing and the README. Confirm the ported
+      // version doesn't reintroduce either.
+      const closureWords = { es: ['cierra'], en: ['close', 'closes'], fr: ['clôture'], de: ['schließt'], pt: ['fecha'], ar: ['إغلاق'], zh: ['关闭'] };
+      let anyClosureInTable = false;
+      for (const lang of Object.keys(closureWords)) {
+        await page.evaluate((l) => onLanguagePicked(l), lang);
+        await page.waitForTimeout(100);
+        const tableText = (await page.evaluate(() => document.querySelector('.problem-table')?.innerText || '')).toLowerCase();
+        if (closureWords[lang].some(w => tableText.includes(w.toLowerCase()))) anyClosureInTable = true;
+      }
+      check('The ported Problem/Solution table does not reintroduce closure-claim language in any language', !anyClosureInTable);
+
+      const has100PercentAbsolute = await page.evaluate(() => document.querySelector('.problem-table')?.innerText.includes('100%'));
+      check('The ported table does not reintroduce the absolute "100% Local-First / never leaves the browser" claim', !has100PercentAbsolute);
+
+      // The original static page's Open Source row promised "Sin
+      // licencias, para siempre" (no license fees, ever) — an absolute
+      // commercial promise that could box in future licensing decisions.
+      // The point itself (the code is genuinely AGPL and open) is real
+      // and worth keeping — just not as an irrevocable forever-promise.
+      const foreverWords = { es: ['para siempre'], en: ['forever'], fr: ['pour toujours'], de: ['für immer'], pt: ['para sempre'] };
+      let anyForeverPromise = false;
+      for (const lang of Object.keys(foreverWords)) {
+        await page.evaluate((l) => onLanguagePicked(l), lang);
+        await page.waitForTimeout(100);
+        const tableText = (await page.evaluate(() => document.querySelector('.problem-table')?.innerText || '')).toLowerCase();
+        if (foreverWords[lang].some(w => tableText.includes(w))) anyForeverPromise = true;
+      }
+      check('The Open Source row states the AGPL fact without an absolute "forever" licensing promise', !anyForeverPromise);
+
+      await page.close(); await ctx.close();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    section('8. Landing feature-parity — real product screenshots section, initially missed when porting content from the static page');
+    // Found in review: the static auditsym.com page had a full "Interface
+    // in Action" section with 4 real product screenshots — genuine
+    // branding proof, not placeholder text. This was overlooked entirely
+    // in the first port (only the contact form, LinkedIn, and
+    // Problem/Solution table were reviewed), which would have quietly
+    // dropped real visual proof of the product from the page. The 4
+    // filenames were later consolidated with the README's own still-
+    // missing screenshots (Finding+Management Response, Evidence
+    // Register, Remediation Plan Detail) plus Work View, so the same 4
+    // new photos serve both places instead of needing distinct sets.
+    {
+      const ctx = await browser.newContext();
+      const page = await ctx.newPage();
+      await page.goto(`http://localhost:${PORT}/index.html`, { waitUntil: 'domcontentloaded' });
+      await page.waitForTimeout(500);
+
+      const cardCount = await page.evaluate(() => document.querySelectorAll('.screenshot-card').length);
+      check('All 4 product screenshot cards render', cardCount === 4);
+
+      const imgSrcs = await page.evaluate(() => Array.from(document.querySelectorAll('.screenshot-card img')).map(i => i.getAttribute('src')));
+      const expectedSrcs = ['screenshots/vistaTrabajo2.jpg', 'screenshots/findingManagementResponse.jpg', 'screenshots/evidenceRegister.jpg', 'screenshots/remediationPlanDetail.jpg'];
+      check('Screenshot paths match the shared set also referenced by the README (same 4 new photos serve both)',
+        JSON.stringify(imgSrcs) === JSON.stringify(expectedSrcs), `got ${JSON.stringify(imgSrcs)}`);
+
+      await page.close(); await ctx.close();
+    }
+
   } finally {
     await browser.close();
     server.close();

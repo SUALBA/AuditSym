@@ -621,7 +621,15 @@ let state = {
   // saved alongside history and reconciliation, never a bare {} at
   // module-load time so nextActionId() etc. always have something to
   // increment even before any audit is opened.
-  remediationRegister: defaultRemediationRegister()
+  remediationRegister: defaultRemediationRegister(),
+  // Data-loss protection: true whenever the user has typed something that
+  // hasn't reached saveActiveAuditToStorage() yet — the one gap the
+  // per-field onchange saves throughout this file don't cover, since
+  // onchange only fires on blur, not on every keystroke. Set by the
+  // global input listener below, cleared by saveActiveAuditToStorage()
+  // itself. Read by the beforeunload handler to warn before an
+  // in-progress edit is lost.
+  isDirty: false
 };
 
 let chartSeverity, chartStatus, chartAging, chartTrend;
@@ -718,6 +726,7 @@ const I18N = {
     pdf_excluded_findings_note: '{n} hallazgo(s) excluido(s) por discrepancia aceptada por el auditor: {ids}',
     pdf_status_disputed_badge: 'Discrepante', pdf_status_open_default: 'Abierto',
 remediation_plan_title:'Plan de Remediación',
+autosaved_toast:'Guardado automáticamente',
 source_audit_evidence_title:'Evidencia de Auditoría de Origen',
 evidence_type_document:'Documento',
 evidence_type_screenshot:'Captura de Pantalla',
@@ -1054,6 +1063,7 @@ plan_error_missing_resolution:'Debes describir cómo se resolvió.',
     pdf_excluded_findings_note: '{n} finding(s) excluded by an auditor-accepted dispute: {ids}',
     pdf_status_disputed_badge: 'Disputed', pdf_status_open_default: 'Open',
 remediation_plan_title:'Remediation Plan',
+autosaved_toast:'Auto-saved',
 source_audit_evidence_title:'Source Audit Evidence',
 evidence_type_document:'Document',
 evidence_type_screenshot:'Screenshot',
@@ -1422,6 +1432,7 @@ plan_error_missing_resolution:'You must describe how it was resolved.',
                 pdf_status_disputed_badge:'Contesté',
                 pdf_status_open_default:'Ouvert',
 remediation_plan_title:'Plan de Remédiation',
+autosaved_toast:'Enregistré automatiquement',
 source_audit_evidence_title:'Preuve d\'Audit d\'Origine',
 evidence_type_document:'Document',
 evidence_type_screenshot:'Capture d\'Écran',
@@ -1803,6 +1814,7 @@ plan_error_missing_resolution:'Vous devez décrire comment cela a été résolu.
                 pdf_status_disputed_badge:'Angefochten',
                 pdf_status_open_default:'Offen',
 remediation_plan_title:'Sanierungsplan',
+autosaved_toast:'Automatisch gespeichert',
 source_audit_evidence_title:'Ursprüngliche Auditnachweise',
 evidence_type_document:'Dokument',
 evidence_type_screenshot:'Bildschirmfoto',
@@ -2184,6 +2196,7 @@ plan_error_missing_resolution:'Sie müssen beschreiben, wie dies gelöst wurde.'
                 pdf_status_disputed_badge:'Contestado',
                 pdf_status_open_default:'Aberto',
 remediation_plan_title:'Plano de Remediação',
+autosaved_toast:'Salvo automaticamente',
 source_audit_evidence_title:'Evidência de Auditoria de Origem',
 evidence_type_document:'Documento',
 evidence_type_screenshot:'Captura de Tela',
@@ -2565,6 +2578,7 @@ plan_error_missing_resolution:'Você deve descrever como isso foi resolvido.',
                 pdf_status_disputed_badge:'معترض عليه',
                 pdf_status_open_default:'مفتوح',
 remediation_plan_title:'خطة المعالجة',
+autosaved_toast:'تم الحفظ تلقائيًا',
 source_audit_evidence_title:'دليل التدقيق الأصلي',
 evidence_type_document:'مستند',
 evidence_type_screenshot:'لقطة شاشة',
@@ -2946,6 +2960,7 @@ plan_error_missing_resolution:'يجب وصف كيفية حل هذا.',
                 pdf_status_disputed_badge:'有争议',
                 pdf_status_open_default:'开放',
 remediation_plan_title:'整改计划',
+autosaved_toast:'已自动保存',
 source_audit_evidence_title:'来源审计证据',
 evidence_type_document:'文档',
 evidence_type_screenshot:'屏幕截图',
@@ -5203,6 +5218,12 @@ function saveActiveAuditToStorage() {
   upsertIndexEntry(buildIndexEntry(state.activeAuditId, state.auditData, state.findings));
   // M3: this audit's own remediation-plan identifier counters.
   saveRemediationRegister(state.activeAuditId, state.remediationRegister);
+  // Data-loss protection: this is the ONE place every save path in the
+  // whole file funnels through (saveState() below is just an alias every
+  // existing call site uses), so resetting the dirty flag here — rather
+  // than at each of the 30+ individual onchange handlers — automatically
+  // covers all of them without having to touch every call site.
+  state.isDirty = false;
 }
 // Old name kept as an alias so every existing call site throughout the
 // file keeps working without having to hunt down and rename each one —
@@ -8513,6 +8534,56 @@ function generateHubPDF() {
     alert('PDF Error: ' + e.message);
   }
 }
+
+// ══════════════════════════════════════════════════════════════════════════
+// DATA-LOSS PROTECTION — mirrors the audit engine's own auto-save +
+// beforeunload pattern, which the Hub previously had neither of.
+// ══════════════════════════════════════════════════════════════════════════
+// Non-blocking, self-dismissing notification — same visual pattern as the
+// engine's own toast, so background saves never interrupt the user the
+// way a native alert() would.
+function showAutoSaveToast() {
+  let toast = document.getElementById('autosave-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'autosave-toast';
+    toast.style.cssText = 'position:fixed;bottom:20px;right:20px;background:#1e293b;color:#4ade80;border:1px solid #334155;padding:10px 16px;border-radius:8px;font-size:13px;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,.3);opacity:0;transition:opacity .3s;pointer-events:none;';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = '✅ ' + t('autosaved_toast');
+  clearTimeout(toast._hideTimer);
+  toast.style.opacity = '1';
+  toast._hideTimer = setTimeout(() => { toast.style.opacity = '0'; }, 2500);
+}
+
+// Most fields already save immediately on their own onchange handler —
+// the gap this covers is the field currently being typed into, which
+// hasn't lost focus (and so hasn't fired onchange) yet. Delegated on
+// document so it needs no changes to the ~30 individual input/textarea
+// elements renderDetail() and the various modals already render.
+document.addEventListener('input', (e) => {
+  if (e.target.matches('input, textarea, select')) state.isDirty = true;
+});
+
+// Background auto-save every 2 minutes, matching the engine's own
+// interval — never blocks, never validates, just persists whatever is
+// currently in state (which per-field onchange handlers already keep
+// current for anything that isn't mid-edit right now).
+setInterval(() => {
+  if (state.isDirty && state.activeAuditId) {
+    saveActiveAuditToStorage();
+    showAutoSaveToast();
+  }
+}, 120000);
+
+// Last-resort native warning if the tab is closed with a keystroke not
+// yet captured by onchange or the auto-save timer above.
+window.addEventListener('beforeunload', (e) => {
+  if (state.isDirty) {
+    e.preventDefault();
+    e.returnValue = '';
+  }
+});
 
 // ══════════════════════════════════════════════════════════════════════════
 // INIT

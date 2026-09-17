@@ -1608,6 +1608,141 @@ async function main() {
       await page.close(); await ctx.close();
     }
 
+    // ═══════════════════════════════════════════════════════════════════
+    section('20. Auto-save no longer silently fails when an N/A control lacks justification');
+    // Found in review: the 2-minute background timer called saveProgress()
+    // directly — the SAME function the manual "Save" button uses, which
+    // deliberately blocks (with a native alert()) if any control marked
+    // "N/A" has no justification yet. That validation makes sense for an
+    // explicit manual save or final issuance, but a control sitting at
+    // N/A with the justification not yet typed is completely normal
+    // mid-session — so every two minutes, the auditor got a blocking
+    // error popup instead of a save, easy to mistake for the identical-
+    // looking success alert, with NOTHING actually persisted the whole
+    // time. autoSaveSilently() is a separate path with no validation and
+    // no blocking alert — this section confirms it actually behaves that
+    // way, and that the manual path's validation is still intact.
+    {
+      const ctx = await browser.newContext();
+      const page = await newPage(browser, ctx);
+      // Overriding window.alert (rather than adding a second page.on('dialog')
+      // listener alongside the one newPage() already installs) avoids any
+      // risk of two handlers racing to accept/read the same native dialog.
+      await page.evaluate(() => { window.__alerts = []; window.alert = (m) => window.__alerts.push(m); });
+
+      await page.evaluate(() => {
+        document.getElementById('id_informe').value = 'AUD-AUTOSAVE-REG';
+        document.getElementById('controls').innerHTML = '';
+        addControl(false, 'Q1', 'GOV-01', 'GOV-01', 'Governance Program', '');
+        const blk = document.querySelector('.control');
+        blk.querySelector('.cumple').value = 'na';
+        blk.querySelector('.cumple').dispatchEvent(new Event('change'));
+        blk.querySelector('.evidencia').value = ''; // deliberately left empty — the exact trap
+        isDirty = true;
+      });
+
+      const hasTrap = await page.evaluate(() => findEmptyEvidenceNAControls().length === 1);
+      check('Setup: an N/A control with no justification yet actually exists (the exact trap)', hasTrap);
+
+      await page.evaluate(() => autoSaveSilently());
+      await page.waitForTimeout(100);
+      const alertsAfterAuto = await page.evaluate(() => window.__alerts);
+      check('Silent auto-save shows NO blocking alert despite the pending N/A justification', alertsAfterAuto.length === 0, `got ${alertsAfterAuto.length}: ${JSON.stringify(alertsAfterAuto)}`);
+
+      const saved = await page.evaluate(() => {
+        const raw = localStorage.getItem('auditnist_AUD-AUTOSAVE-REG');
+        return raw ? JSON.parse(raw) : null;
+      });
+      check('...and the work was actually persisted to localStorage despite that', saved !== null && saved.controls?.length === 1);
+      check('isDirty is correctly cleared after the silent save', await page.evaluate(() => isDirty) === false);
+
+      const toastText = await page.evaluate(() => document.getElementById('autosave-toast')?.textContent);
+      check('A non-blocking visual toast confirms the save instead of an interrupting alert', !!toastText && toastText.includes('✅'));
+
+      await page.evaluate(() => saveProgress());
+      await page.waitForTimeout(100);
+      const alertsAfterManual = await page.evaluate(() => window.__alerts);
+      check('The manual Save button/path still correctly validates and blocks on the same missing justification — that check remains valuable there',
+        alertsAfterManual.length > 0 && alertsAfterManual[alertsAfterManual.length - 1].includes('🛑'));
+
+      await page.close(); await ctx.close();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    section('21. Work View — Auditor Notes and Evidence textareas cap their auto-grow height, so the Evidence Register stays reachable on one screen');
+    // Found via a real UX review: both textareas already auto-grew with
+    // content, but their shared cap was 520px — with two fields like that
+    // stacked on a single control, the Evidence Register (one of the
+    // features most worth showing off) got pushed off the first screen
+    // even for a single control, and the problem only gets worse as a
+    // real audit's control count grows (CIS alone has far more controls
+    // than the sample audits used during development).
+    {
+      const ctx = await browser.newContext();
+      const page = await newPage(browser, ctx);
+      const longText = Array(30).fill('This is a long line of auditor narrative text describing findings in detail.').join('\n');
+
+      await page.evaluate(() => {
+        document.getElementById('controls').innerHTML = '';
+        addControl(false, 'Q1', 'GOV-01', 'GOV-01', 'Governance Program', '');
+      });
+      await page.evaluate((txt) => {
+        const notes = document.querySelector('.notes');
+        notes.value = txt;
+        notes.dispatchEvent(new Event('input'));
+        const ev = document.querySelector('.evidencia');
+        ev.value = txt;
+        ev.dispatchEvent(new Event('input'));
+      }, longText);
+      await page.waitForTimeout(100);
+      const notesHeight = await page.evaluate(() => parseInt(document.querySelector('.notes').style.height));
+      const evHeight = await page.evaluate(() => parseInt(document.querySelector('.evidencia').style.height));
+      check('Auditor Notes caps its auto-grow at 240px with long content, not the old 520px', notesHeight <= 240, `got ${notesHeight}px`);
+      check('Evidence caps its auto-grow at 180px with long content — tighter than Notes, since it needs less room than free-form narrative', evHeight <= 180, `got ${evHeight}px`);
+
+      // Loading a SAVED control with long content (not just typing it live)
+      // must cap correctly too — this was a real gap found during the fix:
+      // one of the two code paths that restore .value on load never called
+      // autoGrowTextarea() at all.
+      await page.evaluate(() => { document.getElementById('controls').innerHTML = ''; });
+      await page.evaluate((txt) => {
+        addControl(false, 'Q2', 'AST-01', 'AST-01', 'Asset Governance', '');
+        const wrapper = document.querySelector('.control');
+        wrapper.querySelector('.evidencia').value = txt;
+        toggleValidateBtn(wrapper.querySelector('.evidencia'));
+        autoGrowTextarea(wrapper.querySelector('.evidencia'), 180);
+        wrapper.querySelector('.notes').value = txt;
+        autoGrowTextarea(wrapper.querySelector('.notes'), 240);
+      }, longText);
+      await page.waitForTimeout(100);
+      const loadedNotesHeight = await page.evaluate(() => parseInt(document.querySelector('.notes').style.height));
+      const loadedEvHeight = await page.evaluate(() => parseInt(document.querySelector('.evidencia').style.height));
+      check('A control loaded with pre-existing long content (not typed live) also caps correctly, not just the live-typing path',
+        loadedNotesHeight <= 240 && loadedNotesHeight > 76 && loadedEvHeight <= 180 && loadedEvHeight > 100,
+        `notes=${loadedNotesHeight}px, evidence=${loadedEvHeight}px`);
+
+      // Short text must not be artificially inflated by the fix.
+      await page.evaluate(() => { document.getElementById('controls').innerHTML = ''; addControl(false, 'Q3', 'PR-01', 'PR-01', 'x', ''); });
+      await page.evaluate(() => {
+        const notes = document.querySelector('.notes');
+        notes.value = 'Short note.';
+        notes.dispatchEvent(new Event('input'));
+      });
+      await page.waitForTimeout(100);
+      const shortHeight = await page.evaluate(() => parseInt(document.querySelector('.notes').style.height));
+      check('Short content still renders at its small natural height — the cap only kicks in for genuinely long content', shortHeight < 100, `got ${shortHeight}px`);
+
+      // The controls list itself must keep its own internal scroll,
+      // independent of how many controls exist — confirmed already
+      // implemented (max-h-[70vh] overflow-y-auto), guarded here so a
+      // future edit can't silently drop it.
+      const sidebarClasses = await page.evaluate(() => document.getElementById('work-view-sidebar')?.className || '');
+      check('The Work View controls sidebar keeps its own bounded height and internal scroll regardless of control count',
+        sidebarClasses.includes('max-h-') && sidebarClasses.includes('overflow-y-auto'));
+
+      await page.close(); await ctx.close();
+    }
+
   } finally {
     await browser.close();
     server.close();

@@ -4,7 +4,31 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AuditSym · Plataforma GRC con IA Local</title>
-    <meta name="description" content="AuditSym es una plataforma GRC multi-framework con IA local. Audita NIST, ISO, CIS y COBIT sin que tus datos salgan de tu máquina." />
+    <meta name="description" content="AuditSym es una plataforma GRC multi-framework Local-First con IA asistida para NIST, ISO, CIS y COBIT, con procesamiento local mediante Ollama y proveedores cloud opcionales." />
+
+    <!-- Favicon — the shield logo, previously never set as the tab icon
+         despite already existing and being used in the footer. -->
+    <link rel="icon" type="image/png" href="screenshots/logo_AuditSYM.png" />
+    <link rel="apple-touch-icon" href="screenshots/logo_AuditSYM.png" />
+
+    <!-- Open Graph / Twitter Card — without these, sharing the link on
+         LinkedIn, Slack, WhatsApp, or X shows a bare, unstyled preview
+         with no image and often mangled text pulled from the page body.
+         This is exactly the moment "getting known" depends on: someone
+         else's share, not a direct visit. Uses the existing shield logo
+         as the preview image for now — a dedicated 1200×630 horizontal
+         banner (logo + tagline + a glimpse of the interface) would read
+         better once one exists, but this is a real, immediate improvement
+         over showing nothing at all. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://auditsym.com" />
+    <meta property="og:title" content="AuditSym — AI-Assisted Cybersecurity Audit & GRC Platform" />
+    <meta property="og:description" content="Local-First audit platform combining multi-framework assessment, traceable evidence, professional reporting, and corrective-action management in one audit lifecycle." />
+    <meta property="og:image" content="https://auditsym.com/screenshots/logo_AuditSYM.png" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="AuditSym — AI-Assisted Cybersecurity Audit & GRC Platform" />
+    <meta name="twitter:description" content="Local-First audit platform combining multi-framework assessment, traceable evidence, professional reporting, and corrective-action management in one audit lifecycle." />
+    <meta name="twitter:image" content="https://auditsym.com/screenshots/logo_AuditSYM.png" />
 
     <style>
         /* ===== ROOT ===== */
@@ -530,6 +554,140 @@
         .flow-card .flow-link-remediation { color: var(--green); }
         .flow-card .flow-link-remediation:hover { color: var(--text); }
 
+        /* ===== PROBLEM/SOLUTION TABLE ===== */
+        .problem-table-wrap {
+            max-width: 1000px;
+            margin: 0 auto;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+        }
+        .problem-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+        .problem-table th {
+            padding: 16px 20px;
+            font-size: .78rem;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            font-weight: 700;
+            border-bottom: 1px solid var(--border);
+        }
+        .problem-table th:first-child { color: #f87171; }
+        .problem-table th:last-child { color: var(--blue); }
+        .problem-table td {
+            padding: 16px 20px;
+            font-size: .92rem;
+            color: var(--muted);
+            border-bottom: 1px solid var(--border);
+            vertical-align: top;
+        }
+        .problem-table tr:last-child td { border-bottom: none; }
+        .problem-table td strong { color: var(--text); }
+        .problem-table td code {
+            background: rgba(148, 163, 184, .12);
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-size: .85em;
+        }
+
+        /* ===== CONTACT FORM ===== */
+        .contact-form-wrap {
+            max-width: 640px;
+            margin: 0 auto;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 36px;
+        }
+        .contact-form-wrap label {
+            display: block;
+            font-size: .85rem;
+            font-weight: 600;
+            color: var(--muted);
+            margin-bottom: 6px;
+        }
+        .contact-form-wrap .form-row { margin-bottom: 20px; }
+        .contact-form-wrap input,
+        .contact-form-wrap textarea {
+            width: 100%;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px 14px;
+            color: var(--text);
+            font-family: inherit;
+            font-size: .95rem;
+            transition: var(--transition);
+        }
+        .contact-form-wrap input:focus,
+        .contact-form-wrap textarea:focus {
+            outline: none;
+            border-color: var(--blue);
+        }
+        .contact-form-wrap button[type="submit"] {
+            width: 100%;
+            background: var(--blue);
+            color: #07111f;
+            border: 0;
+            border-radius: 10px;
+            padding: 14px;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        .contact-form-wrap button[type="submit"]:hover { transform: translateY(-1px); box-shadow: 0 6px 22px rgba(56, 189, 248, .32); }
+        .contact-form-wrap button[type="submit"]:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+        .contact-success { display: none; text-align: center; padding: 20px 0; }
+        .contact-success.visible { display: block; }
+        .contact-success .icon { font-size: 3rem; margin-bottom: 12px; }
+        .contact-success h4 { font-size: 1.3rem; margin-bottom: 8px; }
+        .contact-success p { color: var(--muted); margin-bottom: 18px; }
+        .contact-success a {
+            display: inline-block;
+            background: var(--blue);
+            color: #07111f;
+            padding: 10px 20px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 700;
+        }
+
+        /* ===== SCREENSHOTS ===== */
+        .screenshots-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 28px;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+        .screenshot-card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            overflow: hidden;
+            transition: var(--transition);
+        }
+        .screenshot-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, .3);
+        }
+        .screenshot-card img {
+            width: 100%;
+            display: block;
+        }
+        .screenshot-caption {
+            padding: 14px 18px;
+            font-size: .88rem;
+            color: var(--muted);
+        }
+        @media (max-width: 720px) {
+            .screenshots-grid { grid-template-columns: 1fr; }
+        }
+
         .features-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -603,7 +761,7 @@
 
     <!-- ===== HEADER ===== -->
     <header class="header">
-    <a href="auditnist-local.html" class="brand">
+    <a href="#hero" class="brand">
 
         <div class="logo-shield">
             <img
@@ -658,7 +816,7 @@
         </div>
 
         <!-- Escudo grande (clicable) -->
-        <a href="auditnist-local.html" class="shield-link">
+        <a href="#hero" class="shield-link">
             <div class="shield-container">
                 <div class="shield">
                     <svg viewBox="0 0 200 240" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -818,7 +976,7 @@
     <section class="section" id="about">
         <div class="section-header">
             <h3 data-i18n="flow_title">El flujo completo de Auditoría</h3>
-            <p data-i18n="flow_sub">AuditSym cubre todo el ciclo de vida: desde la evaluación hasta la remediación y la mejora continua.</p>
+            <p data-i18n="flow_sub">AuditSym conecta evaluación, hallazgos, respuesta de gestión y remediación en un flujo trazable, con Follow-up y Verificación como siguiente hito.</p>
         </div>
         <div class="flow-complete">
             <div class="flow-card">
@@ -834,11 +992,55 @@
                 <a href="remediation-hub.html" class="flow-link flow-link-remediation" data-i18n="flow2_link">→ Ir a Remediación</a>
             </div>
             <div class="flow-card">
-                <span class="icon">📈</span>
-                <h4 data-i18n="flow3_title">3. Mejora Continua</h4>
-                <p data-i18n="flow3_desc">Visualiza la evolución año a año. Demuestra la mejora de la seguridad con datos históricos.</p>
-                <a href="#features" class="flow-link" data-i18n="flow3_link">→ Descubrir más</a>
+                <span class="icon">🔎</span>
+                <h4 data-i18n="flow3_title">3. Follow-up y Verificación</h4>
+                <p data-i18n="flow3_desc">El re-testeo independiente, la evidencia de verificación y el cierre formal del hallazgo forman el siguiente hito del ciclo de vida de AuditSym.</p>
+                <a href="#features" class="flow-link" data-i18n="flow3_link">→ Ver Roadmap</a>
             </div>
+        </div>
+    </section>
+
+    <!-- ===== SECCIÓN: PROBLEMA / SOLUCIÓN ===== -->
+    <section class="section" id="problem">
+        <div class="section-header">
+            <h3 data-i18n="problem_title">El problema de las auditorías actuales</h3>
+            <p data-i18n="problem_sub">Y cómo AuditSym transforma la complejidad en claridad.</p>
+        </div>
+        <div class="problem-table-wrap">
+            <table class="problem-table">
+                <thead>
+                    <tr>
+                        <th data-i18n="problem_col_problem">❌ El Problema Común</th>
+                        <th data-i18n="problem_col_solution">✅ La Solución AuditSym</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td data-i18n="problem_row1_problem">Los flujos de auditoría en la nube pueden requerir que datos sensibles salgan del entorno local</td>
+                        <td data-i18n="problem_row1_solution"><strong>Local-First por diseño.</strong> Los datos de auditoría y evidencia permanecen locales por defecto. Ollama permite IA totalmente local; los proveedores cloud son opcionales y se configuran explícitamente.</td>
+                    </tr>
+                    <tr>
+                        <td data-i18n="problem_row2_problem">Evaluaciones aisladas por framework</td>
+                        <td data-i18n="problem_row2_solution"><strong>Multi-Framework</strong> — NIST, ISO, CIS y COBIT sobre un catálogo de controles unificado</td>
+                    </tr>
+                    <tr>
+                        <td data-i18n="problem_row3_problem">Auditorías manuales basadas en hojas de cálculo</td>
+                        <td data-i18n="problem_row3_solution"><strong>🧠 IA como Co-Piloto</strong> — Sugiere puntuaciones y borradores, pero el auditor toma la decisión final</td>
+                    </tr>
+                    <tr>
+                        <td data-i18n="problem_row4_problem">Sin priorización de hallazgos</td>
+                        <td data-i18n="problem_row4_solution"><strong>Matriz de Prioridad</strong> — Quick Wins primero (Impacto vs Esfuerzo)</td>
+                    </tr>
+                    <tr>
+                        <td data-i18n="problem_row5_problem">Sin seguimiento histórico</td>
+                        <td data-i18n="problem_row5_solution"><strong>Evolución Interanual</strong> — Demuestra la mejora continua con datos</td>
+                    </tr>
+                    <tr>
+                        <td data-i18n="problem_row6_problem">Evidencia de auditoría indistinguible de la evidencia de remediación</td>
+                        <td data-i18n="problem_row6_solution"><strong>Dos registros separados</strong> — evidencia de origen (<code>EVD-####</code>) y evidencia de implementación (<code>REM-EVD-####</code>), ninguno reutiliza un ID retirado</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
     </section>
 
@@ -856,8 +1058,8 @@
             </div>
             <div class="feature-card">
                 <div class="icon">🤖</div>
-                <h4 data-i18n="f2_title">IA Local</h4>
-                <p data-i18n="f2_desc">Toda la IA corre localmente. Ningún dato sale de tu máquina. Compatible con Ollama, OpenAI o Groq.</p>
+                <h4 data-i18n="f2_title">IA Local u Opcionalmente Cloud</h4>
+                <p data-i18n="f2_desc">Ollama permite ejecutar la IA completamente en local. OpenAI, Anthropic, Groq y OpenRouter son proveedores cloud opcionales que el usuario configura explícitamente.</p>
             </div>
             <div class="feature-card">
                 <div class="icon">📊</div>
@@ -877,7 +1079,70 @@
             <div class="feature-card">
                 <div class="icon">🔒</div>
                 <h4 data-i18n="f6_title">Local First</h4>
-                <p data-i18n="f6_desc">Todos los datos quedan en tu navegador. Exporta a JSON, importa cuando necesites. Sin nube, sin suscripción.</p>
+                <p data-i18n="f6_desc">Los datos de auditoría persisten localmente en el navegador por defecto. Exporta e importa vía JSON cuando lo necesites. Sin backend requerido.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== SECCIÓN: SCREENSHOTS ===== -->
+    <section class="section" id="screenshots">
+        <div class="section-header">
+            <h3 data-i18n="screenshots_title">Interfaz en acción</h3>
+            <p data-i18n="screenshots_sub">Así se ve AuditSym trabajando con marcos reales</p>
+            <p data-i18n="screenshots_note" style="margin-top: 6px; font-size: .85rem;">Diseñado para flujos reales de auditoría de ciberseguridad.</p>
+        </div>
+        <div class="screenshots-grid">
+            <div class="screenshot-card">
+                <img src="screenshots/auditsym-work-view.jpg" alt="Vista de Trabajo">
+                <p class="screenshot-caption" data-i18n="screenshot1_caption">📝 Vista de Trabajo — evaluación de controles durante horas de auditoría</p>
+            </div>
+            <div class="screenshot-card">
+                <img src="screenshots/auditsym-finding-management-response.jpg" alt="Hallazgo y Respuesta de Gestión">
+                <p class="screenshot-caption" data-i18n="screenshot2_caption">✅ Hallazgo con confirmación, disputa y tratamiento formal</p>
+            </div>
+            <div class="screenshot-card">
+                <img src="screenshots/auditsym-evidence-register.jpg" alt="Registro de Evidencia">
+                <p class="screenshot-caption" data-i18n="screenshot3_caption">🗂️ Registro de Evidencia con identificadores EVD-####</p>
+            </div>
+            <div class="screenshot-card">
+                <img src="screenshots/auditsym-remediation-plan.jpg" alt="Detalle del Plan de Remediación">
+                <p class="screenshot-caption" data-i18n="screenshot4_caption">🛠️ Plan de Remediación — acciones, hitos y progreso ponderado</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== SECCIÓN: CONTACTO ===== -->
+    <section class="section" id="contact">
+        <div class="section-header">
+            <h3 data-i18n="contact_title">¿Quieres saber más?</h3>
+            <p data-i18n="contact_sub">Solicita información sobre AuditSym o conecta directamente.</p>
+        </div>
+        <div class="contact-form-wrap">
+            <form id="contactForm" action="https://formspree.io/f/xeajvpyd" method="POST">
+                <input type="hidden" name="_subject" value="Nueva solicitud de información - AuditSym">
+                <div class="form-row">
+                    <label for="contact-name" data-i18n="contact_name_label">Nombre</label>
+                    <input type="text" id="contact-name" name="name" required>
+                </div>
+                <div class="form-row">
+                    <label for="contact-email" data-i18n="contact_email_label">Email corporativo</label>
+                    <input type="email" id="contact-email" name="email" required>
+                </div>
+                <div class="form-row">
+                    <label for="contact-company" data-i18n="contact_company_label">Empresa</label>
+                    <input type="text" id="contact-company" name="company">
+                </div>
+                <div class="form-row">
+                    <label for="contact-message" data-i18n="contact_message_label">Mensaje</label>
+                    <textarea id="contact-message" name="message" rows="4" required></textarea>
+                </div>
+                <button type="submit" id="contact-submit-btn" data-i18n="contact_submit_btn">Enviar solicitud →</button>
+            </form>
+            <div class="contact-success" id="contact-success">
+                <div class="icon">✅</div>
+                <h4 data-i18n="contact_success_title">¡Mensaje enviado con éxito!</h4>
+                <p data-i18n="contact_success_desc">Gracias por tu interés en AuditSym. Te responderemos a la mayor brevedad.</p>
+                <a href="https://www.linkedin.com/in/susana-alba-santamaria-a5aba096/" target="_blank" data-i18n="contact_success_linkedin">💼 Mientras tanto, conecta en LinkedIn</a>
             </div>
         </div>
     </section>
@@ -888,7 +1153,9 @@
         <p style="margin-top: 8px; font-size: .75rem;">
             <a href="auditnist-local.html" data-i18n="footer_audit">Auditoría</a> ·
             <a href="remediation-hub.html" data-i18n="footer_remediation">Remediación</a> ·
-           <a href="https://github.com/SUALBA/AuditSym" target="_blank">GitHub</a>
+           <a href="https://github.com/SUALBA/AuditSym" target="_blank">GitHub</a> ·
+           <a href="https://www.linkedin.com/in/susana-alba-santamaria-a5aba096/" target="_blank">LinkedIn</a> ·
+           <a href="mailto:sualba.dev@gmail.com" data-i18n="footer_contact">Contacto</a>
         </p>
     </footer>
 
@@ -903,6 +1170,43 @@
                 nav_features: 'Características',
                 btn_start: '🚀 Empezar',
                 brand_tagline: 'Plataforma GRC con IA',
+                problem_title: 'El problema de las auditorías actuales',
+                problem_sub: 'Y cómo AuditSym transforma la complejidad en claridad.',
+                problem_col_problem: '❌ El Problema Común',
+                problem_col_solution: '✅ La Solución AuditSym',
+                problem_row1_problem: 'Los flujos de auditoría en la nube pueden requerir que datos sensibles salgan del entorno local',
+                problem_row1_solution: '<strong>Local-First por diseño.</strong> Los datos de auditoría y evidencia permanecen locales por defecto. Ollama permite IA totalmente local; los proveedores cloud son opcionales y se configuran explícitamente.',
+                problem_row2_problem: 'Evaluaciones aisladas por framework',
+                problem_row2_solution: '<strong>Multi-Framework</strong> — NIST, ISO, CIS y COBIT sobre un catálogo de controles unificado',
+                problem_row3_problem: 'Auditorías manuales basadas en hojas de cálculo',
+                problem_row3_solution: '<strong>🧠 IA como Co-Piloto</strong> — Sugiere puntuaciones y borradores, pero el auditor toma la decisión final',
+                problem_row4_problem: 'Sin priorización de hallazgos',
+                problem_row4_solution: '<strong>Matriz de Prioridad</strong> — Quick Wins primero (Impacto vs Esfuerzo)',
+                problem_row5_problem: 'Sin seguimiento histórico',
+                problem_row5_solution: '<strong>Evolución Interanual</strong> — Demuestra la mejora continua con datos',
+                problem_row6_problem: 'Evidencia de auditoría indistinguible de la evidencia de remediación',
+                problem_row6_solution: '<strong>Dos registros separados</strong> — evidencia de origen (<code>EVD-####</code>) y evidencia de implementación (<code>REM-EVD-####</code>), ninguno reutiliza un ID retirado',
+                screenshots_title: 'Interfaz en acción',
+                screenshots_sub: 'Así se ve AuditSym trabajando con marcos reales',
+                screenshots_note: 'Diseñado para flujos reales de auditoría de ciberseguridad.',
+                screenshot1_caption: '📝 Vista de Trabajo — evaluación de controles durante horas de auditoría',
+                screenshot2_caption: '✅ Hallazgo con confirmación, disputa y tratamiento formal',
+                screenshot3_caption: '🗂️ Registro de Evidencia con identificadores EVD-####',
+                screenshot4_caption: '🛠️ Plan de Remediación — acciones, hitos y progreso ponderado',
+                contact_title: '¿Quieres saber más?',
+                contact_sub: 'Solicita información sobre AuditSym o conecta directamente.',
+                contact_name_label: 'Nombre',
+                contact_email_label: 'Email corporativo',
+                contact_company_label: 'Empresa',
+                contact_message_label: 'Mensaje',
+                contact_submit_btn: 'Enviar solicitud →',
+                contact_sending_btn: 'Enviando...',
+                contact_success_title: '¡Mensaje enviado con éxito!',
+                contact_success_desc: 'Gracias por tu interés en AuditSym. Te responderemos a la mayor brevedad.',
+                contact_success_linkedin: '💼 Mientras tanto, conecta en LinkedIn',
+                contact_error_prefix: 'Hubo un problema al enviar el formulario: ',
+                contact_network_error: 'Error de conexión. Por favor, inténtalo de nuevo más tarde.',
+                footer_contact: 'Contacto',
                 tagline: '<strong>Asistida por IA</strong> plataforma de auditoría de ciberseguridad',
                 badge_ai: 'IA Local',
                 badge_secure: 'Datos seguros',
@@ -917,22 +1221,22 @@
                 btn_learn_sub: 'Descubre el flujo',
                 scroll_desc: 'Descubre cómo funciona',
                 flow_title: 'El flujo completo de Auditoría',
-                flow_sub: 'AuditSym cubre todo el ciclo de vida: desde la evaluación hasta la remediación y la mejora continua.',
+                flow_sub: 'AuditSym conecta evaluación, hallazgos, respuesta de gestión y remediación en un flujo trazable, con Follow-up y Verificación como siguiente hito.',
                 flow1_title: '1. Auditoría',
                 flow1_desc: 'Evalúa controles contra NIST, ISO, CIS o COBIT. Asigna riesgos, documenta evidencias y genera hallazgos.',
                 flow1_link: '→ Ir a Auditoría',
                 flow2_title: '2. Remediación',
                 flow2_desc: 'La empresa recibe los hallazgos, prioriza acciones, asigna responsables, ejecuta el plan correctivo, aporta evidencias y lo presenta para verificación.',
                 flow2_link: '→ Ir a Remediación',
-                flow3_title: '3. Mejora Continua',
-                flow3_desc: 'Visualiza la evolución año a año. Demuestra la mejora de la seguridad con datos históricos.',
-                flow3_link: '→ Descubrir más',
+                flow3_title: '3. Follow-up y Verificación',
+                flow3_desc: 'El re-testeo independiente, la evidencia de verificación y el cierre formal del hallazgo forman el siguiente hito del ciclo de vida de AuditSym.',
+                flow3_link: '→ Ver Roadmap',
                 features_title: '¿Por qué AuditSym?',
                 features_sub: 'Construido para auditores que necesitan claridad, no complejidad.',
                 f1_title: 'Multi-Framework',
                 f1_desc: 'NIST CSF 2.0, ISO 27001, CIS Controls v8, COBIT 2019 — todos mapeados al Secure Controls Framework.',
-                f2_title: 'IA Local',
-                f2_desc: 'Toda la IA corre localmente. Ningún dato sale de tu máquina. Compatible con Ollama, OpenAI o Groq.',
+                f2_title: 'IA Local u Opcionalmente Cloud',
+                f2_desc: 'Ollama permite ejecutar la IA completamente en local. OpenAI, Anthropic, Groq y OpenRouter son proveedores cloud opcionales que el usuario configura explícitamente.',
                 f3_title: 'Matriz de Priorización',
                 f3_desc: 'Quick Wins primero — mayor impacto, más fáciles de resolver. Priorización visual para mejores decisiones.',
                 f4_title: 'Evolución Histórica',
@@ -940,7 +1244,7 @@
                 f5_title: '7 Idiomas',
                 f5_desc: 'ES, EN, FR, DE, PT, AR, ZH — construido para equipos globales y clientes internacionales.',
                 f6_title: 'Local First',
-                f6_desc: 'Todos los datos quedan en tu navegador. Exporta a JSON, importa cuando necesites. Sin nube, sin suscripción.',
+                f6_desc: 'Los datos de auditoría persisten localmente en el navegador por defecto. Exporta e importa vía JSON cuando lo necesites. Sin backend requerido.',
                 footer_text: '© 2026 AuditSym — Hecho con ❤️ para auditores de seguridad. Todos los datos quedan en local.',
                 footer_audit: 'Auditoría',
                 footer_remediation: 'Remediación',
@@ -950,6 +1254,43 @@
                 nav_features: 'Features',
                 btn_start: '🚀 Start',
                 brand_tagline: 'AI-Powered GRC Platform',
+                problem_title: 'Today\'s audit workflows',
+                problem_sub: 'And how AuditSym turns complexity into clarity.',
+                problem_col_problem: '❌ The Common Problem',
+                problem_col_solution: '✅ The AuditSym Approach',
+                problem_row1_problem: 'Cloud-hosted GRC workflows may require sensitive audit data to leave the local environment',
+                problem_row1_solution: '<strong>Local-First by design.</strong> Audit data and evidence remain local by default. Ollama enables fully local AI; cloud providers are optional and explicitly configured.',
+                problem_row2_problem: 'Single-framework silos',
+                problem_row2_solution: '<strong>Multi-Framework</strong> — NIST, ISO, CIS, and COBIT over one unified control catalogue',
+                problem_row3_problem: 'Manual, spreadsheet-based audits',
+                problem_row3_solution: '<strong>🧠 AI as Co-Pilot</strong> — Suggests scores and drafts, but the auditor makes the final call',
+                problem_row4_problem: 'No finding prioritization',
+                problem_row4_solution: '<strong>Priority Matrix</strong> — Quick Wins first (Impact vs Effort)',
+                problem_row5_problem: 'No historical tracking',
+                problem_row5_solution: '<strong>Year-over-Year Evolution</strong> — Demonstrates continuous improvement with data',
+                problem_row6_problem: 'Audit evidence indistinguishable from remediation evidence',
+                problem_row6_solution: '<strong>Two separate registers</strong> — source evidence (<code>EVD-####</code>) and implementation evidence (<code>REM-EVD-####</code>), neither ever reusing a withdrawn ID',
+                screenshots_title: 'Interface in Action',
+                screenshots_sub: 'See AuditSym working with real frameworks',
+                screenshots_note: 'Designed for real cybersecurity audit workflows.',
+                screenshot1_caption: '📝 Work View — control assessment during hours of audit fieldwork',
+                screenshot2_caption: '✅ Finding with confirmation, dispute, and formal treatment',
+                screenshot3_caption: '🗂️ Evidence Register with EVD-#### identifiers',
+                screenshot4_caption: '🛠️ Remediation Plan — actions, milestones, and weighted progress',
+                contact_title: 'Want to know more?',
+                contact_sub: 'Request information about AuditSym or connect directly.',
+                contact_name_label: 'Name',
+                contact_email_label: 'Corporate email',
+                contact_company_label: 'Company',
+                contact_message_label: 'Message',
+                contact_submit_btn: 'Send request →',
+                contact_sending_btn: 'Sending...',
+                contact_success_title: 'Message sent successfully!',
+                contact_success_desc: 'Thanks for your interest in AuditSym. We\'ll get back to you shortly.',
+                contact_success_linkedin: '💼 In the meantime, connect on LinkedIn',
+                contact_error_prefix: 'There was a problem sending the form: ',
+                contact_network_error: 'Connection error. Please try again later.',
+                footer_contact: 'Contact',
                 tagline: '<strong>AI‑assisted</strong> cybersecurity audit platform',
                 badge_ai: 'Local AI',
                 badge_secure: 'Secure data',
@@ -964,22 +1305,22 @@
                 btn_learn_sub: 'Discover the flow',
                 scroll_desc: 'Discover how it works',
                 flow_title: 'The complete Audit Flow',
-                flow_sub: 'AuditSym covers the entire lifecycle: from assessment to remediation and continuous improvement.',
+                flow_sub: 'AuditSym connects assessment, findings, management response, and remediation in one traceable workflow, with Follow-up & Verification as the next milestone.',
                 flow1_title: '1. Audit',
                 flow1_desc: 'Evaluate controls against NIST, ISO, CIS or COBIT. Assign risks, document evidence and generate findings.',
                 flow1_link: '→ Go to Audit',
                 flow2_title: '2. Remediation',
                 flow2_desc: 'The company receives findings, prioritizes actions, assigns owners, executes the corrective plan, provides evidence, and submits it for verification.',
                 flow2_link: '→ Go to Remediation',
-                flow3_title: '3. Continuous Improvement',
-                flow3_desc: 'Visualize year-over-year evolution. Demonstrate security improvement with historical data.',
-                flow3_link: '→ Discover more',
+                flow3_title: '3. Follow-up & Verification',
+                flow3_desc: 'Independent re-testing, verification evidence, and formal finding closure form the next AuditSym lifecycle milestone.',
+                flow3_link: '→ See Roadmap',
                 features_title: 'Why AuditSym?',
                 features_sub: 'Built for auditors who need clarity, not complexity.',
                 f1_title: 'Multi-Framework',
                 f1_desc: 'NIST CSF 2.0, ISO 27001, CIS Controls v8, COBIT 2019 — all mapped to the Secure Controls Framework.',
-                f2_title: 'Local AI',
-                f2_desc: 'All AI runs locally. No data leaves your machine. Compatible with Ollama, OpenAI or Groq.',
+                f2_title: 'Local AI or Optionally Cloud',
+                f2_desc: 'Ollama enables fully local AI. OpenAI, Anthropic, Groq, and OpenRouter are optional cloud providers the user explicitly configures.',
                 f3_title: 'Priority Matrix',
                 f3_desc: 'Quick Wins first — highest impact, easiest to solve. Visual prioritization for better decisions.',
                 f4_title: 'Historical Evolution',
@@ -987,7 +1328,7 @@
                 f5_title: '7 Languages',
                 f5_desc: 'ES, EN, FR, DE, PT, AR, ZH — built for global teams and international clients.',
                 f6_title: 'Local First',
-                f6_desc: 'All data stays in your browser. Export to JSON, import when needed. No cloud, no subscription.',
+                f6_desc: 'Audit data persists locally in the browser by default. Export and import via JSON when needed. No backend required.',
                 footer_text: '© 2026 AuditSym — Made with ❤️ for security auditors. All data stays local.',
                 footer_audit: 'Audit',
                 footer_remediation: 'Remediation',
@@ -997,6 +1338,43 @@
                 nav_features: 'Fonctionnalités',
                 btn_start: '🚀 Commencer',
                 brand_tagline: 'Plateforme GRC Alimentée par l\'IA',
+                problem_title: 'Le problème des audits actuels',
+                problem_sub: 'Et comment AuditSym transforme la complexité en clarté.',
+                problem_col_problem: '❌ Le Problème Courant',
+                problem_col_solution: '✅ La Solution AuditSym',
+                problem_row1_problem: 'Les flux GRC hébergés dans le cloud peuvent exiger que des données sensibles quittent l\'environnement local',
+                problem_row1_solution: '<strong>Local-First par conception.</strong> Les données d\'audit et les preuves restent locales par défaut. Ollama permet une IA entièrement locale ; les fournisseurs cloud sont optionnels et configurés explicitement.',
+                problem_row2_problem: 'Évaluations isolées par référentiel',
+                problem_row2_solution: '<strong>Multi-Référentiels</strong> — NIST, ISO, CIS et COBIT sur un catalogue de contrôles unifié',
+                problem_row3_problem: 'Audits manuels basés sur des feuilles de calcul',
+                problem_row3_solution: '<strong>🧠 IA en Copilote</strong> — Suggère des scores et des brouillons, mais l\'auditeur prend la décision finale',
+                problem_row4_problem: 'Aucune priorisation des constats',
+                problem_row4_solution: '<strong>Matrice de Priorité</strong> — Quick Wins en premier (Impact vs Effort)',
+                problem_row5_problem: 'Aucun suivi historique',
+                problem_row5_solution: '<strong>Évolution Annuelle</strong> — Démontre l\'amélioration continue avec des données',
+                problem_row6_problem: 'Preuve d\'audit indissociable de la preuve de remédiation',
+                problem_row6_solution: '<strong>Deux registres distincts</strong> — preuve d\'origine (<code>EVD-####</code>) et preuve de mise en œuvre (<code>REM-EVD-####</code>), aucun ne réutilise un ID retiré',
+                screenshots_title: 'L\'interface en action',
+                screenshots_sub: 'Découvrez AuditSym au travail avec des référentiels réels',
+                screenshots_note: "Conçu pour des flux de travail d'audit de cybersécurité réels.",
+                screenshot1_caption: '📝 Vue de Travail — évaluation des contrôles pendant des heures d\'audit',
+                screenshot2_caption: '✅ Constat avec confirmation, contestation et traitement formel',
+                screenshot3_caption: '🗂️ Registre de Preuves avec identifiants EVD-####',
+                screenshot4_caption: '🛠️ Plan de Remédiation — actions, jalons et progression pondérée',
+                contact_title: 'Vous voulez en savoir plus ?',
+                contact_sub: 'Demandez des informations sur AuditSym ou connectez-vous directement.',
+                contact_name_label: 'Nom',
+                contact_email_label: 'Email professionnel',
+                contact_company_label: 'Entreprise',
+                contact_message_label: 'Message',
+                contact_submit_btn: 'Envoyer la demande →',
+                contact_sending_btn: 'Envoi...',
+                contact_success_title: 'Message envoyé avec succès !',
+                contact_success_desc: 'Merci pour votre intérêt pour AuditSym. Nous vous répondrons rapidement.',
+                contact_success_linkedin: '💼 En attendant, connectons-nous sur LinkedIn',
+                contact_error_prefix: 'Un problème est survenu lors de l\'envoi du formulaire : ',
+                contact_network_error: 'Erreur de connexion. Veuillez réessayer plus tard.',
+                footer_contact: 'Contact',
                 tagline: '<strong>Assistée par IA</strong> plateforme d\'audit cybersécurité',
                 badge_ai: 'IA Locale',
                 badge_secure: 'Données sécurisées',
@@ -1011,22 +1389,22 @@
                 btn_learn_sub: 'Découvrir le flux',
                 scroll_desc: 'Découvrez comment ça fonctionne',
                 flow_title: 'Le flux complet d\'audit',
-                flow_sub: 'AuditSym couvre tout le cycle de vie : de l\'évaluation à la remédiation et à l\'amélioration continue.',
+                flow_sub: "AuditSym relie évaluation, constats, réponse de gestion et remédiation en un flux traçable, avec Follow-up & Vérification comme prochain jalon.",
                 flow1_title: '1. Audit',
                 flow1_desc: 'Évalue les contrôles selon NIST, ISO, CIS ou COBIT. Attribue les risques, documente les preuves et génère des constats.',
                 flow1_link: '→ Aller à l\'Audit',
                 flow2_title: '2. Remédiation',
                 flow2_desc: 'L\'entreprise reçoit les constats, priorise les actions, assigne des responsables, exécute le plan correctif, fournit des preuves et le soumet pour vérification.',
                 flow2_link: '→ Aller à la Remédiation',
-                flow3_title: '3. Amélioration Continue',
-                flow3_desc: 'Visualise l\'évolution année après année. Démontre l\'amélioration de la sécurité avec des données historiques.',
-                flow3_link: '→ Découvrir plus',
+                flow3_title: '3. Follow-up et Vérification',
+                flow3_desc: "Les retests indépendants, les preuves de vérification et la clôture formelle des constats constituent le prochain jalon du cycle de vie d'AuditSym.",
+                flow3_link: '→ Voir la Roadmap',
                 features_title: 'Pourquoi AuditSym?',
                 features_sub: 'Conçu pour les auditeurs qui ont besoin de clarté, pas de complexité.',
                 f1_title: 'Multi-Framework',
                 f1_desc: 'NIST CSF 2.0, ISO 27001, CIS Controls v8, COBIT 2019 — tous mappés vers le Secure Controls Framework.',
-                f2_title: 'IA Locale',
-                f2_desc: 'Toute l\'IA fonctionne localement. Aucune donnée ne quitte votre machine. Compatible avec Ollama, OpenAI ou Groq.',
+                f2_title: 'IA Locale ou Optionnellement Cloud',
+                f2_desc: "Ollama permet d'exécuter l'IA entièrement en local. OpenAI, Anthropic, Groq et OpenRouter sont des fournisseurs cloud optionnels que l'utilisateur configure explicitement.",
                 f3_title: 'Matrice de Priorisation',
                 f3_desc: 'Quick Wins d\'abord — plus grand impact, plus faciles à résoudre. Priorisation visuelle.',
                 f4_title: 'Évolution Historique',
@@ -1034,7 +1412,7 @@
                 f5_title: '7 Langues',
                 f5_desc: 'ES, EN, FR, DE, PT, AR, ZH — conçu pour les équipes mondiales.',
                 f6_title: 'Local First',
-                f6_desc: 'Toutes les données restent dans votre navigateur. Exportez en JSON, importez quand nécessaire.',
+                f6_desc: "Les données d'audit persistent localement dans le navigateur par défaut. Exportez et importez via JSON si besoin. Aucun backend requis.",
                 footer_text: '© 2026 AuditSym — Fait avec ❤️ pour les auditeurs. Toutes les données restent locales.',
                 footer_audit: 'Audit',
                 footer_remediation: 'Remédiation',
@@ -1044,6 +1422,43 @@
                 nav_features: 'Funktionen',
                 btn_start: '🚀 Starten',
                 brand_tagline: 'KI-Gestützte GRC-Plattform',
+                problem_title: 'Das Problem heutiger Audits',
+                problem_sub: 'Und wie AuditSym Komplexität in Klarheit verwandelt.',
+                problem_col_problem: '❌ Das Häufige Problem',
+                problem_col_solution: '✅ Die AuditSym-Lösung',
+                problem_row1_problem: 'Cloud-basierte GRC-Workflows können erfordern, dass sensible Auditdaten die lokale Umgebung verlassen',
+                problem_row1_solution: '<strong>Local-First per Design.</strong> Auditdaten und Nachweise bleiben standardmäßig lokal. Ollama ermöglicht vollständig lokale KI; Cloud-Anbieter sind optional und werden explizit konfiguriert.',
+                problem_row2_problem: 'Isolierte Bewertungen pro Framework',
+                problem_row2_solution: '<strong>Multi-Framework</strong> — NIST, ISO, CIS und COBIT über einen einheitlichen Kontrollkatalog',
+                problem_row3_problem: 'Manuelle, tabellenbasierte Audits',
+                problem_row3_solution: '<strong>🧠 KI als Co-Pilot</strong> — Schlägt Bewertungen und Entwürfe vor, aber der Auditor trifft die endgültige Entscheidung',
+                problem_row4_problem: 'Keine Priorisierung von Feststellungen',
+                problem_row4_solution: '<strong>Prioritätsmatrix</strong> — Quick Wins zuerst (Wirkung vs. Aufwand)',
+                problem_row5_problem: 'Keine historische Nachverfolgung',
+                problem_row5_solution: '<strong>Jahresvergleich</strong> — Zeigt kontinuierliche Verbesserung anhand von Daten',
+                problem_row6_problem: 'Auditnachweis nicht von Sanierungsnachweis unterscheidbar',
+                problem_row6_solution: '<strong>Zwei getrennte Register</strong> — Ursprungsnachweis (<code>EVD-####</code>) und Umsetzungsnachweis (<code>REM-EVD-####</code>), keines verwendet eine zurückgezogene ID erneut',
+                screenshots_title: 'Die Oberfläche in Aktion',
+                screenshots_sub: 'So arbeitet AuditSym mit echten Frameworks',
+                screenshots_note: 'Entwickelt für reale Cybersicherheits-Auditworkflows.',
+                screenshot1_caption: '📝 Arbeitsansicht — Kontrollbewertung während stundenlanger Audit-Arbeit',
+                screenshot2_caption: '✅ Feststellung mit Bestätigung, Anfechtung und formeller Behandlung',
+                screenshot3_caption: '🗂️ Nachweisregister mit EVD-####-Kennungen',
+                screenshot4_caption: '🛠️ Sanierungsplan — Maßnahmen, Meilensteine und gewichteter Fortschritt',
+                contact_title: 'Möchten Sie mehr erfahren?',
+                contact_sub: 'Fordern Sie Informationen zu AuditSym an oder nehmen Sie direkt Kontakt auf.',
+                contact_name_label: 'Name',
+                contact_email_label: 'Geschäftliche E-Mail',
+                contact_company_label: 'Unternehmen',
+                contact_message_label: 'Nachricht',
+                contact_submit_btn: 'Anfrage senden →',
+                contact_sending_btn: 'Wird gesendet...',
+                contact_success_title: 'Nachricht erfolgreich gesendet!',
+                contact_success_desc: 'Danke für Ihr Interesse an AuditSym. Wir melden uns in Kürze bei Ihnen.',
+                contact_success_linkedin: '💼 In der Zwischenzeit, vernetzen Sie sich auf LinkedIn',
+                contact_error_prefix: 'Beim Senden des Formulars ist ein Problem aufgetreten: ',
+                contact_network_error: 'Verbindungsfehler. Bitte versuchen Sie es später erneut.',
+                footer_contact: 'Kontakt',
                 tagline: '<strong>KI-gestützte</strong> Cybersicherheits-Audit-Plattform',
                 badge_ai: 'Lokale KI',
                 badge_secure: 'Sichere Daten',
@@ -1058,22 +1473,22 @@
                 btn_learn_sub: 'Entdecken Sie den Ablauf',
                 scroll_desc: 'Entdecken Sie wie es funktioniert',
                 flow_title: 'Der vollständige Audit-Ablauf',
-                flow_sub: 'AuditSym deckt den gesamten Lebenszyklus ab: von der Bewertung bis zur Sanierung und kontinuierlichen Verbesserung.',
+                flow_sub: 'AuditSym verbindet Bewertung, Feststellungen, Management-Antwort und Sanierung in einem nachvollziehbaren Workflow, mit Follow-up & Verifizierung als nächstem Meilenstein.',
                 flow1_title: '1. Audit',
                 flow1_desc: 'Bewertet Kontrollen nach NIST, ISO, CIS oder COBIT. Weist Risiken zu, dokumentiert Nachweise und generiert Feststellungen.',
                 flow1_link: '→ Zum Audit',
                 flow2_title: '2. Sanierung',
                 flow2_desc: 'Das Unternehmen erhält Feststellungen, priorisiert Maßnahmen, weist Verantwortliche zu, setzt den Korrekturplan um, stellt Nachweise bereit und reicht ihn zur Prüfung ein.',
                 flow2_link: '→ Zur Sanierung',
-                flow3_title: '3. Kontinuierliche Verbesserung',
-                flow3_desc: 'Visualisiert die Entwicklung Jahr für Jahr. Zeigt die Verbesserung der Sicherheit mit historischen Daten.',
-                flow3_link: '→ Mehr entdecken',
+                flow3_title: '3. Follow-up & Verifizierung',
+                flow3_desc: 'Unabhängige Nachprüfung, Verifizierungsnachweise und die formelle Schließung der Feststellung bilden den nächsten Meilenstein im AuditSym-Lebenszyklus.',
+                flow3_link: '→ Roadmap ansehen',
                 features_title: 'Warum AuditSym?',
                 features_sub: 'Entwickelt für Auditoren, die Klarheit brauchen, nicht Komplexität.',
                 f1_title: 'Multi-Framework',
                 f1_desc: 'NIST CSF 2.0, ISO 27001, CIS Controls v8, COBIT 2019 — alle auf das Secure Controls Framework abgebildet.',
-                f2_title: 'Lokale KI',
-                f2_desc: 'Die gesamte KI läuft lokal. Keine Daten verlassen Ihren Rechner. Kompatibel mit Ollama, OpenAI oder Groq.',
+                f2_title: 'Lokale KI oder Optional Cloud',
+                f2_desc: 'Ollama ermöglicht vollständig lokale KI. OpenAI, Anthropic, Groq und OpenRouter sind optionale Cloud-Anbieter, die der Nutzer explizit konfiguriert.',
                 f3_title: 'Priorisierungsmatrix',
                 f3_desc: 'Quick Wins zuerst — höchste Auswirkung, am einfachsten zu lösen. Visuelle Priorisierung.',
                 f4_title: 'Historische Entwicklung',
@@ -1081,7 +1496,7 @@
                 f5_title: '7 Sprachen',
                 f5_desc: 'ES, EN, FR, DE, PT, AR, ZH — entwickelt für globale Teams.',
                 f6_title: 'Lokal zuerst',
-                f6_desc: 'Alle Daten bleiben in Ihrem Browser. Exportieren Sie nach JSON, importieren Sie bei Bedarf.',
+                f6_desc: 'Auditdaten bleiben standardmäßig lokal im Browser gespeichert. Bei Bedarf per JSON exportieren und importieren. Kein Backend erforderlich.',
                 footer_text: '© 2026 AuditSym — Mit ❤️ für Sicherheitsauditoren. Alle Daten bleiben lokal.',
                 footer_audit: 'Audit',
                 footer_remediation: 'Sanierung',
@@ -1091,6 +1506,43 @@
                 nav_features: 'Funcionalidades',
                 btn_start: '🚀 Começar',
                 brand_tagline: 'Plataforma GRC com IA',
+                problem_title: 'O problema das auditorias atuais',
+                problem_sub: 'E como a AuditSym transforma complexidade em clareza.',
+                problem_col_problem: '❌ O Problema Comum',
+                problem_col_solution: '✅ A Solução AuditSym',
+                problem_row1_problem: 'Fluxos de GRC hospedados na nuvem podem exigir que dados sensíveis saiam do ambiente local',
+                problem_row1_solution: '<strong>Local-First por design.</strong> Dados de auditoria e evidências permanecem locais por padrão. O Ollama permite IA totalmente local; provedores em nuvem são opcionais e configurados explicitamente.',
+                problem_row2_problem: 'Avaliações isoladas por framework',
+                problem_row2_solution: '<strong>Multi-Framework</strong> — NIST, ISO, CIS e COBIT sobre um catálogo de controles unificado',
+                problem_row3_problem: 'Auditorias manuais baseadas em planilhas',
+                problem_row3_solution: '<strong>🧠 IA como Copiloto</strong> — Sugere pontuações e rascunhos, mas o auditor toma a decisão final',
+                problem_row4_problem: 'Sem priorização de achados',
+                problem_row4_solution: '<strong>Matriz de Prioridade</strong> — Quick Wins primeiro (Impacto vs Esforço)',
+                problem_row5_problem: 'Sem acompanhamento histórico',
+                problem_row5_solution: '<strong>Evolução Anual</strong> — Demonstra a melhoria contínua com dados',
+                problem_row6_problem: 'Evidência de auditoria indistinguível da evidência de remediação',
+                problem_row6_solution: '<strong>Dois registros separados</strong> — evidência de origem (<code>EVD-####</code>) e evidência de implementação (<code>REM-EVD-####</code>), nenhum reutiliza um ID retirado',
+                screenshots_title: 'A interface em ação',
+                screenshots_sub: 'Veja a AuditSym funcionando com frameworks reais',
+                screenshots_note: 'Projetada para fluxos reais de auditoria de cibersegurança.',
+                screenshot1_caption: '📝 Vista de Trabalho — avaliação de controles durante horas de auditoria',
+                screenshot2_caption: '✅ Achado com confirmação, contestação e tratamento formal',
+                screenshot3_caption: '🗂️ Registro de Evidências com identificadores EVD-####',
+                screenshot4_caption: '🛠️ Plano de Remediação — ações, marcos e progresso ponderado',
+                contact_title: 'Quer saber mais?',
+                contact_sub: 'Solicite informações sobre a AuditSym ou conecte-se diretamente.',
+                contact_name_label: 'Nome',
+                contact_email_label: 'Email corporativo',
+                contact_company_label: 'Empresa',
+                contact_message_label: 'Mensagem',
+                contact_submit_btn: 'Enviar solicitação →',
+                contact_sending_btn: 'Enviando...',
+                contact_success_title: 'Mensagem enviada com sucesso!',
+                contact_success_desc: 'Obrigado pelo seu interesse na AuditSym. Responderemos em breve.',
+                contact_success_linkedin: '💼 Enquanto isso, conecte-se no LinkedIn',
+                contact_error_prefix: 'Houve um problema ao enviar o formulário: ',
+                contact_network_error: 'Erro de conexão. Tente novamente mais tarde.',
+                footer_contact: 'Contato',
                 tagline: '<strong>Assistida por IA</strong> plataforma de auditoria de cibersegurança',
                 badge_ai: 'IA Local',
                 badge_secure: 'Dados seguros',
@@ -1105,22 +1557,22 @@
                 btn_learn_sub: 'Descubra o fluxo',
                 scroll_desc: 'Descubra como funciona',
                 flow_title: 'O fluxo completo de Auditoria',
-                flow_sub: 'AuditSym cobre todo o ciclo de vida: da avaliação à remediação e melhoria contínua.',
+                flow_sub: 'AuditSym conecta avaliação, achados, resposta de gestão e remediação em um fluxo rastreável, com Follow-up e Verificação como próximo marco.',
                 flow1_title: '1. Auditoria',
                 flow1_desc: 'Avalia controles contra NIST, ISO, CIS ou COBIT. Atribui riscos, documenta evidências e gera achados.',
                 flow1_link: '→ Ir para Auditoria',
                 flow2_title: '2. Remediação',
                 flow2_desc: 'A empresa recebe os achados, prioriza ações, atribui responsáveis, executa o plano corretivo, fornece evidências e o submete para verificação.',
                 flow2_link: '→ Ir para Remediação',
-                flow3_title: '3. Melhoria Contínua',
-                flow3_desc: 'Visualiza a evolução ano após ano. Demonstra a melhoria da segurança com dados históricos.',
-                flow3_link: '→ Descobrir mais',
+                flow3_title: '3. Follow-up e Verificação',
+                flow3_desc: 'O reteste independente, a evidência de verificação e o encerramento formal do achado formam o próximo marco do ciclo de vida da AuditSym.',
+                flow3_link: '→ Ver Roadmap',
                 features_title: 'Porquê AuditSym?',
                 features_sub: 'Construído para auditores que precisam de clareza, não complexidade.',
                 f1_title: 'Multi-Framework',
                 f1_desc: 'NIST CSF 2.0, ISO 27001, CIS Controls v8, COBIT 2019 — todos mapeados para o Secure Controls Framework.',
-                f2_title: 'IA Local',
-                f2_desc: 'Toda a IA corre localmente. Nenhum dado sai da sua máquina. Compatível com Ollama, OpenAI ou Groq.',
+                f2_title: 'IA Local ou Opcionalmente Cloud',
+                f2_desc: 'O Ollama permite executar a IA totalmente em local. OpenAI, Anthropic, Groq e OpenRouter são provedores cloud opcionais que o usuário configura explicitamente.',
                 f3_title: 'Matriz de Priorização',
                 f3_desc: 'Quick Wins primeiro — maior impacto, mais fáceis de resolver. Priorização visual.',
                 f4_title: 'Evolução Histórica',
@@ -1128,7 +1580,7 @@
                 f5_title: '7 Idiomas',
                 f5_desc: 'ES, EN, FR, DE, PT, AR, ZH — construído para equipas globais.',
                 f6_title: 'Local First',
-                f6_desc: 'Todos os dados ficam no seu navegador. Exporte para JSON, importe quando necessário.',
+                f6_desc: 'Os dados de auditoria permanecem localmente no navegador por padrão. Exporte e importe via JSON quando necessário. Sem backend necessário.',
                 footer_text: '© 2026 AuditSym — Feito com ❤️ para auditores de segurança. Todos os dados ficam locais.',
                 footer_audit: 'Auditoria',
                 footer_remediation: 'Remediação',
@@ -1138,6 +1590,43 @@
                 nav_features: 'المميزات',
                 btn_start: '🚀 ابدأ',
                 brand_tagline: 'منصة حوكمة ومخاطر وامتثال مدعومة بالذكاء الاصطناعي',
+                problem_title: 'مشكلة عمليات التدقيق الحالية',
+                problem_sub: 'وكيف تحول AuditSym التعقيد إلى وضوح.',
+                problem_col_problem: '❌ المشكلة الشائعة',
+                problem_col_solution: '✅ حل AuditSym',
+                problem_row1_problem: 'قد تتطلب سير عمل GRC المستضافة في السحابة مغادرة بيانات التدقيق الحساسة للبيئة المحلية',
+                problem_row1_solution: '<strong>محلي أولاً حسب التصميم.</strong> تبقى بيانات التدقيق والأدلة محلية افتراضيًا. يتيح Ollama ذكاءً اصطناعيًا محليًا بالكامل؛ ومزودو السحابة اختياريون ويتم تكوينهم صراحةً.',
+                problem_row2_problem: 'تقييمات معزولة حسب الإطار',
+                problem_row2_solution: '<strong>متعدد الأطر</strong> — NIST وISO وCIS وCOBIT على كتالوج ضوابط موحد',
+                problem_row3_problem: 'عمليات تدقيق يدوية تعتمد على جداول البيانات',
+                problem_row3_solution: '<strong>🧠 الذكاء الاصطناعي كمساعد</strong> — يقترح الدرجات والمسودات، لكن المدقق يتخذ القرار النهائي',
+                problem_row4_problem: 'لا يوجد ترتيب أولويات للملاحظات',
+                problem_row4_solution: '<strong>مصفوفة الأولويات</strong> — المكاسب السريعة أولاً (التأثير مقابل الجهد)',
+                problem_row5_problem: 'لا يوجد تتبع تاريخي',
+                problem_row5_solution: '<strong>التطور السنوي</strong> — يوضح التحسن المستمر بالبيانات',
+                problem_row6_problem: 'دليل التدقيق لا يمكن تمييزه عن دليل المعالجة',
+                problem_row6_solution: '<strong>سجلان منفصلان</strong> — دليل المصدر (<code>EVD-####</code>) ودليل التنفيذ (<code>REM-EVD-####</code>)، ولا يعيد أي منهما استخدام معرف تم سحبه',
+                screenshots_title: 'الواجهة أثناء العمل',
+                screenshots_sub: 'شاهد AuditSym تعمل مع أطر عمل حقيقية',
+                screenshots_note: 'مصممة لسير عمل حقيقي لتدقيق الأمن السيبراني.',
+                screenshot1_caption: '📝 عرض العمل — تقييم الضوابط خلال ساعات العمل الميداني للتدقيق',
+                screenshot2_caption: '✅ ملاحظة مع التأكيد والاعتراض والمعالجة الرسمية',
+                screenshot3_caption: '🗂️ سجل الأدلة بمعرّفات EVD-####',
+                screenshot4_caption: '🛠️ خطة المعالجة — الإجراءات والمعالم والتقدم الموزون',
+                contact_title: 'هل تريد معرفة المزيد؟',
+                contact_sub: 'اطلب معلومات حول AuditSym أو تواصل مباشرة.',
+                contact_name_label: 'الاسم',
+                contact_email_label: 'البريد الإلكتروني للشركة',
+                contact_company_label: 'الشركة',
+                contact_message_label: 'الرسالة',
+                contact_submit_btn: '← إرسال الطلب',
+                contact_sending_btn: 'جارٍ الإرسال...',
+                contact_success_title: 'تم إرسال الرسالة بنجاح!',
+                contact_success_desc: 'شكرًا لاهتمامك بـ AuditSym. سنرد عليك في أقرب وقت.',
+                contact_success_linkedin: '💼 في هذه الأثناء، تواصل عبر LinkedIn',
+                contact_error_prefix: 'حدثت مشكلة أثناء إرسال النموذج: ',
+                contact_network_error: 'خطأ في الاتصال. يرجى المحاولة مرة أخرى لاحقًا.',
+                footer_contact: 'اتصل بنا',
                 tagline: '<strong>مدعومة بالذكاء الاصطناعي</strong> منصة تدقيق الأمن السيبراني',
                 badge_ai: 'ذكاء اصطناعي محلي',
                 badge_secure: 'بيانات آمنة',
@@ -1152,22 +1641,22 @@
                 btn_learn_sub: 'اكتشف سير العمل',
                 scroll_desc: 'اكتشف كيف يعمل',
                 flow_title: 'دورة التدقيق الكاملة',
-                flow_sub: 'يغطي AuditSym دورة الحياة الكاملة: من التقييم إلى المعالجة والتحسين المستمر.',
+                flow_sub: 'يربط AuditSym بين التقييم والملاحظات واستجابة الإدارة والمعالجة في سير عمل قابل للتتبع، مع اعتبار المتابعة والتحقق المرحلة التالية.',
                 flow1_title: '1. التدقيق',
                 flow1_desc: 'قيّم الضوابط مقابل NIST أو ISO أو CIS أو COBIT. حدد المخاطر، وثّق الأدلة، وأنشئ الملاحظات.',
                 flow1_link: '→ الانتقال إلى التدقيق',
                 flow2_title: '2. المعالجة',
                 flow2_desc: 'تستلم المؤسسة الملاحظات، تحدد أولويات الإجراءات، تعيّن المسؤولين، تنفذ خطة المعالجة، توفر الأدلة، وتقدمها للتحقق.',
                 flow2_link: '→ الانتقال إلى المعالجة',
-                flow3_title: '3. التحسين المستمر',
-                flow3_desc: 'تصور التطور عامًا بعد عام. أظهر تحسن الأمان بالبيانات التاريخية.',
-                flow3_link: '→ اكتشف المزيد',
+                flow3_title: '3. المتابعة والتحقق',
+                flow3_desc: 'تشكل إعادة الاختبار المستقلة وأدلة التحقق والإغلاق الرسمي للملاحظة المرحلة التالية في دورة حياة AuditSym.',
+                flow3_link: '→ عرض خارطة الطريق',
                 features_title: 'لماذا AuditSym؟',
                 features_sub: 'مصمم للمدققين الذين يحتاجون إلى الوضوح، لا التعقيد.',
                 f1_title: 'متعدد الأطر',
                 f1_desc: 'NIST CSF 2.0 و ISO 27001 و CIS Controls v8 و COBIT 2019 — جميعها مرتبطة بإطار Secure Controls Framework.',
-                f2_title: 'ذكاء اصطناعي محلي',
-                f2_desc: 'يعمل الذكاء الاصطناعي بالكامل محليًا. لا تغادر أي بيانات جهازك. متوافق مع Ollama و OpenAI و Groq.',
+                f2_title: 'ذكاء اصطناعي محلي أو سحابي اختياريًا',
+                f2_desc: 'يتيح Ollama تشغيل الذكاء الاصطناعي محليًا بالكامل. أما OpenAI وAnthropic وGroq وOpenRouter فهي مزودات سحابية اختيارية يقوم المستخدم بتكوينها صراحةً.',
                 f3_title: 'مصفوفة الأولويات',
                 f3_desc: 'المكاسب السريعة أولاً — أعلى تأثير وأسهل حلاً. ترتيب أولويات بصري لقرارات أفضل.',
                 f4_title: 'التطور التاريخي',
@@ -1175,7 +1664,7 @@
                 f5_title: '7 لغات',
                 f5_desc: 'ES وEN وFR وDE وPT وAR وZH — مصمم للفرق العالمية والعملاء الدوليين.',
                 f6_title: 'المحلي أولاً',
-                f6_desc: 'تبقى جميع البيانات في متصفحك. صدّر إلى JSON، واستورد عند الحاجة. بدون سحابة، بدون اشتراك.',
+                f6_desc: 'تبقى بيانات التدقيق محلية في المتصفح افتراضيًا. صدّر واستورد عبر JSON عند الحاجة. لا حاجة لخادم خلفي.',
                 footer_text: '© 2026 AuditSym — صُنع بـ ❤️ لمدققي الأمن. تبقى جميع البيانات محلية.',
                 footer_audit: 'التدقيق',
                 footer_remediation: 'المعالجة',
@@ -1185,6 +1674,43 @@
                 nav_features: '功能特性',
                 btn_start: '🚀 开始使用',
                 brand_tagline: 'AI 驱动的 GRC 平台',
+                problem_title: '当今审计工作流程的问题',
+                problem_sub: 'AuditSym 如何将复杂性转化为清晰度。',
+                problem_col_problem: '❌ 常见问题',
+                problem_col_solution: '✅ AuditSym 的解决方案',
+                problem_row1_problem: '基于云的 GRC 工作流程可能要求敏感审计数据离开本地环境',
+                problem_row1_solution: '<strong>设计上本地优先。</strong> 审计数据和证据默认保留在本地。Ollama 支持完全本地化的 AI；云服务提供商是可选的，需要明确配置。',
+                problem_row2_problem: '按框架孤立评估',
+                problem_row2_solution: '<strong>多框架</strong> — NIST、ISO、CIS 和 COBIT 基于统一的控制目录',
+                problem_row3_problem: '基于电子表格的手动审计',
+                problem_row3_solution: '<strong>🧠 AI 作为副驾驶</strong> — 建议评分和草稿，但由审计员做出最终决定',
+                problem_row4_problem: '没有发现问题优先级排序',
+                problem_row4_solution: '<strong>优先级矩阵</strong> — 快速见效项优先（影响 vs 工作量）',
+                problem_row5_problem: '没有历史跟踪',
+                problem_row5_solution: '<strong>年度演变</strong> — 用数据展示持续改进',
+                problem_row6_problem: '审计证据与整改证据无法区分',
+                problem_row6_solution: '<strong>两个独立的登记册</strong> — 来源证据（<code>EVD-####</code>）和实施证据（<code>REM-EVD-####</code>），两者都不会重复使用已撤回的 ID',
+                screenshots_title: '界面实际运行效果',
+                screenshots_sub: '查看 AuditSym 如何处理真实框架',
+                screenshots_note: '为真实的网络安全审计工作流程而设计。',
+                screenshot1_caption: '📝 工作视图 — 数小时审计现场工作中的控制评估',
+                screenshot2_caption: '✅ 包含确认、争议和正式处理的发现问题',
+                screenshot3_caption: '🗂️ 带有 EVD-#### 标识符的证据登记册',
+                screenshot4_caption: '🛠️ 整改计划 — 措施、里程碑和加权进度',
+                contact_title: '想了解更多吗？',
+                contact_sub: '请求有关 AuditSym 的信息或直接联系我们。',
+                contact_name_label: '姓名',
+                contact_email_label: '公司邮箱',
+                contact_company_label: '公司',
+                contact_message_label: '留言',
+                contact_submit_btn: '发送请求 →',
+                contact_sending_btn: '发送中...',
+                contact_success_title: '消息发送成功！',
+                contact_success_desc: '感谢您对 AuditSym 的关注。我们会尽快回复您。',
+                contact_success_linkedin: '💼 与此同时，欢迎在 LinkedIn 上联系',
+                contact_error_prefix: '提交表单时出现问题：',
+                contact_network_error: '连接错误，请稍后重试。',
+                footer_contact: '联系方式',
                 tagline: '<strong>AI 辅助</strong>网络安全审计平台',
                 badge_ai: '本地 AI',
                 badge_secure: '数据安全',
@@ -1199,22 +1725,22 @@
                 btn_learn_sub: '探索工作流程',
                 scroll_desc: '了解它是如何工作的',
                 flow_title: '完整的审计流程',
-                flow_sub: 'AuditSym 覆盖整个生命周期：从评估到整改再到持续改进。',
+                flow_sub: 'AuditSym 将评估、发现问题、管理层响应和整改连接在一个可追溯的工作流程中，后续跟进与验证是下一个里程碑。',
                 flow1_title: '1. 审计',
                 flow1_desc: '根据 NIST、ISO、CIS 或 COBIT 评估控制项。评定风险、记录证据并生成发现问题。',
                 flow1_link: '→ 前往审计',
                 flow2_title: '2. 整改',
                 flow2_desc: '企业接收发现问题，对措施进行优先级排序，指派负责人，执行整改计划，提供证据，并将其提交验证。',
                 flow2_link: '→ 前往整改',
-                flow3_title: '3. 持续改进',
-                flow3_desc: '逐年可视化安全态势的演变，用历史数据证明安全性的持续提升。',
-                flow3_link: '→ 了解更多',
+                flow3_title: '3. 后续跟进与验证',
+                flow3_desc: '独立重新测试、验证证据和正式关闭发现问题构成了 AuditSym 生命周期的下一个里程碑。',
+                flow3_link: '→ 查看路线图',
                 features_title: '为什么选择 AuditSym？',
                 features_sub: '为需要清晰而非复杂的审计人员而构建。',
                 f1_title: '多框架支持',
                 f1_desc: 'NIST CSF 2.0、ISO 27001、CIS Controls v8、COBIT 2019 — 全部映射到统一安全控制框架（SCF）。',
-                f2_title: '本地 AI',
-                f2_desc: '所有 AI 均在本地运行，数据不会离开您的设备。兼容 Ollama、OpenAI 或 Groq。',
+                f2_title: '本地 AI 或可选云端',
+                f2_desc: 'Ollama 支持完全本地化运行 AI。OpenAI、Anthropic、Groq 和 OpenRouter 是用户需明确配置的可选云服务提供商。',
                 f3_title: '优先级矩阵',
                 f3_desc: '快速见效项优先 — 影响最大、最易解决的问题优先处理，可视化优先级排序帮助做出更好的决策。',
                 f4_title: '历史演变',
@@ -1222,7 +1748,7 @@
                 f5_title: '7 种语言',
                 f5_desc: 'ES、EN、FR、DE、PT、AR、ZH — 专为全球团队和国际客户打造。',
                 f6_title: '本地优先',
-                f6_desc: '所有数据都保存在您的浏览器中。可导出为 JSON，需要时再导入。无需云端，无需订阅。',
+                f6_desc: '默认情况下审计数据保留在浏览器本地。需要时可通过 JSON 导出和导入。无需后端。',
                 footer_text: '© 2026 AuditSym — 为安全审计人员用 ❤️ 打造。所有数据均保留在本地。',
                 footer_audit: '审计',
                 footer_remediation: '整改',
@@ -1285,6 +1811,44 @@
                     }
                 });
             });
+
+            // Contact form — same Formspree endpoint already live on
+            // auditsym.com's static page, adapted to use this page's own
+            // translation system instead of fixed Spanish text.
+            const contactForm = document.getElementById('contactForm');
+            const contactSubmitBtn = document.getElementById('contact-submit-btn');
+            const contactSuccess = document.getElementById('contact-success');
+            if (contactForm) {
+                contactForm.addEventListener('submit', async function(event) {
+                    event.preventDefault();
+                    const originalBtnText = contactSubmitBtn.innerHTML;
+                    contactSubmitBtn.disabled = true;
+                    contactSubmitBtn.textContent = translations[currentLang]?.contact_sending_btn || translations.en.contact_sending_btn;
+
+                    const data = new FormData(contactForm);
+                    try {
+                        const response = await fetch(contactForm.action, {
+                            method: contactForm.method,
+                            body: data,
+                            headers: { 'Accept': 'application/json' }
+                        });
+                        if (response.ok) {
+                            contactForm.style.display = 'none';
+                            contactSuccess.classList.add('visible');
+                            contactForm.reset();
+                        } else {
+                            const errorData = await response.json().catch(() => null);
+                            alert((translations[currentLang]?.contact_error_prefix || translations.en.contact_error_prefix) + (errorData?.errors ? errorData.errors.map(e => e.message).join(', ') : ''));
+                            contactSubmitBtn.innerHTML = originalBtnText;
+                            contactSubmitBtn.disabled = false;
+                        }
+                    } catch (err) {
+                        alert(translations[currentLang]?.contact_network_error || translations.en.contact_network_error);
+                        contactSubmitBtn.innerHTML = originalBtnText;
+                        contactSubmitBtn.disabled = false;
+                    }
+                });
+            }
         });
     </script>
 

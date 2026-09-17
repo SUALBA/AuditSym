@@ -1787,6 +1787,68 @@ async function main() {
       await page.close(); await ctx.close();
     }
 
+    // ═══════════════════════════════════════════════════════════════════
+    section('25. Data-loss protection — dirty tracking, silent auto-save, and beforeunload');
+    // The Hub previously had neither an auto-save timer nor a
+    // beforeunload warning at all, unlike the audit engine which has
+    // both. Most fields already save immediately via their own onchange
+    // handler, so the real gap this covers is the field currently being
+    // typed into (onchange only fires on blur) and a tab closed before
+    // that happens.
+    {
+      const ctx = await browser.newContext();
+      const page = await newPage(browser, ctx);
+      const mrFn = () => ({
+        validationStatus: null, treatment: null, disputeReason: '', disputeEvidence: '', auditorAdjudication: '',
+        responder: '', responderRole: '', responseDate: '', source: 'manual_entry', receivedVia: '', comments: '', treatmentOwner: '', treatmentOwnerRole: '', riskAcceptance: null
+      });
+      await page.evaluate((mr) => {
+        const f = { id: 'F1', managementResponse: mr, controlCode: 'GOV-01', controlName: 'Governance Program', reason: 'x' };
+        normalizeFinding(f);
+        state.findings = [f]; state.activeAuditId = 'TEST-25'; state.auditData = { id: 'TEST-25' };
+        showWorkspace(); renderAll(); selectFinding('F1');
+      }, mrFn());
+      await page.waitForTimeout(150);
+
+      const isDirtyAfterInput = await page.evaluate(() => {
+        const ownerInput = document.querySelector('input[onchange*="owner"]');
+        ownerInput.value = 'Ana Torres (mid-typing)';
+        ownerInput.dispatchEvent(new Event('input', { bubbles: true }));
+        return state.isDirty;
+      });
+      check('Typing into a field (input event, before it loses focus / fires onchange) marks state.isDirty', isDirtyAfterInput === true);
+
+      const preventedWhileDirty = await page.evaluate(() => {
+        const ev = new Event('beforeunload', { cancelable: true });
+        window.dispatchEvent(ev);
+        return ev.defaultPrevented;
+      });
+      check('beforeunload calls preventDefault() (native "unsaved changes" warning) while isDirty is true', preventedWhileDirty === true);
+
+      await page.evaluate(() => { saveActiveAuditToStorage(); showAutoSaveToast(); });
+      await page.waitForTimeout(100);
+      check('isDirty is cleared after saveActiveAuditToStorage() — the one place every save path funnels through', await page.evaluate(() => state.isDirty) === false);
+
+      const persisted = await page.evaluate(() => {
+        const key = buildStorageKey('TEST-25');
+        const raw = localStorage.getItem(`hub_findings_${key}`);
+        return raw ? JSON.parse(raw) : null;
+      });
+      check('Work was actually persisted to localStorage by the background save', persisted !== null && persisted.length === 1);
+
+      const toastText = await page.evaluate(() => document.getElementById('autosave-toast')?.textContent);
+      check('A non-blocking toast confirms the save (no interrupting native alert)', !!toastText && toastText.includes('✅'));
+
+      const preventedAfterSave = await page.evaluate(() => {
+        const ev = new Event('beforeunload', { cancelable: true });
+        window.dispatchEvent(ev);
+        return ev.defaultPrevented;
+      });
+      check('beforeunload no longer warns once everything is saved (isDirty is false)', preventedAfterSave === false);
+
+      await page.close(); await ctx.close();
+    }
+
   } finally {
     await browser.close();
     server.close();
