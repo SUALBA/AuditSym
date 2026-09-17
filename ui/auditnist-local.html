@@ -3413,7 +3413,7 @@ function approveRole(roleKey) {
     decisionAt: new Date().toISOString(), version, comment: ''
   };
   logApprovalEvent(name, orgRole, roleKey === 'reviewer' ? 'review_approved' : 'final_approval_granted', version,
-    roleKey === 'reviewer' ? 'Revisión metodológica completada' : 'Aprobación final para emisión');
+    roleKey === 'reviewer' ? pdfL('Revisión metodológica completada', 'Methodological review completed') : pdfL('Aprobación final para emisión', 'Final approval for issuance'));
   isDirty = true;
   renderApprovalTable();
 }
@@ -3457,7 +3457,7 @@ function revokeApproval(roleKey) {
   const version = document.getElementById('doc_version')?.value?.trim() || '';
   const prevApproval = approvals[roleKey];
   approvals[roleKey] = { required: true, status: 'revoked', name: prevApproval.name, role: prevApproval.role, decisionAt: new Date().toISOString(), version, comment: reason.trim() };
-  logApprovalEvent(revokerName.trim(), T('approval_revoker_role_generic'), 'approval_revoked', version, `${reason.trim()} (revocado por: ${revokerName.trim()}; aprobación original de: ${prevApproval.name})`);
+  logApprovalEvent(revokerName.trim(), T('approval_revoker_role_generic'), 'approval_revoked', version, pdfL(`${reason.trim()} (revocado por: ${revokerName.trim()}; aprobación original de: ${prevApproval.name})`, `${reason.trim()} (revoked by: ${revokerName.trim()}; original approval by: ${prevApproval.name})`));
   isDirty = true;
   renderApprovalTable();
 }
@@ -3481,7 +3481,7 @@ function checkApprovalInvalidation(roleKey) {
   // name matches.
   if (!samePerson(currentName, a.name) || currentRole !== (a.role || '').trim()) {
     const version = document.getElementById('doc_version')?.value?.trim() || '';
-    logApprovalEvent('system', 'system', 'approval_revoked', version, `Reasignado de "${a.name} (${a.role})" a "${currentName} (${currentRole})"`);
+    logApprovalEvent('system', 'system', 'approval_revoked', version, pdfL(`Reasignado de "${a.name} (${a.role})" a "${currentName} (${currentRole})"`, `Reassigned from "${a.name} (${a.role})" to "${currentName} (${currentRole})"`));
     approvals[roleKey] = { required: true, status: 'revoked', name: a.name, role: a.role, decisionAt: new Date().toISOString(), version, comment: T('approval_auto_revoked_reason') };
     isDirty = true;
     renderApprovalTable();
@@ -3815,7 +3815,7 @@ function reopenForNewVersion() {
   // starts with fresh pending decisions, never inheriting old ones.
   ['reviewer', 'approver'].forEach(roleKey => {
     if (approvals[roleKey].status === 'approved') {
-      logApprovalEvent(approvals[roleKey].name, approvals[roleKey].role, 'approvals_superseded', oldVersion, `Superada al reabrir para nueva versión (reabierto por ${reopenerName.trim()}): ${reason.trim()}`);
+      logApprovalEvent(approvals[roleKey].name, approvals[roleKey].role, 'approvals_superseded', oldVersion, pdfL(`Superada al reabrir para nueva versión (reabierto por ${reopenerName.trim()}): ${reason.trim()}`, `Superseded on reopening for a new version (reopened by ${reopenerName.trim()}): ${reason.trim()}`));
       approvals[roleKey] = { ...approvals[roleKey], status: 'superseded' };
     }
   });
@@ -4270,7 +4270,7 @@ function issueFinalReport() {
     });
   }
   renderVersionHistoryRows();
-  logApprovalEvent(document.getElementById('doc_author')?.value || '', T('approval_role_prepared'), 'report_issued', versionToIssue, 'Informe emitido');
+  logApprovalEvent(document.getElementById('doc_author')?.value || '', T('approval_role_prepared'), 'report_issued', versionToIssue, pdfL('Informe emitido', 'Report issued'));
 
   // Derive findings fresh from the current controls at the moment of issue,
   // ignoring any earlier snapshot (re-issuing must re-capture, not replay).
@@ -4792,6 +4792,11 @@ function registerReportFont(doc) {
 
 function pdfSafe(str) {
   if (str === null || str === undefined) return '';
+  // Report i18n: translate whole static strings (ES source -> EN/other) before
+  // any splitTextToSize/doc.text render path strips or wraps them. pdfT is a
+  // no-op for currentLang==='es' and for strings not in the map, so this is safe
+  // on dynamic/user content and idempotent when txt() already ran pdfT.
+  if (typeof pdfT === 'function') str = pdfT(str);
   return String(str)
     .replace(/[\u{1F1E6}-\u{1F1FF}]/gu, '')
     .replace(/[\u{1F300}-\u{1FAFF}]/gu, '')
@@ -5563,6 +5568,138 @@ function generatePriorityRecommendationsSync(stats) {
 // (engagement, controls, id/company/auditor/scope), never from the DOM;
 // when omitted, behavior is unchanged from before (reads the live form,
 // exactly as "Generar PDF" always has).
+// ── PDF report i18n (ES source -> EN; other langs fall back to EN) ──────────
+const PDF_ES2EN = {
+  'Informe de Auditoría de Ciberseguridad': 'Cybersecurity Audit Report',
+  'Índice de Contenidos': 'Table of Contents',
+  'Resumen Ejecutivo': 'Executive Summary',
+  'Alcance, Metodología y Limitaciones': 'Scope, Methodology & Limitations',
+  '2. Alcance, Metodología y Limitaciones': '2. Scope, Methodology & Limitations',
+  'Evaluación Final': 'Final Assessment',
+  '3. Evaluación Final': '3. Final Assessment',
+  'Detalle Técnico por Dominio': 'Technical Detail by Domain',
+  '4. Detalle Técnico por Dominio': '4. Technical Detail by Domain',
+  'Anexo · Evidencia Detallada': 'Annex · Detailed Evidence',
+  'Historial de Versiones': 'Version History',
+  'Hallazgos No Conformes por Criticidad': 'Non-Compliant Findings by Criticality',
+  'FIN DEL INFORME': 'END OF REPORT',
+  'Sin datos': 'No data',
+  '  · AI-Assisted GRC': '  · AI-Assisted GRC',
+  'ID de Auditoría': 'Audit ID',
+  'Clasificación': 'Classification',
+  'Versión': 'Version',
+  'Estado': 'Status',
+  'Propietario del Documento': 'Document Owner',
+  'Autor': 'Author',
+  'Revisor': 'Reviewer',
+  'Aprobador': 'Approver',
+  'Destinatarios Autorizados': 'Authorized Recipients',
+  'Fecha Real de Emisión': 'Actual Issuance Date',
+  'Fecha de Auditoría': 'Audit Date',
+  'Copia Generada': 'Copy Generated',
+  'Pendiente de emisión': 'Pending issuance',
+  'Borrador': 'Draft',
+  'Emitido': 'Issued',
+  'CONFIDENCIAL': 'CONFIDENTIAL',
+  'PÚBLICO': 'PUBLIC',
+  'Superada (versión anterior)': 'Superseded (previous version)',
+  'Primera versión emitida de este informe; no hay revisiones previas registradas.': 'First issued version of this report; no prior revisions on record.',
+  'Cumple': 'Compliant',
+  'Parcial': 'Partial',
+  'No Cumple': 'Non-Compliant',
+  '% Cumple': '% Compliant',
+  'Crítico': 'Critical',
+  'CRÍTICO': 'CRITICAL',
+  'crítica': 'critical',
+  'Alto': 'High',
+  'Medio': 'Medium',
+  'Bajo': 'Low',
+  'Riesgo': 'Risk',
+  'Riesgo Alto': 'High Risk',
+  'Riesgo Elevado': 'Elevated Risk',
+  'Riesgo por Severidad': 'Risk by Severity',
+  'Sólida': 'Strong',
+  'Alcance Organizativo y Técnico': 'Organizational & Technical Scope',
+  'No se han declarado exclusiones específicas para esta auditoría.': 'No specific exclusions were declared for this audit.',
+  'Criterios de Auditoría': 'Audit Criteria',
+  'Técnica de Auditoría y Muestreo': 'Audit Technique & Sampling',
+  'Entrevistas, revisión documental y pruebas de control sobre la evidencia aportada por la organización auditada.': 'Interviews, documentation review and control testing against the evidence provided by the audited organization.',
+  'Modelo de Puntuación': 'Scoring Model',
+  'Regla de Consolidación': 'Consolidation Rule',
+  'Definición de Resultados': 'Results Definition',
+  'Definición de Criticidad': 'Criticality Definition',
+  'Declaración de Limitaciones': 'Limitations Statement',
+  'Dependencia de Información Proporcionada': 'Reliance on Provided Information',
+  'Postura de seguridad global de la organización (score ponderado) — distinta de la criticidad de un control individual.': 'Overall security posture of the organization (weighted score) — distinct from the criticality of an individual control.',
+  'Riesgo Crítico Principal': 'Principal Critical Risk',
+  'Próximo Paso': 'Next Step',
+  'Punto Fuerte': 'Key Strength',
+  'Mejora Estratégica': 'Strategic Improvement',
+  'Mejoras a Medio Plazo': 'Medium-Term Improvements',
+  'Acciones Inmediatas (0–30 días)': 'Immediate Actions (0-30 days)',
+  'No se identificaron no conformidades críticas o de alto riesgo.': 'No critical or high-risk non-conformities were identified.',
+  'Aún no hay suficientes controles evaluados para identificar un punto fuerte.': 'Not enough controls have been evaluated yet to identify a key strength.',
+  'No procede una recomendación de postura general con la información actual.': 'A general posture recommendation is not applicable with the current information.',
+  'Se requiere aprobación ejecutiva inmediata de un plan de remediación.': 'Immediate executive approval of a remediation plan is required.',
+  'Se recomienda agendar una reunión de Dirección para aprobar el plan de remediación de los hallazgos identificados.': 'A management meeting is recommended to approve the remediation plan for the identified findings.',
+  'La falta de remediación podría aumentar la exposición regulatoria y operativa ante un incidente de seguridad.': 'Failure to remediate could increase regulatory and operational exposure in the event of a security incident.',
+  'El nivel de riesgo residual actual es bajo; se recomienda mantener la monitorización para evitar regresiones de cumplimiento.': 'The current residual risk level is low; continued monitoring is recommended to prevent compliance regressions.',
+  '"Criticidad" indica la importancia del área de control, con independencia de si está o no implementada — un control Cumple + Crítico no es un error: es un control importante que sí funciona.': '"Criticality" indicates the importance of the control area, regardless of whether it is implemented — a Compliant + Critical control is not an error: it is an important control that does work.',
+  'Cumple + Crítico': 'Compliant + Critical',
+  'Este informe se emite sin un flujo formal de revisión o aprobación, de acuerdo con la política seleccionada para este encargo.': 'This report is issued without a formal review or approval workflow, in accordance with the policy selected for this engagement.',
+  'Este informe ha sido autorizado mediante un flujo de aprobación de una sola persona. No se ha realizado una revisión independiente adicional.': 'This report was authorized through a single-approver workflow. No additional independent review was performed.',
+  'La persona que preparó este informe también participa en su aprobación. No se ha realizado una revisión verdaderamente independiente.': 'The person who prepared this report also takes part in its approval. No truly independent review was performed.',
+  'Las aprobaciones registradas en este informe representan el flujo interno de revisión documental de AuditSym. No constituyen firmas electrónicas cualificadas ni acreditan criptográficamente la identidad de quien aprueba.': 'The approvals recorded in this report represent AuditSym\'s internal document-review workflow. They do not constitute qualified electronic signatures, nor do they cryptographically attest the identity of the approver.',
+  'Inspección': 'Inspection',
+  'Observación': 'Observation',
+  'Reejecución': 'Re-performance',
+  'Indagación': 'Inquiry',
+  'Procedimiento Analítico': 'Analytical Procedure',
+  'Exportación de Sistema': 'System Export',
+  '(continuación)': '(continued)',
+  'Objetivo': 'Objective',
+  'Exclusiones': 'Exclusions',
+  'Periodo Evaluado': 'Period Reviewed',
+  'Cobertura de Controles Evaluados': 'Coverage of Evaluated Controls',
+  'Vigencia de las Conclusiones': 'Validity of Conclusions',
+  'No especificado.': 'Not specified.',
+  'Fortalezas': 'Strengths',
+  'Brechas Principales': 'Key Gaps',
+  'Impacto': 'Impact',
+  'Mejora Operativa': 'Operational Improvement',
+  '1. Resumen Ejecutivo': '1. Executive Summary',
+  '5. Anexo I — Evidencia Detallada de Hallazgos': '5. Annex I — Detailed Findings Evidence',
+  '5.1 Controles No Conformes y Parciales': '5.1 Non-Compliant and Partial Controls',
+  '5.2 Controles Conformes': '5.2 Compliant Controls',
+  'Otros Controles': 'Other Controls',
+  'CUMPLIMIENTO': 'COMPLIANCE',
+  'CRITICIDAD': 'CRITICALITY',
+  'CUMPLE': 'COMPLIANT',
+  'NO CUMPLE': 'NON-COMPLIANT',
+  'PARCIAL': 'PARTIAL',
+  'NO APLICABLE': 'NOT APPLICABLE',
+  'ALTO': 'HIGH',
+  'MEDIO': 'MEDIUM',
+  'BAJO': 'LOW',
+  'OTROS': 'OTHER',
+  'Cuando varios controles internos se asignan a un mismo resultado del framework, AuditSym presenta una conclusión consolidada utilizando el estado de cumplimiento y la criticidad más desfavorables de entre los controles agrupados. El anexo conserva la trazabilidad individual de cada control interno y su evidencia, de modo que la fila consolidada nunca oculta información — solo la resume bajo el criterio más exigente.': 'When several internal controls map to the same framework outcome, AuditSym presents a consolidated conclusion using the least favorable compliance status and criticality among the grouped controls. The annex preserves the individual traceability of each internal control and its evidence, so the consolidated row never hides information — it only summarizes it under the strictest criterion.',
+  'Cumple: el control está implementado y operativo según lo esperado. Parcial: el control existe pero presenta brechas de diseño, implementación o efectividad operativa. No Cumple: no hay evidencia de que el control esté implementado. No Aplicable: el control no corresponde al alcance, la infraestructura o el modelo de negocio de la organización auditada; el motivo se documenta en la evidencia del control.': 'Compliant: the control is implemented and operating as expected. Partial: the control exists but has design, implementation or operational-effectiveness gaps. Non-Compliant: there is no evidence that the control is implemented. Not Applicable: the control does not correspond to the scope, infrastructure or business model of the audited organization; the reason is documented in the control evidence.',
+  'Crítico / Alto / Medio / Bajo indican la importancia del área de control para la organización, evaluada por el auditor con independencia de si el control está o no implementado — ver nota en Detalle Técnico por Dominio.': 'Critical / High / Medium / Low indicate the importance of the control area for the organization, assessed by the auditor regardless of whether the control is implemented — see note in Technical Detail by Domain.',
+  'Las conclusiones reflejan las condiciones observadas durante el periodo evaluado. Los cambios materiales en infraestructura, regulación, procesos o modelo de negocio pueden afectar a su vigencia. Se recomienda una reevaluación ante cambios significativos y, en ausencia de estos, dentro de los doce meses siguientes a la emisión.': 'The conclusions reflect the conditions observed during the period evaluated. Material changes in infrastructure, regulation, processes, or business model may affect their validity. A reassessment is recommended in the event of significant changes and, in their absence, within twelve months of issuance.',
+  'Las conclusiones de este informe dependen de la exactitud, integridad y autenticidad de la información, documentación y evidencia facilitadas por la organización auditada durante el trabajo de campo. El equipo auditor no ha verificado de forma independiente la totalidad de dicha información salvo cuando se indique expresamente en la evidencia de un control concreto.': 'The conclusions of this report depend on the accuracy, completeness and authenticity of the information, documentation and evidence provided by the audited organization during fieldwork. The audit team has not independently verified all of that information except where expressly indicated in the evidence of a specific control.'
+};
+function pdfT(s){
+  const L = (typeof currentLang !== 'undefined') ? currentLang : 'es';
+  if (L === 'es' || s == null) return s;
+  const v = PDF_ES2EN[s];
+  return (v != null) ? v : s;
+}
+// For interpolated report strings the static map can't catch: Spanish source,
+// English otherwise (other languages fall back to English).
+function pdfL(es, en){
+  return ((typeof currentLang !== 'undefined') ? currentLang : 'es') === 'es' ? es : en;
+}
+
 function generatePDF(overrideFilename, sourceSnapshot = null) {
   try {
     // The empty-evidence-for-"na" check only makes sense against the LIVE
@@ -5641,7 +5778,7 @@ function generatePDF(overrideFilename, sourceSnapshot = null) {
       return;
     }
 
-    function txt(s, x, yy, o) { doc.text(pdfSafe(s), x, yy, o); }
+    function txt(s, x, yy, o) { doc.text(pdfSafe(pdfT(s)), x, yy, o); }
 
     // jsPDF has no native gradient fill — this simulates one as a series of
     // thin interpolated-color bands, which is enough to lift the flat solid
@@ -5712,18 +5849,22 @@ function generatePDF(overrideFilename, sourceSnapshot = null) {
       // and never claims a document is "issued" before it really is.
       const dateLines = [`Audit ID: ${auditData.id}`];
       if (eng.periodUnderReview?.start || eng.periodUnderReview?.end) {
-        dateLines.push(`Periodo evaluado: ${eng.periodUnderReview.start || '—'} a ${eng.periodUnderReview.end || '—'}`);
+        dateLines.push(pdfL(`Periodo evaluado: ${eng.periodUnderReview.start || '—'} a ${eng.periodUnderReview.end || '—'}`,
+                            `Period reviewed: ${eng.periodUnderReview.start || '—'} to ${eng.periodUnderReview.end || '—'}`));
       }
       if (eng.keyDates.fieldworkStart || eng.keyDates.fieldworkEnd) {
-        dateLines.push(`Trabajo de campo: ${eng.keyDates.fieldworkStart || '—'} a ${eng.keyDates.fieldworkEnd || '—'}`);
+        dateLines.push(pdfL(`Trabajo de campo: ${eng.keyDates.fieldworkStart || '—'} a ${eng.keyDates.fieldworkEnd || '—'}`,
+                            `Fieldwork: ${eng.keyDates.fieldworkStart || '—'} to ${eng.keyDates.fieldworkEnd || '—'}`));
       }
       if (eng.status === 'issued' && eng.issuedAt) {
-        dateLines.push(`Fecha de emisión: ${eng.issuedAt}`);
+        dateLines.push(pdfL(`Fecha de emisión: ${eng.issuedAt}`, `Issuance date: ${eng.issuedAt}`));
       } else {
-        const statusLabel = { draft: 'Borrador', in_progress: 'En Progreso', ready_for_report: 'Listo para Informe' }[eng.status] || 'Borrador';
-        dateLines.push(`Estado: ${statusLabel}${eng.keyDates.finalReport ? ' · Emisión prevista: ' + eng.keyDates.finalReport : ''}`);
+        const statusLabel = pdfL({ draft: 'Borrador', in_progress: 'En Progreso', ready_for_report: 'Listo para Informe' }[eng.status] || 'Borrador',
+                                 { draft: 'Draft', in_progress: 'In Progress', ready_for_report: 'Ready for Report' }[eng.status] || 'Draft');
+        dateLines.push(pdfL(`Estado: ${statusLabel}${eng.keyDates.finalReport ? ' · Emisión prevista: ' + eng.keyDates.finalReport : ''}`,
+                            `Status: ${statusLabel}${eng.keyDates.finalReport ? ' · Expected issuance: ' + eng.keyDates.finalReport : ''}`));
       }
-      dateLines.push(`Copia generada: ${new Date().toLocaleString('es-ES')}`);
+      dateLines.push(pdfL(`Copia generada: ${new Date().toLocaleString('es-ES')}`, `Copy generated: ${new Date().toLocaleString('en-GB')}`));
 
       let dy = 22;
       dateLines.forEach(l => { txt(l, pageWidth - margin - 200, dy); dy += 9; });
@@ -5768,14 +5909,14 @@ function generatePDF(overrideFilename, sourceSnapshot = null) {
         if (eng.status === 'issued') {
           doc.setFont('Roboto', 'bold').setFontSize(7.5);
           doc.setTextColor(124, 58, 237);
-          txt(`${auditData.id} · v${dc.version} · EMITIDO`, pageWidth / 2, pageHeight - 48, { align: 'center' });
+          txt(`${auditData.id} · v${dc.version} · ${pdfL('EMITIDO', 'ISSUED')}`, pageWidth / 2, pageHeight - 48, { align: 'center' });
         } else {
           doc.setFont('Roboto', 'italic').setFontSize(7.5);
           doc.setTextColor(150, 160, 175);
           txt(`v${dc.version}`, pageWidth / 2, pageHeight - 48, { align: 'center' });
         }
       }
-      txt(`Página ${p} de ${total}`, pageWidth - margin, pageHeight - 48, { align: 'right' });
+      txt(pdfL(`Página ${p} de ${total}`, `Page ${p} of ${total}`), pageWidth - margin, pageHeight - 48, { align: 'right' });
     }
 
     // ── Pie chart via jsPDF's context2d (canvas-style arc drawing) ─────────
@@ -5863,7 +6004,7 @@ function generatePDF(overrideFilename, sourceSnapshot = null) {
     // DOMAIN_NAMES and domainOf() are defined globally (see near pdfSafe)
     // so generarEvidenciaIA() can also use them to ground the AI prompt.
     function domainLabel(prefix) {
-      return DOMAIN_NAMES[prefix] ? `${prefix} — ${DOMAIN_NAMES[prefix]}` : `${prefix} — Otros Controles`;
+      return DOMAIN_NAMES[prefix] ? `${prefix} — ${DOMAIN_NAMES[prefix]}` : `${pdfT(prefix)} — ${pdfT('Otros Controles')}`;
     }
 
     // ── Gather control data once ────────────────────────────────────────
@@ -6022,7 +6163,7 @@ function generatePDF(overrideFilename, sourceSnapshot = null) {
       domain: c.domain
     }));
     const pdfAssess = AssessmentEngine.calculate(pdfControls, activeFramework);
-    const pdfNarrative = AssessmentEngine.buildFallbackNarrative(pdfAssess, auditData, stats, 'es');
+    const pdfNarrative = AssessmentEngine.buildFallbackNarrative(pdfAssess, auditData, stats, (typeof currentLang !== 'undefined') ? currentLang : 'es');
 
     // ═══════════════════════════════════════════════════════════════════
     // COVER PAGE — Document control. A results page alone reads as a demo
@@ -6031,9 +6172,10 @@ function generatePDF(overrideFilename, sourceSnapshot = null) {
     // formally accountable for, not just a generated file.
     // ═══════════════════════════════════════════════════════════════════
     const dc = eng.docControl || {};
-    const CLASS_LABELS = { confidential: 'CONFIDENCIAL', internal: 'USO INTERNO', public: 'PÚBLICO' };
-    const classLabel = CLASS_LABELS[dc.classification] || 'CONFIDENCIAL';
-    const STATUS_LABELS_COVER = { draft: 'Borrador', in_progress: 'En Progreso', ready_for_report: 'Listo para Informe', issued: 'Emitido' };
+    const CLASS_LABELS = pdfL({ confidential: 'CONFIDENCIAL', internal: 'USO INTERNO', public: 'PÚBLICO' },
+                             { confidential: 'CONFIDENTIAL', internal: 'INTERNAL USE', public: 'PUBLIC' });
+    const classLabel = CLASS_LABELS[dc.classification] || pdfL('CONFIDENCIAL', 'CONFIDENTIAL');
+    const STATUS_LABELS_COVER = pdfL({ draft: 'Borrador', in_progress: 'En Progreso', ready_for_report: 'Listo para Informe', issued: 'Emitido' }, { draft: 'Draft', in_progress: 'In Progress', ready_for_report: 'Ready for Report', issued: 'Issued' });
 
     // Vertical navy → deep indigo gradient instead of a flat fill — a
     // subtle "premium tech" backdrop for the cover, not a flashy one.
@@ -6044,7 +6186,7 @@ function generatePDF(overrideFilename, sourceSnapshot = null) {
     doc.text('AuditSym', pageWidth/2, 260, { align: 'center' });
     doc.setFont('Roboto', 'normal').setFontSize(13);
     doc.setTextColor(255, 255, 255);
-    doc.text('Informe de Auditoría de Ciberseguridad', pageWidth/2, 282, { align: 'center' });
+    doc.text(pdfT('Informe de Auditoría de Ciberseguridad'), pageWidth/2, 282, { align: 'center' });
     doc.setFont('Roboto', 'normal').setFontSize(11);
     doc.setTextColor(180, 180, 200);
     doc.text(`${auditData.company}  ·  ${auditData.framework}`, pageWidth/2, 302, { align: 'center' });
@@ -6055,7 +6197,7 @@ function generatePDF(overrideFilename, sourceSnapshot = null) {
     // conclusions — that's the audit firm, named explicitly here.
     doc.setFont('Roboto', 'normal').setFontSize(9);
     doc.setTextColor(150, 150, 175);
-    doc.text(`Preparado por: ${auditData.auditorFirm}  ·  Plataforma: AuditSym`, pageWidth/2, 332, { align: 'center' });
+    doc.text(pdfL(`Preparado por: ${auditData.auditorFirm}  ·  Plataforma: AuditSym`, `Prepared by: ${auditData.auditorFirm}  ·  Platform: AuditSym`), pageWidth/2, 332, { align: 'center' });
 
     // Classification banner — impossible to miss at the top and bottom,
     // with a touch more depth than a flat red fill.
@@ -6094,14 +6236,14 @@ function generatePDF(overrideFilename, sourceSnapshot = null) {
       ['ID de Auditoría', auditData.id],
       ['Clasificación', classLabel],
       ['Versión', dc.version || '1.0'],
-      ['Estado', STATUS_LABELS_COVER[eng.status] || 'Borrador'],
+      ['Estado', STATUS_LABELS_COVER[eng.status] || pdfT('Borrador')],
       ['Propietario del Documento', dc.owner || '—'],
       ['Autor', dc.author || auditData.auditor || '—'],
       ['Revisor', approvalsPolicy === 'reviewer_and_approver' ? approvalRowValue(dc.approvals?.reviewer, dc.reviewer, dc.reviewerRole) : (dc.reviewer || '—')],
       ['Aprobador', approvalsPolicy !== 'none' ? approvalRowValue(dc.approvals?.approver, dc.approver, dc.approverRole) : (dc.approver || '—')],
       ['Destinatarios Autorizados', dc.recipients || '—'],
-      ['Fecha Real de Emisión', (eng.status === 'issued' && eng.issuedAt) ? eng.issuedAt : 'Pendiente de emisión'],
-      ['Copia Generada', new Date().toLocaleString('es-ES')],
+      ['Fecha Real de Emisión', (eng.status === 'issued' && eng.issuedAt) ? eng.issuedAt : pdfT('Pendiente de emisión')],
+      ['Copia Generada', pdfL(new Date().toLocaleString('es-ES'), new Date().toLocaleString('en-GB'))],
     ];
     doc.setDrawColor(80, 90, 120);
     doc.setLineWidth(0.5);
@@ -6111,7 +6253,7 @@ function generatePDF(overrideFilename, sourceSnapshot = null) {
       const rowH = Math.max(20, valueLines.length * lineH + 8);
       if (i % 2 === 1) { doc.setFillColor(30, 41, 59); doc.rect(tableX, cy, tableW, rowH, 'F'); }
       doc.setFont('Roboto', 'bold').setFontSize(8.5).setTextColor(150, 170, 210);
-      doc.text(r[0], tableX + 10, cy + 13);
+      doc.text(pdfT(r[0]), tableX + 10, cy + 13);
       doc.setFont('Roboto', 'normal').setFontSize(8.5).setTextColor(230, 230, 240);
       valueLines.forEach((l, li) => doc.text(l, tableX + labelW, cy + 13 + li * lineH));
       cy += rowH;
@@ -6131,7 +6273,7 @@ function generatePDF(overrideFilename, sourceSnapshot = null) {
     };
     if (govMessages[govForCover.reason]) {
       doc.setFont('Roboto', 'italic').setFontSize(7.5).setTextColor(217, 119, 6);
-      const govLines = doc.splitTextToSize(`⚠ ${govMessages[govForCover.reason]}`, tableW);
+      const govLines = doc.splitTextToSize('⚠ ' + pdfSafe(govMessages[govForCover.reason]), tableW);
       govLines.forEach((l, i) => doc.text(l, tableX, cy + i * 10));
       cy += govLines.length * 10 + 4;
     }
@@ -6140,7 +6282,7 @@ function generatePDF(overrideFilename, sourceSnapshot = null) {
     // an "Aprobado" status be mistaken for a cryptographic signature.
     doc.setFont('Roboto', 'italic').setFontSize(7).setTextColor(140, 150, 175);
     const approvalDisclaimerLines = doc.splitTextToSize(
-      'Las aprobaciones registradas en este informe representan el flujo interno de revisión documental de AuditSym. No constituyen firmas electrónicas cualificadas ni acreditan criptográficamente la identidad de quien aprueba.',
+      pdfSafe('Las aprobaciones registradas en este informe representan el flujo interno de revisión documental de AuditSym. No constituyen firmas electrónicas cualificadas ni acreditan criptográficamente la identidad de quien aprueba.'),
       tableW
     );
     approvalDisclaimerLines.forEach((l, i) => doc.text(l, tableX, cy + i * 9));
@@ -6150,12 +6292,12 @@ function generatePDF(overrideFilename, sourceSnapshot = null) {
     // kept inside the app — replacing the earlier placeholder that pointed
     // to an external document-management system this tool doesn't have.
     doc.setFont('Roboto', 'bold').setFontSize(8.5).setTextColor(150, 170, 210);
-    doc.text('Historial de Versiones', tableX, cy);
+    doc.text(pdfSafe('Historial de Versiones'), tableX, cy);
     cy += 13;
     const versionHistory = Array.isArray(dc.versionHistory) ? dc.versionHistory : [];
     if (versionHistory.length === 0) {
       doc.setFont('Roboto', 'italic').setFontSize(7.5).setTextColor(140, 150, 175);
-      doc.text('Primera versión emitida de este informe; no hay revisiones previas registradas.', tableX, cy);
+      doc.text(pdfSafe('Primera versión emitida de este informe; no hay revisiones previas registradas.'), tableX, cy);
       cy += 14;
     } else {
       // The cover page has no pagination safety net — cap what's shown here
@@ -6167,7 +6309,7 @@ function generatePDF(overrideFilename, sourceSnapshot = null) {
       const omitted = versionHistory.length - shown.length;
       if (omitted > 0) {
         doc.setFont('Roboto', 'italic').setFontSize(7).setTextColor(140, 150, 175);
-        doc.text(`(${omitted} versión${omitted !== 1 ? 'es' : ''} anterior${omitted !== 1 ? 'es' : ''} no mostrada${omitted !== 1 ? 's' : ''} aquí — disponible en el archivo de la auditoría)`, tableX, cy);
+        doc.text(pdfL(`(${omitted} versión${omitted !== 1 ? 'es' : ''} anterior${omitted !== 1 ? 'es' : ''} no mostrada${omitted !== 1 ? 's' : ''} aquí — disponible en el archivo de la auditoría)`, `(${omitted} earlier version${omitted !== 1 ? 's' : ''} not shown here — available in the audit archive)`), tableX, cy);
         cy += 12;
       }
       shown.forEach((entry, i) => {
@@ -6264,7 +6406,7 @@ function generatePDF(overrideFilename, sourceSnapshot = null) {
       doc.rect(barX, by, bw, 13, 'F');
       doc.setTextColor(COLORS.text[0], COLORS.text[1], COLORS.text[2]);
       doc.setFont('Roboto', 'normal').setFontSize(9);
-      txt(`${item.label}: ${item.count}`, barX + Math.max(bw, 6) + 8, by + 10);
+      txt(`${pdfT(item.label)}: ${item.count}`, barX + Math.max(bw, 6) + 8, by + 10);
     });
 
     y += 170;
@@ -6290,7 +6432,7 @@ function generatePDF(overrideFilename, sourceSnapshot = null) {
       .map(([d, v]) => ({ d, ratio: v.applicable ? v.compliant / v.applicable : 0, total: v.applicable }))
       .filter(x => x.total >= 2);
     const weakestDomains = [...domainRatios].sort((a, b) => a.ratio - b.ratio).slice(0, 3)
-      .filter(x => x.ratio < 0.7).map(x => DOMAIN_NAMES[x.d] || x.d);
+      .filter(x => x.ratio < 0.7).map(x => pdfT(DOMAIN_NAMES[x.d] || x.d));
 
     // The explicit "so what" sentence a CISO looks for before reading
     // anything else — charts alone don't substitute for a stated
@@ -6303,30 +6445,41 @@ function generatePDF(overrideFilename, sourceSnapshot = null) {
     // nothing was actually judged compliant or not.
     const hasApplicableForPosture = stats.applicableTotal > 0;
     const compliancePct = hasApplicableForPosture ? pctOf(stats.compliant) : null;
+    // Kept in Spanish because it is used in the === comparisons below; a
+    // separate display value is translated only at render time.
     const exposureWord = hasApplicableForPosture
       ? (compliancePct >= 80 ? 'baja' : compliancePct >= 60 ? 'moderada' : compliancePct >= 40 ? 'elevada' : 'crítica')
       : null;
+    const exposureDisplay = exposureWord == null ? null
+      : pdfL(exposureWord, { baja: 'low', moderada: 'moderate', elevada: 'elevated', 'crítica': 'critical' }[exposureWord]);
     // A natural Spanish list ("Gobernar y Proteger", not "Gobernanza,
     // Proteger" with a bare comma) and the domain names as verbs ("la
     // función Gobernar"), matching how the other NIST CSF functions are
     // already named, instead of a noun ("Gobernanza") standing out
     // inconsistently among five verbs.
-    function joinSpanishList(items) {
+    function joinList(items) {
       if (items.length === 0) return '';
       if (items.length === 1) return items[0];
-      return items.slice(0, -1).join(', ') + ' y ' + items[items.length - 1];
+      const conj = pdfL('y', 'and');
+      return items.slice(0, -1).join(', ') + ' ' + conj + ' ' + items[items.length - 1];
     }
     const concentrationPhrase = weakestDomains.length
-      ? `, concentrada en ${weakestDomains.length > 1 ? 'las funciones' : 'la función'} ${joinSpanishList(weakestDomains)}`
+      ? pdfL(`, concentrada en ${weakestDomains.length > 1 ? 'las funciones' : 'la función'} ${joinList(weakestDomains)}`,
+             `, concentrated in ${weakestDomains.length > 1 ? 'the functions' : 'the function'} ${joinList(weakestDomains)}`)
       : '';
     const actionPhrase = !hasApplicableForPosture
-      ? 'No procede una recomendación de postura general con la información actual.'
+      ? pdfL('No procede una recomendación de postura general con la información actual.',
+             'A general posture recommendation is not applicable with the current information.')
       : (exposureWord === 'crítica' || exposureWord === 'elevada')
-        ? 'Se requiere aprobación ejecutiva inmediata de un plan de remediación.'
-        : 'Se recomienda mantener el plan de mejora continua vigente.';
+        ? pdfL('Se requiere aprobación ejecutiva inmediata de un plan de remediación.',
+               'Immediate executive approval of a remediation plan is required.')
+        : pdfL('Se recomienda mantener el plan de mejora continua vigente.',
+               'Maintaining the current continuous-improvement plan is recommended.');
     const postureConclusion = hasApplicableForPosture
-      ? `La organización presenta un nivel de cumplimiento del ${compliancePct}% y una exposición ${exposureWord}${concentrationPhrase}. ${actionPhrase}`
-      : `No se registran controles aplicables evaluados dentro del alcance definido — los controles considerados hasta ahora están marcados como No Aplicable o pendientes de evaluación. No es posible calcular una puntuación de cumplimiento hasta que se evalúe al menos un control aplicable.`;
+      ? pdfL(`La organización presenta un nivel de cumplimiento del ${compliancePct}% y una exposición ${exposureDisplay}${concentrationPhrase}. ${actionPhrase}`,
+             `The organization shows a ${compliancePct}% compliance level and ${exposureDisplay} exposure${concentrationPhrase}. ${actionPhrase}`)
+      : pdfL(`No se registran controles aplicables evaluados dentro del alcance definido — los controles considerados hasta ahora están marcados como No Aplicable o pendientes de evaluación. No es posible calcular una puntuación de cumplimiento hasta que se evalúe al menos un control aplicable.`,
+             `No applicable controls have been assessed within the defined scope — the controls considered so far are marked Not Applicable or pending evaluation. A compliance score cannot be calculated until at least one applicable control is assessed.`);
 
     // Names the actual worst findings by their real framework code — the
     // generic domain-level sentence above ("concentrada en Gobernanza...")
@@ -6338,8 +6491,10 @@ function generatePDF(overrideFilename, sourceSnapshot = null) {
       .filter(c => c.compliance === 'no')
       .sort((a, b) => (RISK_RANK[a.risk] ?? 4) - (RISK_RANK[b.risk] ?? 4))
       .slice(0, 3);
+    const topFindingsList = topCriticalFindings.map(c => `${c.code} (${c.name})`).join(', ');
     const criticalFindingsSentence = topCriticalFindings.length
-      ? `Los hallazgos más críticos se concentran en ${topCriticalFindings.map(c => `${c.code} (${c.name})`).join(', ')}. Se recomienda priorizar su remediación en los próximos 30 días.`
+      ? pdfL(`Los hallazgos más críticos se concentran en ${topFindingsList}. Se recomienda priorizar su remediación en los próximos 30 días.`,
+             `The most critical findings are concentrated in ${topFindingsList}. Prioritizing their remediation within the next 30 days is recommended.`)
       : '';
 
     doc.setFillColor(248, 250, 252);
@@ -6370,14 +6525,17 @@ function generatePDF(overrideFilename, sourceSnapshot = null) {
       })[0];
     const criticalText = worstOpen
       ? `${worstOpen.code} — ${worstOpen.name}`
-      : 'No se identificaron no conformidades críticas o de alto riesgo.';
+      : pdfL('No se identificaron no conformidades críticas o de alto riesgo.',
+             'No critical or high-risk non-conformities were identified.');
 
     // Callout 2 — domain with the best compliance rate (min 2 controls, so a
     // single lucky control doesn't get crowned "strength").
     const bestDomain = [...domainRatios].sort((a, b) => b.ratio - a.ratio)[0];
     const strengthText = bestDomain
-      ? `${domainLabel(bestDomain.d)} (${Math.round(bestDomain.ratio * 100)}% de cumplimiento)`
-      : 'Aún no hay suficientes controles evaluados para identificar un punto fuerte.';
+      ? pdfL(`${domainLabel(bestDomain.d)} (${Math.round(bestDomain.ratio * 100)}% de cumplimiento)`,
+             `${domainLabel(bestDomain.d)} (${Math.round(bestDomain.ratio * 100)}% compliance)`)
+      : pdfL('Aún no hay suficientes controles evaluados para identificar un punto fuerte.',
+             'Not enough controls have been evaluated yet to identify a key strength.');
 
     // Callout 3 — next concrete step. Deliberately does NOT fall back to
     // pdfNarrative.immediate_actions: that text comes from AssessmentEngine
@@ -6391,8 +6549,10 @@ function generatePDF(overrideFilename, sourceSnapshot = null) {
     // would have silently ignored sourceSnapshot for this one callout,
     // even though everything else in the report was rendering from it.
     const nextStepText = eng?.keyDates?.finalReport
-      ? `Informe final previsto para el ${eng.keyDates.finalReport}. Se recomienda agendar una reunión de Dirección para aprobar el plan de remediación.`
-      : 'Se recomienda agendar una reunión de Dirección para aprobar el plan de remediación de los hallazgos identificados.';
+      ? pdfL(`Informe final previsto para el ${eng.keyDates.finalReport}. Se recomienda agendar una reunión de Dirección para aprobar el plan de remediación.`,
+             `Final report expected on ${eng.keyDates.finalReport}. A management meeting is recommended to approve the remediation plan.`)
+      : pdfL('Se recomienda agendar una reunión de Dirección para aprobar el plan de remediación de los hallazgos identificados.',
+             'A management meeting is recommended to approve the remediation plan for the identified findings.');
 
     y = callout([185, 28, 28], [254, 242, 242], 'Riesgo Crítico Principal', criticalText, y);
     y = callout([161, 98, 7], [255, 251, 235], 'Punto Fuerte', strengthText, y);
@@ -6513,7 +6673,7 @@ function scopeSection(title, body, color) {
     scopeSection('Alcance Organizativo y Técnico', dedupeScopeText(auditData.scope, eng.scopeSummary));
     scopeSection('Exclusiones', eng.exclusions || 'No se han declarado exclusiones específicas para esta auditoría.');
     scopeSection('Periodo Evaluado', (eng.periodUnderReview?.start || eng.periodUnderReview?.end)
-      ? `${eng.periodUnderReview.start || '—'} a ${eng.periodUnderReview.end || '—'}`
+      ? `${eng.periodUnderReview.start || '—'} ${pdfL('a','to')} ${eng.periodUnderReview.end || '—'}`
       : 'No especificado.');
     scopeSection('Criterios de Auditoría', eng.criteria?.length ? eng.criteria.join(', ') : auditData.framework);
     scopeSection('Técnica de Auditoría y Muestreo', eng.auditTechnique || 'Entrevistas, revisión documental y pruebas de control sobre la evidencia aportada por la organización auditada.');
@@ -6525,11 +6685,11 @@ function scopeSection(title, body, color) {
     // from two different ideas of "the whole framework."
     const fwTotal = AssessmentEngine.FRAMEWORK_TOTALS[activeFramework];
     const coverageText = fwTotal
-      ? `Se evaluó una selección de ${stats.total} de aproximadamente ${fwTotal} controles aplicables del framework ${auditData.framework} (${Math.round(stats.total/fwTotal*100)}% de cobertura). La selección de controles evaluados responde al alcance y los criterios descritos en esta página, no a una cobertura exhaustiva del framework completo.`
-      : `Se evaluó una selección de ${stats.total} controles del framework ${auditData.framework}, según el alcance y los criterios descritos en esta página.`;
+      ? pdfL(`Se evaluó una selección de ${stats.total} de aproximadamente ${fwTotal} controles aplicables del framework ${auditData.framework} (${Math.round(stats.total/fwTotal*100)}% de cobertura). La selección de controles evaluados responde al alcance y los criterios descritos en esta página, no a una cobertura exhaustiva del framework completo.`, `A selection of ${stats.total} of approximately ${fwTotal} applicable controls from the ${auditData.framework} framework was evaluated (${Math.round(stats.total/fwTotal*100)}% coverage). The selection of evaluated controls reflects the scope and criteria described on this page, not exhaustive coverage of the full framework.`)
+      : pdfL(`Se evaluó una selección de ${stats.total} controles del framework ${auditData.framework}, según el alcance y los criterios descritos en esta página.`, `A selection of ${stats.total} controls from the ${auditData.framework} framework was evaluated, according to the scope and criteria described on this page.`);
     scopeSection('Cobertura de Controles Evaluados', coverageText, COLORS.warning);
 
-    scopeSection('Modelo de Puntuación', `Este informe presenta dos cifras de cumplimiento con significados distintos, que no deben confundirse entre sí: el "% Cumple" del gráfico de tarta es la proporción simple de controles evaluados marcados como conformes. La puntuación de postura (p. ej. "${pdfAssess.overallScorePct}%" en Evaluación Final) es un score ponderado por criticidad, calculado en dos pasos. Primero, cada resultado de cumplimiento aporta un valor: Cumple = 1,0; Parcial = 0,5; No Cumple = 0,0; No Evaluado = 0,0 (y no cuenta en el total, ya que solo se puntúan los controles realmente evaluados). Segundo, ese valor se multiplica por la criticidad del control (crítico ×3.5, alto ×2.5, medio ×1.5, bajo ×1.0), de modo que los hallazgos en áreas más críticas pesan más que los de áreas de baja criticidad. Un control marcado como "No Aplicable" queda excluido por completo de ambas cifras del informe — nunca puntúa como incumplimiento ni como cumplimiento — ya que refleja una decisión deliberada de alcance, no un hallazgo; el motivo del descarte se documenta en la evidencia del propio control. Ambas cifras del informe (% Cumple y puntuación de postura) son correctas; miden cosas diferentes.`);
+    scopeSection('Modelo de Puntuación', pdfL(`Este informe presenta dos cifras de cumplimiento con significados distintos, que no deben confundirse entre sí: el "% Cumple" del gráfico de tarta es la proporción simple de controles evaluados marcados como conformes. La puntuación de postura (p. ej. "${pdfAssess.overallScorePct}%" en Evaluación Final) es un score ponderado por criticidad, calculado en dos pasos. Primero, cada resultado de cumplimiento aporta un valor: Cumple = 1,0; Parcial = 0,5; No Cumple = 0,0; No Evaluado = 0,0 (y no cuenta en el total, ya que solo se puntúan los controles realmente evaluados). Segundo, ese valor se multiplica por la criticidad del control (crítico ×3.5, alto ×2.5, medio ×1.5, bajo ×1.0), de modo que los hallazgos en áreas más críticas pesan más que los de áreas de baja criticidad. Un control marcado como "No Aplicable" queda excluido por completo de ambas cifras del informe — nunca puntúa como incumplimiento ni como cumplimiento — ya que refleja una decisión deliberada de alcance, no un hallazgo; el motivo del descarte se documenta en la evidencia del propio control. Ambas cifras del informe (% Cumple y puntuación de postura) son correctas; miden cosas diferentes.`, `This report presents two compliance figures with distinct meanings that must not be confused with each other: the "% Compliant" in the pie chart is the simple proportion of evaluated controls marked as compliant. The posture score (e.g. "${pdfAssess.overallScorePct}%" in Final Assessment) is a criticality-weighted score, calculated in two steps. First, each compliance result contributes a value: Compliant = 1.0; Partial = 0.5; Non-Compliant = 0.0; Not Evaluated = 0.0 (and does not count toward the total, since only controls actually evaluated are scored). Second, that value is multiplied by the control's criticality (critical ×3.5, high ×2.5, medium ×1.5, low ×1.0), so that findings in more critical areas weigh more than those in low-criticality areas. A control marked "Not Applicable" is entirely excluded from both report figures — it never scores as non-compliance or compliance — since it reflects a deliberate scope decision, not a finding; the reason for exclusion is documented in the control's own evidence. Both report figures (% Compliant and posture score) are correct; they measure different things.`));
 
     // Issue #29 (remaining work): the "worst-case wins" merge behavior
     // already existed in mergeControlsByCode() — this section is what was
@@ -6543,7 +6703,7 @@ function scopeSection(title, body, color) {
 
     scopeSection('Definición de Criticidad', 'Crítico / Alto / Medio / Bajo indican la importancia del área de control para la organización, evaluada por el auditor con independencia de si el control está o no implementado — ver nota en Detalle Técnico por Dominio.');
 
-    scopeSection('Declaración de Limitaciones', `La evaluación se basa en la selección de controles y evidencias descritas en esta página. No constituye una certificación de conformidad con ${auditData.framework} ni garantiza la ausencia de riesgos o vulnerabilidades fuera del alcance evaluado.`, COLORS.danger);
+    scopeSection('Declaración de Limitaciones', pdfL(`La evaluación se basa en la selección de controles y evidencias descritas en esta página. No constituye una certificación de conformidad con ${auditData.framework} ni garantiza la ausencia de riesgos o vulnerabilidades fuera del alcance evaluado.`, `The assessment is based on the selection of controls and evidence described on this page. It does not constitute a certification of conformity with ${auditData.framework} nor guarantee the absence of risks or vulnerabilities outside the evaluated scope.`), COLORS.danger);
 
     // The short, neutral version — the original long legal-Spanish wording
     // was correct but disproportionate for this section (and was pushing a
@@ -6578,18 +6738,18 @@ function scopeSection(title, body, color) {
     // text already gets in buildFallbackNarrative().
     const POSTURE_ES = { Strong:'Sólida', Moderate:'Moderada', 'Elevated Risk':'Riesgo Elevado', 'High Risk':'Riesgo Alto' };
     const MATURITY_ES = { Initial:'Inicial', Developing:'En Desarrollo', Defined:'Definida', Managed:'Gestionada', Optimized:'Optimizada' };
-    const postureEs = POSTURE_ES[pdfAssess.posture] || pdfAssess.posture;
-    const maturityEs = MATURITY_ES[pdfAssess.maturity] || pdfAssess.maturity;
+    const postureEs = pdfL(POSTURE_ES[pdfAssess.posture] || pdfAssess.posture, pdfAssess.posture);
+    const maturityEs = pdfL(MATURITY_ES[pdfAssess.maturity] || pdfAssess.maturity, pdfAssess.maturity);
     txt(postureEs.toUpperCase(), margin + 53, y + 18, { align: 'center' });
     doc.setTextColor(pdfPostureRgb[0], pdfPostureRgb[1], pdfPostureRgb[2]);
     doc.setFont('Roboto', 'bold').setFontSize(18);
     txt(`${pdfAssess.overallScorePct}%`, margin + 115, y + 20);
     doc.setTextColor(180, 180, 255);
     doc.setFont('Roboto', 'normal').setFontSize(9);
-    txt(`Madurez: ${maturityEs}`, margin + 165, y + 20);
+    txt(pdfL(`Madurez: ${maturityEs}`, `Maturity: ${maturityEs}`), margin + 165, y + 20);
     doc.setTextColor(200, 200, 200);
     doc.setFont('Roboto', 'normal').setFontSize(7.5);
-    txt(`Controles: ${stats.total} total · ${stats.compliant} cumple · ${stats.partial} parcial · ${stats.nonCompliant} no cumple${stats.notApplicable ? ` · ${stats.notApplicable} no aplicable` : ''}`, pageWidth - margin - 8, y + 20, { align: 'right' });
+    txt(pdfL(`Controles: ${stats.total} total · ${stats.compliant} cumple · ${stats.partial} parcial · ${stats.nonCompliant} no cumple${stats.notApplicable ? ` · ${stats.notApplicable} no aplicable` : ''}`, `Controls: ${stats.total} total · ${stats.compliant} compliant · ${stats.partial} partial · ${stats.nonCompliant} non-compliant${stats.notApplicable ? ` · ${stats.notApplicable} not applicable` : ''}`), pageWidth - margin - 8, y + 20, { align: 'right' });
     y += 44;
     // "Riesgo Alto" here describes the ORGANIZATION'S overall posture band
     // — a completely different scale from a single control's "Alto"
@@ -6604,7 +6764,7 @@ function scopeSection(title, body, color) {
       doc.rect(margin, y, pageWidth - 2*margin, 18, 'F');
       doc.setTextColor(239, 68, 68);
       doc.setFont('Roboto', 'bold').setFontSize(8);
-      txt(`ADVERTENCIA — Dominios Débiles: ${pdfAssess.weakDomains.join(', ')}`, margin + 6, y + 12);
+      txt(pdfL(`ADVERTENCIA — Dominios Débiles: ${pdfAssess.weakDomains.map(pdfT).join(', ')}`, `WARNING — Weak Domains: ${pdfAssess.weakDomains.map(pdfT).join(', ')}`), margin + 6, y + 12);
       y += 24;
     }
     y += 6;
@@ -6625,7 +6785,7 @@ function scopeSection(title, body, color) {
       // here — measure the label WITHOUT the trailing space, then add a
       // fixed pixel gap instead of relying on a space character surviving
       // the trim. Same root cause as the earlier "Cumple25%" legend bug.
-      const labelStr = `${label}:`;
+      const labelStr = `${pdfT(label)}:`;
       const labelW = doc.getTextWidth(pdfSafe(labelStr)) + 5;
       doc.setFont('Roboto', 'normal').setFontSize(8.5);
       const bodyLines = doc.splitTextToSize(pdfSafe(text), Math.max(maxW - labelW, 100));
@@ -6641,7 +6801,7 @@ function scopeSection(title, body, color) {
     }
 
     const impactText = (pdfAssess.criticalRiskNonCompliant + pdfAssess.highRiskNonCompliant) > 0
-      ? `${pdfAssess.criticalRiskNonCompliant} hallazgo(s) de riesgo crítico y ${pdfAssess.highRiskNonCompliant} de riesgo alto suponen exposición directa a riesgo regulatorio y operativo si no se documentan y remedian a tiempo.`
+      ? pdfL(`${pdfAssess.criticalRiskNonCompliant} hallazgo(s) de riesgo crítico y ${pdfAssess.highRiskNonCompliant} de riesgo alto suponen exposición directa a riesgo regulatorio y operativo si no se documentan y remedian a tiempo.`, `${pdfAssess.criticalRiskNonCompliant} critical-risk finding(s) and ${pdfAssess.highRiskNonCompliant} high-risk represent direct exposure to regulatory and operational risk if not documented and remediated in time.`)
       : 'El nivel de riesgo residual actual es bajo; se recomienda mantener la monitorización para evitar regresiones de cumplimiento.';
 
     summaryBullet('Riesgo Crítico Principal', [185, 28, 28], criticalText);
@@ -6669,7 +6829,7 @@ function scopeSection(title, body, color) {
 
         if (subLabel) {
           // Same trailing-space-eaten-by-trim fix as summaryBullet() above.
-          const lblStr = `${subLabel}:`;
+          const lblStr = `${pdfT(subLabel)}:`;
           doc.setFont('Roboto', 'bold').setFontSize(8.5).setTextColor(COLORS.text[0],COLORS.text[1],COLORS.text[2]);
           const lblW = doc.getTextWidth(pdfSafe(lblStr)) + 5;
           doc.setFont('Roboto', 'normal');
@@ -6690,7 +6850,7 @@ function scopeSection(title, body, color) {
 
         if (impact) {
           doc.setFont('Roboto', 'italic').setFontSize(8).setTextColor(COLORS.textLight[0],COLORS.textLight[1],COLORS.textLight[2]);
-          const impactLines = doc.splitTextToSize(pdfSafe(`↳ Impacto: ${impact}`), pageWidth - 2*margin - 16);
+          const impactLines = doc.splitTextToSize(pdfSafe(pdfL('↳ Impacto: ', '↳ Impact: ') + pdfT(impact)), pageWidth - 2*margin - 16);
           if (y+impactLines.length*10>pageHeight-80){doc.addPage();y=drawContinuationHeader('Evaluación Final');}
           impactLines.forEach(l=>{txt(l, margin+14, y); y+=10;});
         }
@@ -6804,8 +6964,8 @@ function scopeSection(title, body, color) {
       doc.setFont('Roboto', 'bold').setFontSize(10.5);
       doc.setTextColor(COLORS.text[0], COLORS.text[1], COLORS.text[2]);
       const domCompliant = list.filter(c=>c.compliance==='yes').length;
-      const controlWord = list.length === 1 ? 'control' : 'controles';
-      txt(`${domainLabel(domainKey)}  (${list.length} ${controlWord} · ${domCompliant} cumple)`, margin, y);
+      const controlWord = pdfL(list.length === 1 ? 'control' : 'controles', list.length === 1 ? 'control' : 'controls');
+      txt(pdfL(`${domainLabel(domainKey)}  (${list.length} ${controlWord} · ${domCompliant} cumple)`, `${domainLabel(domainKey)}  (${list.length} ${controlWord} · ${domCompliant} compliant)`), margin, y);
       y += 12;
       y = drawDomainTableHeader(y);
 
@@ -6925,7 +7085,7 @@ function scopeSection(title, body, color) {
       siblingsByCode[c.code] = siblingsByCode[c.code] || [];
       siblingsByCode[c.code].push(c);
     });
-    const COMPLIANCE_LABEL_ES_ANNEX = { yes: 'Cumple', no: 'No Cumple', partial: 'Parcial', na: 'No Aplicable', '': 'Sin Evaluar' };
+    const COMPLIANCE_LABEL_ES_ANNEX = pdfL({ yes: 'Cumple', no: 'No Cumple', partial: 'Parcial', na: 'No Aplicable', '': 'Sin Evaluar' }, { yes: 'Compliant', no: 'Non-Compliant', partial: 'Partial', na: 'Not Applicable', '': 'Not Assessed' });
 
     if (controlsWithContent.length > 0 || pendingEvidenceControls.length > 0) {
       doc.addPage();
@@ -6939,13 +7099,13 @@ function scopeSection(title, body, color) {
       // todos los grupos" unconditionally, since that could be false the
       // moment pendingEvidenceControls has anything in it.
       const summaryParts = [
-        `${narrativeControls.length} control(es) no conformes o parciales`,
-        `${compliantWithEvidence.length} control(es) conformes`,
-        `${notApplicableWithEvidence.length} control(es) no aplicable(s)`
+        pdfL(`${narrativeControls.length} control(es) no conformes o parciales`, `${narrativeControls.length} non-compliant or partial control(s)`),
+        pdfL(`${compliantWithEvidence.length} control(es) conformes`, `${compliantWithEvidence.length} compliant control(s)`),
+        pdfL(`${notApplicableWithEvidence.length} control(es) no aplicable(s)`, `${notApplicableWithEvidence.length} not-applicable control(s)`)
       ];
       const summaryLine = pendingEvidenceControls.length > 0
-        ? `${summaryParts.join(' · ')} — ${pendingEvidenceControls.length} control(es) evaluado(s) sin evidencia registrada (ver "Evidencia Pendiente").`
-        : `${summaryParts.join(' · ')} — evidencia completa para todos los grupos.`;
+        ? `${summaryParts.join(' · ')} — ${pdfL(`${pendingEvidenceControls.length} control(es) evaluado(s) sin evidencia registrada (ver "Evidencia Pendiente").`, `${pendingEvidenceControls.length} evaluated control(s) with no recorded evidence (see "Evidence Pending").`)}`
+        : `${summaryParts.join(' · ')} — ${pdfL('evidencia completa para todos los grupos.', 'complete evidence for all groups.')}`;
       // Wrapped, not a single txt() call — with pendingEvidenceControls
       // added, this line can run long enough to overflow past the right
       // margin instead of wrapping, exactly the kind of clipping issue #29
@@ -7152,7 +7312,7 @@ function scopeSection(title, body, color) {
       }
 
       renderSectionBanner(
-        `HALLAZGOS — CONTROLES NO CONFORMES O PARCIALES (${narrativeControls.length})`,
+        pdfL(`HALLAZGOS — CONTROLES NO CONFORMES O PARCIALES (${narrativeControls.length})`, `FINDINGS — NON-COMPLIANT OR PARTIAL CONTROLS (${narrativeControls.length})`),
         COLORS.danger, [254, 242, 242], narrativeControls.length,
         '5.1 Controles No Conformes y Parciales'
       );
@@ -7169,7 +7329,7 @@ function scopeSection(title, body, color) {
         if (y > pageHeight - 200) { doc.addPage(); y = drawContinuationHeader('Anexo · Evidencia Detallada'); }
         else { y += 12; }
         renderSectionBanner(
-          `EVIDENCIA — CONTROLES CONFORMES (${compliantWithEvidence.length})`,
+          pdfL(`EVIDENCIA — CONTROLES CONFORMES (${compliantWithEvidence.length})`, `EVIDENCE — COMPLIANT CONTROLS (${compliantWithEvidence.length})`),
           COLORS.success, [240, 253, 244], compliantWithEvidence.length,
           '5.2 Controles Conformes'
         );
@@ -7228,14 +7388,14 @@ function scopeSection(title, body, color) {
         headingLines.forEach((l, i) => txt(l, margin + 12, y + 6 + i * 11));
         doc.setFont('Roboto', 'italic').setFontSize(8);
         doc.setTextColor(COLORS.warning[0], COLORS.warning[1], COLORS.warning[2]);
-        txt(`⏳ Evidencia Pendiente · Estado registrado: ${complianceLabel}`, margin + 12, y + 6 + headingLines.length * 11);
+        txt(pdfL(`⏳ Evidencia Pendiente · Estado registrado: ${complianceLabel}`, `⏳ Evidence Pending · Recorded status: ${complianceLabel}`), margin + 12, y + 6 + headingLines.length * 11);
         y += rowH;
       }
       if (pendingEvidenceControls.length > 0) {
         if (y > pageHeight - 200) { doc.addPage(); y = drawContinuationHeader('Anexo · Evidencia Detallada'); }
         else { y += 12; }
         renderSectionBanner(
-          `EVIDENCIA PENDIENTE (${pendingEvidenceControls.length})`,
+          pdfL(`EVIDENCIA PENDIENTE (${pendingEvidenceControls.length})`, `EVIDENCE PENDING (${pendingEvidenceControls.length})`),
           COLORS.warning, [255, 251, 235], pendingEvidenceControls.length,
           '5.4 Evidencia Pendiente'
         );
@@ -7267,7 +7427,7 @@ function scopeSection(title, body, color) {
     txt('FIN DEL INFORME', pageWidth/2, y, { align: 'center' });
     y += 14;
     doc.setFont('Roboto', 'normal').setFontSize(7.5);
-    txt(`AuditSym · Auditoría ${auditData.id} · Documento generado el ${new Date().toLocaleString('es-ES')}`, pageWidth/2, y, { align: 'center' });
+    txt(pdfL(`AuditSym · Auditoría ${auditData.id} · Documento generado el ${new Date().toLocaleString('es-ES')}`, `AuditSym · Audit ${auditData.id} · Document generated on ${new Date().toLocaleString('en-GB')}`), pageWidth/2, y, { align: 'center' });
 
     // ── Draw the Table of Contents now that every section's real page
     // number has been recorded — jump back to the reserved TOC page and
