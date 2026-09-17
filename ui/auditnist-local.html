@@ -1946,10 +1946,15 @@ alert(T('alert_control_already_evaluated'));
 return;
 }
 
+// Dedupe by the control's unique SCF id ONLY — never by framework code.
+// Several distinct SCF controls legitimately map to the same framework code
+// (e.g. many controls share GV.OV-01), and the report consolidates them by
+// code on purpose; matching on fwCode here falsely blocked every distinct
+// control after the first one that shared a code. The scfId guard also stops
+// two custom controls (both with an empty scfId) from falsely colliding.
 const existingControls = [...document.querySelectorAll('.ctrl')];
-const alreadyExists = existingControls.some(ctrl => 
-ctrl.dataset.scfId === scfId || 
-ctrl.value.split(' – ')[0].trim() === fwCode
+const alreadyExists = existingControls.some(ctrl =>
+scfId && ctrl.dataset.scfId === scfId
 );
 
 if (alreadyExists) {
