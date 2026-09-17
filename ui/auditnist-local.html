@@ -3969,6 +3969,18 @@ renderApprovalTable();
 renderTeamRows(eng.team || []);
 updateDatesValidation();
 applyEditLock();
+// Loading an already-issued audit re-exposes its official download buttons,
+// wired to the issued version — otherwise the PDF/JSON of a report opened in
+// a fresh session are only reachable via the Version History row's icon, and
+// downloadIssuedPDF/JSON no-op because lastIssuedVersion was never set.
+// Guarded on the frozen snapshot actually existing (files saved before
+// versionSnapshots existed won't have one — those still use Version History).
+if (eng.status === 'issued' && dc.version && versionSnapshots[dc.version]) {
+  lastIssuedVersion = dc.version;
+  showPostIssuanceActions();
+} else {
+  hidePostIssuanceActions();
+}
 }
 
 /**
