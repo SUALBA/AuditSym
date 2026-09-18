@@ -1271,96 +1271,6 @@ async function generateAI(prompt) {
 
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 🔹 SUGGEST CONTROLS (VERSIÓN ORIGINAL - BASADA EN JSON)
-// ─────────────────────────────────────────────────────────────────────────────
-async function suggestControls() {
-  const btn = document.getElementById("suggest-controls");
-  try {
-    btn.disabled = true;
-    setSuggestStatus('generating');
-
-    if (!scfData) {
-      await loadScfDataAndCountControls();
-    }
-
-    const domain = document.getElementById("framework-domain").value;
-    const container = document.getElementById('suggested-controls');
-
-    const filtered = scfData.controls.filter(c => {
-      const mappings = c.mappings[currentFramework] || [];
-      if (mappings.length === 0) return false;
-      const code = mappings[0];
-      let controlDomain = '';
-
-      if (currentFramework === 'nist-csf') {
-        const prefix = code.split('.')[0];
-        const domainMap = { 'GV': 'Govern', 'ID': 'Identify', 'PR': 'Protect', 'DE': 'Detect', 'RS': 'Respond', 'RC': 'Recover' };
-        controlDomain = domainMap[prefix] || '';
-      } else if (currentFramework === 'iso27001') {
-        const num = code.split('.')[0];
-        const domainMap = { '5': 'Organizational', '6': 'People', '7': 'Physical', '8': 'Technological' };
-        controlDomain = domainMap[num] || '';
-      } else if (currentFramework === 'cis') {
-        const num = parseInt(code.split('.')[0]);
-        if (num <= 8) controlDomain = 'IG1 – Basic';
-        else if (num <= 15) controlDomain = 'IG2 – Foundational';
-        else controlDomain = 'IG3 – Organizational';
-      } else if (currentFramework === 'cobit') {
-        controlDomain = code.substring(0, 3).toUpperCase();
-      }
-
-      return controlDomain === domain;
-    }).slice(0, 12);
-
-    container.innerHTML = filtered.map(c => {
-      const fwCode = pickFrameworkCode(c.mappings[currentFramework], currentFramework) || c.id;
-      const isEvaluated = evaluatedControls[c.id];
-      const fullQuestion    = (c.question || '').replace(/"/g, '&quot;');
-      const previewQuestion = (c.question || '').substring(0, 60).replace(/"/g, '&quot;');
-      const safeName = c.name.replace(/"/g, '&quot;');
-
-      return `
-        <button class="suggest-btn px-3 py-2 rounded text-xs text-left cursor-pointer border
-          ${isEvaluated
-            ? 'bg-gray-700 border-gray-600 opacity-50 cursor-not-allowed'
-            : 'bg-gray-700 hover:bg-gray-600 border-cyberaccent'}"
-          data-scf-id="${c.id}"
-          data-fw-code="${fwCode}"
-          data-name="${safeName}"
-          data-question="${fullQuestion}"
-          data-vertical="${c.verticals?.[0] || 'general'}"
-          ${isEvaluated ? 'disabled' : ''}>
-          <div class="font-semibold text-cyberaccent">${fwCode}</div>
-          <div class="text-gray-400 text-[10px] mt-1 truncate">${c.name}</div>
-          <div class="text-gray-500 text-[9px] mt-1 italic truncate">"${previewQuestion}${(c.question||'').length > 60 ? '…' : ''}"</div>
-          ${isEvaluated ? '<div class="text-cyberok text-[10px] mt-1">✅ Evaluado</div>' : ''}
-        </button>
-      `;
-    }).join('');
-
-    document.querySelectorAll('.suggest-btn').forEach(button => {
-      if (!button.disabled) {
-        button.addEventListener('click', () => {
-          addControlFromJSON({
-            scfId: button.dataset.scfId,
-            fwCode: button.dataset.fwCode,
-            name: button.dataset.name,
-            question: button.dataset.question,
-            vertical: button.dataset.vertical
-          });
-        });
-      }
-    });
-
-  } catch (e) {
-    alert(T('err_suggestions') + e.message);
-  } finally {
-    setSuggestStatus('');
-    btn.disabled = false;
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // 🔹 PARSEADOR DE RESPUESTA DE IA
 // ─────────────────────────────────────────────────────────────────────────────
 function parseAIResponse(response, domain) {
@@ -2709,34 +2619,10 @@ onclick="addControlFromGrid('${c.id}','${fwCode}','${c.name.replace(/'/g,'&#39;'
 // 🔹 UPDATE ALL
 // ─────────────────────────────────────────────────────────────────────────────
 function updateAll() {
-updateSummary();
 updateCharts();
 renderControlGrid();
 EvaluationRegistry.updateDashboard();
 updateFrameworkProgressBars();
-}
-
-function updateSummary() {
-  const stats = { total: 0, compliant: 0, partial: 0, nonCompliant: 0, high: 0 };
-
-  Object.values(EvaluationRegistry.store).forEach(control => {
-    control.evaluations.forEach(ev => {
-      stats.total++;
-      if (ev.compliance === 'yes')          stats.compliant++;
-      else if (ev.compliance === 'no')      stats.nonCompliant++;
-      else if (ev.compliance === 'partial') stats.partial++;
-      if (ev.risk === 'high') stats.high++;
-    });
-  });
-
-  //  ELIMINAR ESTAS LÍNEAS (ya no existen los elementos)
-  // document.getElementById('countTotal').textContent = stats.total;
-  // document.getElementById('countOK').textContent = stats.compliant;
-  // document.getElementById('countPartial').textContent = stats.partial;
-  // document.getElementById('countFail').textContent = stats.nonCompliant;
-  // document.getElementById('countRisk').textContent = stats.high;
-  
-  // ✅ La información ya se actualiza en EvaluationRegistry.updateDashboard()
 }
 
 function updateCharts() {
@@ -9501,8 +9387,8 @@ if (chartRisk) { chartRisk.data.labels = [T('critical'), T('high'), T('medium'),
 if (document.getElementById('vertical-tabs')?.children.length) renderVerticalTabs();
 if (typeof updateFrameworkProgressBars === 'function') updateFrameworkProgressBars();
 // The live dashboard counters ("N pendientes", "N/N controles") are rendered
-// by EvaluationRegistry.updateDashboard(), not updateSummary() — refresh them
-// too so those T()-built strings re-translate on a language switch.
+// by EvaluationRegistry.updateDashboard() — refresh them too so those
+// T()-built strings re-translate on a language switch.
 if (typeof EvaluationRegistry !== 'undefined') EvaluationRegistry.updateDashboard();
 // Dynamic panels whose innerHTML is built with T() at render time (no
 // data-i18n) don't re-translate on their own — re-render them here. Each
@@ -9515,7 +9401,6 @@ if (typeof renderControlGrid === 'function') renderControlGrid();
 
 const ls = document.getElementById('lang-select');
 if (ls) ls.value = lang;
-updateSummary();
 }
 
 // Wrapper for the language <select>'s onchange only — never called during
