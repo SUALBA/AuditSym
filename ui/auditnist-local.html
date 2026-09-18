@@ -1582,17 +1582,16 @@ function loadAuditById(key) {
     wrapper.querySelector('.riesgo').value = c.riesgo || '';
     wrapper.querySelector('.evidencia').value = c.evidencia || '';
     toggleValidateBtn(wrapper.querySelector('.evidencia'));
-    autoGrowTextarea(wrapper.querySelector('.evidencia'));
+    autoGrowTextarea(wrapper.querySelector('.evidencia'), 180);
     wrapper.querySelector('.notes').value = c.notes || '';
-autoGrowTextarea(wrapper.querySelector('.notes'));
-
-// 4C Finding Details — restored regardless of current compliance value;
-// applyComplianceStyling() below decides visibility, never clears these.
-if (wrapper.querySelector('.finding-condition')) wrapper.querySelector('.finding-condition').value = c.condition || '';
-if (wrapper.querySelector('.finding-criteria')) wrapper.querySelector('.finding-criteria').value = c.criteria || '';
-if (wrapper.querySelector('.finding-cause')) wrapper.querySelector('.finding-cause').value = c.cause || '';
-if (wrapper.querySelector('.finding-consequence')) wrapper.querySelector('.finding-consequence').value = c.consequence || '';
-if (wrapper.querySelector('.finding-recommendation')) wrapper.querySelector('.finding-recommendation').value = c.recommendation || '';
+    autoGrowTextarea(wrapper.querySelector('.notes'), 240);
+    // 4C Finding Details — restored regardless of current compliance value;
+    // applyComplianceStyling() below decides visibility, never clears these.
+    if (wrapper.querySelector('.finding-condition')) wrapper.querySelector('.finding-condition').value = c.condition || '';
+    if (wrapper.querySelector('.finding-criteria')) wrapper.querySelector('.finding-criteria').value = c.criteria || '';
+    if (wrapper.querySelector('.finding-cause')) wrapper.querySelector('.finding-cause').value = c.cause || '';
+    if (wrapper.querySelector('.finding-consequence')) wrapper.querySelector('.finding-consequence').value = c.consequence || '';
+    if (wrapper.querySelector('.finding-recommendation')) wrapper.querySelector('.finding-recommendation').value = c.recommendation || '';
     // Issue #34: restore this control's structured evidence items (if
     // any) and render them — addControl() always starts a fresh control
     // with an empty array, since it has no way to know a saved one is
@@ -2059,7 +2058,7 @@ ${question ? `
 class="text-gray-400 hover:text-cyberaccent text-sm px-2 py-0.5 rounded hover:bg-gray-700/50 leading-none">⛶</button>
 </div>
 <textarea class="notes w-full mt-1 p-3 rounded bg-gray-900/40 border border-gray-700 text-gray-300 text-base leading-relaxed resize-y focus:outline-none focus:border-cyberaccent/60"
-rows="3" style="min-height:76px;" spellcheck="true" lang="es" placeholder="${T('notes_ph')}" data-i18n-placeholder="notes_ph" oninput="autoGrowTextarea(this)"></textarea>
+rows="3" style="min-height:76px;max-height:240px;overflow-y:auto;" spellcheck="true" lang="es" placeholder="${T('notes_ph')}" data-i18n-placeholder="notes_ph" oninput="autoGrowTextarea(this, 240)"></textarea>
 </div>
 
 <!-- Evidence gets the most visual weight of the three fields — it is the
@@ -2083,8 +2082,9 @@ class="px-2.5 py-1 bg-cyberwarn text-black rounded hover:bg-yellow-400 text-xs f
 </div>
 </div>
 <textarea class="evidencia w-full p-3 rounded bg-gray-800 border border-gray-600 text-gray-100 text-base leading-relaxed resize-y focus:outline-none focus:border-cyberaccent"
-rows="4" style="min-height:100px;" spellcheck="true" lang="es" placeholder="${T('evidence_ph')}" data-i18n-placeholder="evidence_ph" oninput="toggleValidateBtn(this); autoGrowTextarea(this); updateNAEvidenceWarning(this);"></textarea>
+rows="4" style="min-height:100px;max-height:180px;overflow-y:auto;" spellcheck="true" lang="es" placeholder="${T('evidence_ph')}" data-i18n-placeholder="evidence_ph" oninput="toggleValidateBtn(this); autoGrowTextarea(this, 180); updateNAEvidenceWarning(this);"></textarea>
 <p class="na-evidence-warning hidden text-xs text-cyberwarn mt-1">⚠ <span data-i18n="na_evidence_required">${T('na_evidence_required')}</span></p>
+
 </div>
 
 <!-- 4C Finding Details — only meaningful once buildFinding() would
@@ -2163,9 +2163,10 @@ if (workViewActive) renderWorkViewSidebar();
 // look bloated) but grow to fit whatever's typed or pasted in — an auditor
 // pasting three paragraphs of evidence shouldn't have to fight a 3-line
 // box with an internal scrollbar to see what they just wrote.
-function autoGrowTextarea(el) {
+function autoGrowTextarea(el, maxHeight) {
   el.style.height = 'auto';
-  el.style.height = Math.min(el.scrollHeight, 520) + 'px';
+  const cap = maxHeight || 520;
+  el.style.height = Math.min(el.scrollHeight, cap) + 'px';
 }
 
 // Modo Enfoque — a near-fullscreen editor for Notas/Evidencia. Long
@@ -3213,7 +3214,7 @@ function renderEvidenceItemsList(wrapper) {
     ` : '';
     const withdrawAction = !locked ? `<button type="button" onclick="withdrawEvidenceItemPrompt(this.closest('.control'), '${item.id}')" class="text-[10px] px-1.5 py-0.5 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded">${T('evidence_withdraw_btn')}</button>` : '';
     return `
-      <div class="p-2.5 bg-gray-900/60 border border-gray-700 rounded text-xs">
+      <div class="p-2 bg-gray-900/60 border border-gray-700 rounded text-xs leading-snug">
         <div class="flex items-center justify-between flex-wrap gap-1">
           <div class="flex items-center gap-2">
             <span class="font-mono font-bold text-cyberaccent">${escapeHTML(item.id)}</span>
@@ -3222,11 +3223,11 @@ function renderEvidenceItemsList(wrapper) {
           </div>
           <div class="flex items-center gap-1">${reviewActions}${withdrawAction}</div>
         </div>
-        ${item.source ? `<p class="mt-1 text-gray-300"><span class="text-gray-500">${T('evidence_source_label')}:</span> ${escapeHTML(item.source)}</p>` : ''}
+        ${item.source ? `<p class="mt-0.5 text-gray-300"><span class="text-gray-500">${T('evidence_source_label')}:</span> ${escapeHTML(item.source)}</p>` : ''}
         ${item.testPerformed ? `<p class="mt-0.5 text-gray-300"><span class="text-gray-500">${T('evidence_test_label')}:</span> ${escapeHTML(item.testPerformed)}</p>` : ''}
         ${item.result ? `<p class="mt-0.5 text-gray-300"><span class="text-gray-500">${T('evidence_result_label')}:</span> ${escapeHTML(item.result)}</p>` : ''}
         ${item.validationStatus === 'rejected' && item.rejectionReason ? `<p class="mt-0.5 text-red-300"><span class="text-gray-500">${T('evidence_reject_reason_prompt')}:</span> ${escapeHTML(item.rejectionReason)}</p>` : ''}
-        <p class="mt-1 text-[10px] text-gray-500">${escapeHTML(item.collectedBy || '—')} · ${escapeHTML(item.collectedAt || '—')}${item.reviewedBy ? ` · ${T('evidence_reviewer_name_prompt')}: ${escapeHTML(item.reviewedBy)}` : ''}</p>
+        <p class="mt-0.5 text-[10px] text-gray-500">${escapeHTML(item.collectedBy || '—')} · ${escapeHTML(item.collectedAt || '—')}${item.reviewedBy ? ` · ${T('evidence_reviewer_name_prompt')}: ${escapeHTML(item.reviewedBy)}` : ''}</p>
       </div>`;
   }).join('');
 }
@@ -4629,6 +4630,48 @@ alert(T('alert_report_saved'));
 isDirty = false;
 }
 
+// Background auto-save — deliberately separate from saveProgress()'s
+// N/A-justification validation above. That validation only matters when
+// the AUDITOR explicitly asks to save (or issue), never for a silent
+// background save: an auditor who marks a control "N/A" and simply
+// hasn't typed the justification YET (completely normal mid-session) was
+// previously getting the auto-save timer to call saveProgress() itself —
+// which hit that same validation, showed a blocking alert(), and
+// returned WITHOUT saving anything at all. Every two minutes. The
+// auditor could easily mistake that error popup for the success one
+// (both are native alert() dialogs needing the same "OK" click) and keep
+// working for hours believing their progress was being saved when it
+// never actually was. This function never blocks and never validates —
+// it always persists whatever is currently on the form.
+function autoSaveSilently() {
+  try {
+    const data = collectAuditData();
+    localStorage.setItem(`auditnist_${data.id}`, JSON.stringify(data));
+    isDirty = false;
+    showAutoSaveToast();
+  } catch (e) {
+    console.error('Auto-save failed:', e);
+  }
+}
+
+// Small, non-blocking, self-dismissing notification — replaces the
+// blocking alert() that used to interrupt the auditor's work every two
+// minutes. Reuses a single fixed element so rapid saves don't stack up
+// duplicate banners.
+function showAutoSaveToast() {
+  let toast = document.getElementById('autosave-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'autosave-toast';
+    toast.style.cssText = 'position:fixed;bottom:20px;right:20px;background:#1e293b;color:#4ade80;border:1px solid #334155;padding:10px 16px;border-radius:8px;font-size:13px;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,.3);opacity:0;transition:opacity .3s;pointer-events:none;';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = '✅ ' + (typeof T === 'function' ? T('autosaved_toast') : 'Guardado automáticamente');
+  clearTimeout(toast._hideTimer);
+  toast.style.opacity = '1';
+  toast._hideTimer = setTimeout(() => { toast.style.opacity = '0'; }, 2500);
+}
+
 function listSavedReports() {
 const container = document.getElementById('saved-reports');
 const audits = getSavedAudits();
@@ -4718,7 +4761,9 @@ wrapper.querySelector('.riesgo').addEventListener('change', (e) => {
 });
 wrapper.querySelector('.evidencia').value = c.evidencia || '';
 toggleValidateBtn(wrapper.querySelector('.evidencia'));
+autoGrowTextarea(wrapper.querySelector('.evidencia'), 180);
 wrapper.querySelector('.notes').value = c.notes || '';
+autoGrowTextarea(wrapper.querySelector('.notes'), 240);
 // 4C Finding Details — same restoration as loadAuditById.
 if (wrapper.querySelector('.finding-condition')) wrapper.querySelector('.finding-condition').value = c.condition || '';
 if (wrapper.querySelector('.finding-criteria')) wrapper.querySelector('.finding-criteria').value = c.criteria || '';
@@ -8193,6 +8238,7 @@ na_evidence_required:'Se requiere una justificación en Evidencia cuando un cont
 evidence_register_label:'Registro de Evidencia',
 evidence_register_add_btn:'Añadir Evidencia',
 evidence_modal_title:'Nueva Evidencia Estructurada',
+autosaved_toast:'Guardado automáticamente',
 evidence_type_label:'Tipo',
 evidence_source_label:'Fuente',
 evidence_source_ph:'p. ej. Microsoft Entra ID, contrato firmado...',
@@ -8415,6 +8461,7 @@ na_evidence_required:'A justification in Evidence is required when a control is 
 evidence_register_label:'Evidence Register',
 evidence_register_add_btn:'Add Evidence',
 evidence_modal_title:'New Structured Evidence',
+autosaved_toast:'Auto-saved',
 evidence_type_label:'Type',
 evidence_source_label:'Source',
 evidence_source_ph:'e.g. Microsoft Entra ID, signed contract...',
@@ -8682,6 +8729,7 @@ na_evidence_required:'Une justification dans le champ Preuve est requise lorsqu�
 evidence_register_label:'Registre des Preuves',
 evidence_register_add_btn:'Ajouter une Preuve',
 evidence_modal_title:'Nouvelle Preuve Structurée',
+autosaved_toast:'Enregistré automatiquement',
 evidence_type_label:'Type',
 evidence_source_label:'Source',
 evidence_source_ph:'p. ex. Microsoft Entra ID, contrat signé...',
@@ -8846,6 +8894,7 @@ na_evidence_required:'Wenn eine Kontrolle als Nicht anwendbar markiert wird, ist
 evidence_register_label:'Nachweisregister',
 evidence_register_add_btn:'Nachweis Hinzufügen',
 evidence_modal_title:'Neuer Strukturierter Nachweis',
+autosaved_toast:'Automatisch gespeichert',
 evidence_type_label:'Typ',
 evidence_source_label:'Quelle',
 evidence_source_ph:'z. B. Microsoft Entra ID, unterschriebener Vertrag...',
@@ -9010,6 +9059,7 @@ na_evidence_required:'É necessária uma justificativa no campo Evidência quand
 evidence_register_label:'Registro de Evidências',
 evidence_register_add_btn:'Adicionar Evidência',
 evidence_modal_title:'Nova Evidência Estruturada',
+autosaved_toast:'Salvo automaticamente',
 evidence_type_label:'Tipo',
 evidence_source_label:'Fonte',
 evidence_source_ph:'ex. Microsoft Entra ID, contrato assinado...',
@@ -9174,6 +9224,7 @@ na_evidence_required:'يلزم تقديم مبرر في حقل الدليل عن
 evidence_register_label:'سجل الأدلة',
 evidence_register_add_btn:'إضافة دليل',
 evidence_modal_title:'دليل منظم جديد',
+autosaved_toast:'تم الحفظ تلقائيًا',
 evidence_type_label:'النوع',
 evidence_source_label:'المصدر',
 evidence_source_ph:'مثال: Microsoft Entra ID، عقد موقّع...',
@@ -9338,6 +9389,7 @@ na_evidence_required:'将控制项标记为不适用时，必须在证据字段�
 evidence_register_label:'证据登记册',
 evidence_register_add_btn:'添加证据',
 evidence_modal_title:'新建结构化证据',
+autosaved_toast:'已自动保存',
 evidence_type_label:'类型',
 evidence_source_label:'来源',
 evidence_source_ph:'例如：Microsoft Entra ID、已签署的合同...',
@@ -9587,8 +9639,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Auto-save cada 2 minutos
 let autoSaveInterval = setInterval(() => {
   if (isDirty) {
-    const id = document.getElementById('id_informe').value || 'autosave';
-    saveProgress(); 
+    autoSaveSilently();
     console.log('🔄 Auto-guardado completado');
   }
 }, 120000); // 2 minutos
