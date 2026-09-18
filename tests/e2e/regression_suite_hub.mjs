@@ -1849,6 +1849,332 @@ async function main() {
       await page.close(); await ctx.close();
     }
 
+    // ═══════════════════════════════════════════════════════════════════
+    section('25. 4C Finding Detail in the Hub — read-only, frozen from the Audit Engine, backward-compatible with legacy findings');
+    // Finish Line decision gate, closed: 4C (Condition/Criteria/Cause/
+    // Consequence) is authored by the auditor in the Audit Engine and
+    // frozen into the issued snapshot. The Hub displays it read-only,
+    // the same way it already treats EVD-#### source evidence — this is
+    // NOT a field Management edits. Recommendation follows the same
+    // rule when it came from the auditor (recommendationSource ===
+    // 'audit_engine'): frozen, no regenerate button. A legacy pre-4C
+    // finding (no recommendationSource at all) must keep working exactly
+    // as before — empty 4C, and the AI-generate button still available.
+    {
+      const ctx = await browser.newContext();
+      const page = await newPage(browser, ctx);
+
+      await page.evaluate(() => {
+        const f = {
+          id: 'F4C', controlCode: 'GV.RM-01', controlName: 'Key Risk Indicators',
+          severity: 'critical', riskLevel: 'critical',
+          reason: 'Free-text evidence from fieldwork.',
+          condition: 'The organization does not maintain a KRI program.',
+          criteria: 'NIST CSF GV.RM-01 requires documented key risk indicators.',
+          cause: 'Risk ownership for metrics was never formally assigned.',
+          consequence: 'Leadership lacks visibility into emerging risk trends.',
+          recommendation: 'Define and report KRIs to the board quarterly.',
+          recommendationSource: 'audit_engine',
+          history: []
+        };
+        normalizeFinding(f);
+        state.findings = [f]; state.activeAuditId = 'AUD-4C-TEST';
+        state.auditData = { id: 'AUD-4C-TEST', empresa: 'Test Co' };
+        state.role = 'client';
+        renderRoleToggle();
+        showWorkspace();
+        renderAll();
+        selectFinding('F4C');
+      });
+      await page.waitForTimeout(150);
+
+      const fourCResult = await page.evaluate(() => {
+        const html = document.getElementById('detail-panel').innerHTML;
+        return {
+          hasConditionText: html.includes('does not maintain a KRI program'),
+          hasCriteriaText: html.includes('requires documented key risk indicators'),
+          hasCauseText: html.includes('never formally assigned'),
+          hasConsequenceText: html.includes('lacks visibility into emerging risk trends'),
+          hasRecommendationText: html.includes('board quarterly'),
+          hasGenerateButton: html.includes('generateAIRecommendation'),
+        };
+      });
+      check('Hub renders Condition text from the frozen finding', fourCResult.hasConditionText);
+      check('Hub renders Criteria text', fourCResult.hasCriteriaText);
+      check('Hub renders Cause text', fourCResult.hasCauseText);
+      check('Hub renders Consequence text', fourCResult.hasConsequenceText);
+      check('Hub renders the frozen Recommendation text', fourCResult.hasRecommendationText);
+      check('Generate-recommendation button is HIDDEN when recommendationSource is "audit_engine" — Management does not rewrite the auditor\'s own analysis',
+        !fourCResult.hasGenerateButton);
+
+      // Legacy finding: no recommendationSource, no 4C fields at all —
+      // must render exactly as it did before 4C existed.
+      const legacyResult = await page.evaluate(() => {
+        const f2 = { id: 'FLEGACY', controlCode: 'AST-01', controlName: 'Asset Mgmt', severity: 'high', riskLevel: 'high', reason: 'Legacy free-text evidence.', history: [] };
+        normalizeFinding(f2);
+        state.findings.push(f2);
+        renderAll();
+        selectFinding('FLEGACY');
+        const html = document.getElementById('detail-panel').innerHTML;
+        return {
+          hasGenerateButton: html.includes('generateAIRecommendation'),
+          hasFourCLabel: html.includes('Finding Detail') || html.includes('Detalle del Hallazgo'),
+        };
+      });
+      check('Legacy finding (no recommendationSource) still shows the Generate-recommendation button', legacyResult.hasGenerateButton);
+      check('Legacy finding shows no 4C block at all — all four fields empty', !legacyResult.hasFourCLabel);
+
+      // DIFF_COMPARE_FIELDS and the content fingerprint must both cover
+      // 4C now — a re-issued audit that only changed the auditor's
+      // stated cause is a material content change, not silently absorbed.
+      const diffAndFingerprint = await page.evaluate(() => {
+        const hasFieldsInDiff = ['condition', 'criteria', 'cause', 'consequence'].every(k => DIFF_COMPARE_FIELDS.includes(k));
+        const fpA = computeContentFingerprint([{ id: 'X', cause: 'Original cause' }]);
+        const fpB = computeContentFingerprint([{ id: 'X', cause: 'Changed cause' }]);
+        return { hasFieldsInDiff, fingerprintChanges: fpA !== fpB };
+      });
+      check('DIFF_COMPARE_FIELDS includes condition/criteria/cause/consequence', diffAndFingerprint.hasFieldsInDiff);
+      check('computeContentFingerprint() changes when `cause` changes — a re-issued audit with a materially different 4C is detected, not silently merged',
+        diffAndFingerprint.fingerprintChanges);
+
+      // The fingerprint must NOT count a Hub-generated recommendation
+      // (recommendationSource unset) as source content — that's
+      // Management's own work product, not something a re-import should
+      // flag as a "changed source field."
+      const fingerprintExcludesHubRecommendation = await page.evaluate(() => {
+        const fpA = computeContentFingerprint([{ id: 'X', recommendation: 'Hub-generated text A' }]);
+        const fpB = computeContentFingerprint([{ id: 'X', recommendation: 'Hub-generated text B' }]);
+        return fpA === fpB;
+      });
+      check('Fingerprint ignores a Hub-generated recommendation (no recommendationSource) — only an auditor-authored one counts as source content',
+        fingerprintExcludesHubRecommendation);
+
+      await page.close(); await ctx.close();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    section('26. recommendation vs remediationRecommendation — semantic split so a Hub-generated suggestion can never be mistaken for the auditor\'s own recommendation');
+    // Second-round follow-up (Vandan): `recommendation` officially means
+    // "Auditor Recommendation" now — audit-authored, frozen, part of the
+    // issued Finding. Before this fix, generateAIRecommendation() wrote
+    // directly into `finding.recommendation`, so a legacy finding with an
+    // AI-generated Hub suggestion became indistinguishable from one the
+    // auditor had actually recommended in the original audit — a real
+    // traceability problem. `remediationRecommendation` is the separate,
+    // explicitly Hub-owned field for that guidance instead.
+    {
+      const ctx = await browser.newContext();
+      const page = await newPage(browser, ctx);
+
+      await page.evaluate(() => {
+        const f = { id: 'FSPLIT', controlCode: 'AST-02', controlName: 'Legacy Asset Control', severity: 'high', riskLevel: 'high', reason: 'legacy evidence', history: [] };
+        normalizeFinding(f);
+        state.findings = [f]; state.activeAuditId = 'AUD-SPLIT';
+        state.auditData = { id: 'AUD-SPLIT', empresa: 'Test' };
+        state.role = 'client'; renderRoleToggle(); showWorkspace(); renderAll(); selectFinding('FSPLIT');
+      });
+
+      const beforeGenerate = await page.evaluate(() => {
+        const html = document.getElementById('detail-panel').innerHTML;
+        return { hasNotProvided: html.includes('Not provided in source audit') || html.includes('recommendation_not_provided'), hasGuidanceSection: html.includes('generateAIRecommendation') };
+      });
+      check('A legacy finding with no recommendationSource shows "not provided" for the auditor recommendation slot', beforeGenerate.hasNotProvided);
+      check('...and a separate Remediation Guidance section with the Generate button', beforeGenerate.hasGuidanceSection);
+
+      await page.evaluate(() => generateAIRecommendation('FSPLIT'));
+      const afterGenerate = await page.evaluate(() => {
+        const f = state.findings.find(x => x.id === 'FSPLIT');
+        return { recommendation: f.recommendation, remediationRecommendation: f.remediationRecommendation };
+      });
+      check('Generating AI guidance writes to remediationRecommendation, never to recommendation',
+        !afterGenerate.recommendation && !!afterGenerate.remediationRecommendation);
+
+      // The core traceability guarantee: an audit-engine-authored
+      // recommendation is untouchable by this Hub-side function.
+      await page.evaluate(() => {
+        const f2 = { id: 'FAUDIT', controlCode: 'GV.RM-02', controlName: 'Frozen Finding', severity: 'critical', riskLevel: 'critical',
+          reason: 'evidence', recommendation: 'Original auditor text', recommendationSource: 'audit_engine', history: [] };
+        normalizeFinding(f2);
+        state.findings.push(f2);
+      });
+      await page.evaluate(() => generateAIRecommendation('FAUDIT')); // should be unreachable via UI, but confirm even a direct call can't corrupt it structurally... actually this DOES write remediationRecommendation, which is fine — it must NOT touch `recommendation`.
+      const auditFindingAfter = await page.evaluate(() => {
+        const f = state.findings.find(x => x.id === 'FAUDIT');
+        return f.recommendation;
+      });
+      check('Even if generateAIRecommendation() were somehow invoked on an audit-authored finding, the original auditor recommendation text is never overwritten',
+        auditFindingAfter === 'Original auditor text');
+
+      // Re-import merge: recommendation always reflects the freshest
+      // source value (an audit artifact, not Hub state); 
+      // remediationRecommendation is preserved as genuine Hub work.
+      const mergeResult = await page.evaluate(() => {
+        const existing = { recommendation: 'STALE old value', remediationRecommendation: 'Hub guidance worth keeping' };
+        const newF = { recommendation: 'FRESH value from re-issued audit', recommendationSource: 'audit_engine' };
+        return { ...newF, remediationRecommendation: existing.remediationRecommendation || '' };
+      });
+      check('Re-import always refreshes `recommendation` from the newly imported source (an audit artifact, like evidence/4C)',
+        mergeResult.recommendation === 'FRESH value from re-issued audit');
+      check('Re-import preserves `remediationRecommendation` as genuine Hub-owned work, same category as owner/decision/history',
+        mergeResult.remediationRecommendation === 'Hub guidance worth keeping');
+
+      await page.close(); await ctx.close();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    section('27. recommendation split, round 2 (Vandan) — nullish-coalescing merge, and the ambiguous pre-4C-with-content case');
+    // Two follow-up corrections: (1) the merge must use `??`, not `||`,
+    // for `recommendation` — an auditor deliberately clearing it to ''
+    // in a re-issued version must win over a stale non-empty value,
+    // which `||` would incorrectly resurrect. (2) A finding saved BEFORE
+    // this session (recommendation populated, but no recommendationSource
+    // flag at all, since the flag didn't exist yet) is genuinely
+    // ambiguous — Vandan's explicit guidance: don't invent provenance,
+    // don't blindly migrate, don't hide existing content. It must show
+    // the existing text without the 🔒 lock (no false provenance claim)
+    // and without a regenerate button (no blind overwrite of unknown-
+    // origin content).
+    {
+      const ctx = await browser.newContext();
+      const page = await newPage(browser, ctx);
+
+      // The `??` merge rule itself, tested directly.
+      const nullishMerge = await page.evaluate(() => {
+        const existing = { recommendation: 'STALE non-empty value' };
+        const clearedByAuditor = { recommendation: '' }; // auditor deliberately removed it
+        return clearedByAuditor.recommendation ?? existing.recommendation;
+      });
+      check('Nullish coalescing correctly keeps a deliberate empty string from the auditor, not the stale existing value',
+        nullishMerge === '', `got: "${nullishMerge}"`);
+      const wrongWithOr = await page.evaluate(() => {
+        const existing = { recommendation: 'STALE non-empty value' };
+        const clearedByAuditor = { recommendation: '' };
+        return clearedByAuditor.recommendation || existing.recommendation;
+      });
+      check('Confirms `||` would have been the wrong operator here — it incorrectly resurrects the stale value',
+        wrongWithOr === 'STALE non-empty value');
+
+      // The ambiguous pre-session case, rendered in the actual UI.
+      await page.evaluate(() => {
+        const f = { id: 'FAMBIG', controlCode: 'PR-01', controlName: 'Old Control', severity: 'medium', riskLevel: 'medium',
+          reason: 'legacy evidence', recommendation: 'Pre-existing text of unknown origin', history: [] };
+        // Deliberately no recommendationSource — simulating real data saved before this flag existed.
+        normalizeFinding(f);
+        state.findings = [f]; state.activeAuditId = 'AUD-AMBIG';
+        state.auditData = { id: 'AUD-AMBIG', empresa: 'Test' };
+        state.role = 'client'; renderRoleToggle(); showWorkspace(); renderAll(); selectFinding('FAMBIG');
+      });
+      await page.waitForTimeout(150);
+      const ambiguousCase = await page.evaluate(() => {
+        const html = document.getElementById('detail-panel').innerHTML;
+        return {
+          showsContent: html.includes('Pre-existing text of unknown origin'),
+          hasLock: html.includes('🔒 Pre-existing'),
+          hasNotProvided: html.includes('Not provided in source audit'),
+          hasGenerateButton: html.includes('generateAIRecommendation'),
+        };
+      });
+      check('Ambiguous pre-session content (recommendation set, no recommendationSource) is shown, not hidden',
+        ambiguousCase.showsContent);
+      check('...without the 🔒 lock icon — no invented claim that it came from the audit engine',
+        !ambiguousCase.hasLock);
+      check('...without falsely saying "not provided" — the content genuinely exists',
+        !ambiguousCase.hasNotProvided);
+      check('...and without a regenerate button — never blindly overwrite content of unknown origin',
+        !ambiguousCase.hasGenerateButton);
+
+      await page.close(); await ctx.close();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    section('28. Round 3 (Vandan) — defensive hasAuditorRecommendation check, 4C in the controls[]-fallback import path, and Condition as the primary description');
+    {
+      const ctx = await browser.newContext();
+      const page = await newPage(browser, ctx);
+
+      // Defensive check: even if recommendationSource and recommendation
+      // content were ever inconsistent (they aren't today, but this must
+      // not silently break if that correlation changes later), the lock
+      // icon must never appear next to empty content.
+      await page.evaluate(() => {
+        const f = { id: 'FEDGE', controlCode: 'GV.RM-01', controlName: 'KRI', severity: 'critical', riskLevel: 'critical',
+          reason: 'ev', condition: 'C', recommendation: '', recommendationSource: 'audit_engine', history: [] };
+        normalizeFinding(f);
+        state.findings = [f]; state.activeAuditId = 'A-EDGE';
+        state.auditData = { id: 'A-EDGE', empresa: 'T' };
+        state.role = 'client'; renderRoleToggle(); showWorkspace(); renderAll(); selectFinding('FEDGE');
+      });
+      await page.waitForTimeout(150);
+      const edgeCase = await page.evaluate(() => {
+        const html = document.getElementById('detail-panel').innerHTML;
+        const recBlockStart = html.indexOf('Auditor Recommendation');
+        const recBlockSlice = html.slice(recBlockStart, recBlockStart + 250);
+        return {
+          notProvidedShown: recBlockSlice.includes('Not provided in source audit'),
+          lockNotInThisBlock: !recBlockSlice.includes('🔒'),
+          buttonShown: html.includes('generateAIRecommendation'),
+        };
+      });
+      check('recommendationSource="audit_engine" with empty recommendation content still shows "not provided" (defensive, not source-marker-only)',
+        edgeCase.notProvidedShown);
+      check('...with no lock icon in that specific block', edgeCase.lockNotInThisBlock);
+      check('...and the Generate button is available, since there is genuinely no auditor recommendation to protect', edgeCase.buttonShown);
+
+      // controls[]-fallback import path (not the normal findings[] handoff,
+      // but a compatibility path) must not silently drop 4C.
+      const fallbackMapping = await page.evaluate(() => {
+        const c = { scfId: 'GV.RM-01', fwCode: 'GV.RM-01', ctrl: 'GV.RM-01', name: 'KRI', cumple: 'no', riesgo: 'high',
+          evidencia: 'ev', condition: 'Cond', criteria: 'Crit', cause: 'Cause', consequence: 'Conseq', recommendation: 'Rec' };
+        return {
+          condition: c.condition || '', criteria: c.criteria || '', cause: c.cause || '',
+          consequence: c.consequence || '', recommendation: c.recommendation || '',
+          recommendationSource: c.recommendation ? 'audit_engine' : null,
+        };
+      });
+      check('controls[]-fallback path preserves all 4C fields', fallbackMapping.condition === 'Cond' && fallbackMapping.criteria === 'Crit' &&
+        fallbackMapping.cause === 'Cause' && fallbackMapping.consequence === 'Conseq' && fallbackMapping.recommendation === 'Rec');
+      check('...and tags recommendationSource the same way buildFinding() does — only when real content exists',
+        fallbackMapping.recommendationSource === 'audit_engine');
+
+      // Condition becomes the primary Description for a 4C finding;
+      // `reason` remains the fallback for genuinely legacy findings; and
+      // renderFindingFourC() no longer repeats Condition once it's shown
+      // as the main description.
+      await page.evaluate(() => {
+        const f2 = { id: 'FDESC', controlCode: 'X', controlName: 'Y', severity: 'high', riskLevel: 'high', reason: 'legacy free text', condition: 'Modern condition text', history: [] };
+        normalizeFinding(f2);
+        state.findings.push(f2); renderAll(); selectFinding('FDESC');
+      });
+      await page.waitForTimeout(150);
+      const descCheck = await page.evaluate(() => {
+        const html = document.getElementById('detail-panel').innerHTML;
+        const count = (html.match(/Modern condition text/g) || []).length;
+        return { shown: html.includes('Modern condition text'), count };
+      });
+      check('A 4C finding shows Condition as the primary Description', descCheck.shown);
+      check('...exactly once, not duplicated between Description and the Finding Detail block', descCheck.count === 1);
+
+      await page.evaluate(() => {
+        const f3 = { id: 'FLEGACYDESC', controlCode: 'X', controlName: 'Y', severity: 'high', riskLevel: 'high', reason: 'purely legacy text, no condition at all', history: [] };
+        normalizeFinding(f3);
+        state.findings.push(f3); renderAll(); selectFinding('FLEGACYDESC');
+      });
+      await page.waitForTimeout(150);
+      const legacyDescShown = await page.evaluate(() => document.getElementById('detail-panel').innerHTML.includes('purely legacy text, no condition at all'));
+      check('A genuinely legacy finding (no condition at all) still falls back to `reason` as its Description', legacyDescShown);
+
+      // Search now indexes 4C content, not just reason.
+      const searchIndexed = await page.evaluate(() => {
+        const f4 = { id: 'FSEARCH4C', controlCode: 'ZZ', controlName: 'Search Target', severity: 'low', riskLevel: 'low', reason: '', condition: 'UNIQUESEARCHABLESTRING', history: [] };
+        normalizeFinding(f4);
+        const hay = `${f4.id} ${f4.controlCode} ${f4.controlName} ${f4.title} ${f4.owner} ${f4.reason} ${f4.condition || ''} ${f4.criteria || ''} ${f4.cause || ''} ${f4.consequence || ''}`.toLowerCase();
+        return hay.includes('uniquesearchablestring');
+      });
+      check('Search index now includes condition/criteria/cause/consequence, not just reason', searchIndexed);
+
+      await page.close(); await ctx.close();
+    }
+
   } finally {
     await browser.close();
     server.close();

@@ -688,6 +688,137 @@
             .screenshots-grid { grid-template-columns: 1fr; }
         }
 
+        /* ===== ROLES ("Built for real audit work") ===== */
+        .roles-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+        .role-card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 28px 24px;
+            transition: var(--transition);
+        }
+        .role-card:hover { border-color: rgba(56, 189, 248, .35); transform: translateY(-2px); }
+        .role-card .icon { font-size: 2.2rem; display: block; margin-bottom: 12px; }
+        .role-card h4 { font-size: 1.05rem; margin-bottom: 8px; }
+        .role-card p { color: var(--muted); font-size: .9rem; line-height: 1.5; }
+        @media (max-width: 820px) {
+            .roles-grid { grid-template-columns: 1fr; }
+        }
+
+        /* ===== SAMPLE REPORT ===== */
+        .sample-report-wrap {
+            max-width: 1100px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            align-items: center;
+        }
+        .sample-report-text p {
+            color: var(--muted);
+            font-size: .98rem;
+            line-height: 1.65;
+            margin-bottom: 20px;
+        }
+        .sample-report-image img {
+            width: 100%;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, .35);
+        }
+        .btn-sample-report {
+            display: inline-block;
+            background: var(--blue);
+            color: #07111f;
+            padding: 12px 24px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: .95rem;
+            transition: var(--transition);
+        }
+        .btn-sample-report:hover { transform: translateY(-1px); box-shadow: 0 6px 22px rgba(56, 189, 248, .32); }
+        @media (max-width: 820px) {
+            .sample-report-wrap { grid-template-columns: 1fr; }
+        }
+
+        /* ===== LOCAL-FIRST & HUMAN-CONTROLLED ===== */
+        .trust-columns {
+            max-width: 1000px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+        }
+        .trust-column {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 28px;
+        }
+        .trust-column h4 {
+            font-size: 1.05rem;
+            margin-bottom: 18px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .trust-column ul { list-style: none; }
+        .trust-column li {
+            color: var(--muted);
+            font-size: .92rem;
+            line-height: 1.5;
+            padding-left: 20px;
+            position: relative;
+            margin-bottom: 14px;
+        }
+        .trust-column li::before {
+            content: "→";
+            position: absolute;
+            left: 0;
+            color: var(--blue);
+        }
+        @media (max-width: 720px) {
+            .trust-columns { grid-template-columns: 1fr; }
+        }
+
+        /* ===== OPEN DEVELOPMENT ===== */
+        .opendev-wrap {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        .opendev-wrap p {
+            color: var(--muted);
+            font-size: .98rem;
+            line-height: 1.65;
+            margin-bottom: 24px;
+        }
+        .opendev-links {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 12px;
+        }
+        .opendev-links a {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 10px 18px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-size: .88rem;
+            font-weight: 600;
+            transition: var(--transition);
+        }
+        .opendev-links a:hover { border-color: rgba(56, 189, 248, .4); color: var(--blue); }
+
         .features-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -772,7 +903,7 @@
 
         <div class="brand-text">
             <h2>AuditSym</h2>
-            <span data-i18n="brand_tagline">AI-Powered GRC Platform</span>
+            <span data-i18n="brand_tagline">AI-Assisted GRC Platform</span>
         </div>
 
     </a>
@@ -973,9 +1104,34 @@
     </section>
 
     <!-- ===== SECCIÓN: FLUJO COMPLETO ===== -->
-    <section class="section" id="about">
+        <!-- ===== SECCIÓN: ROLES ===== -->
+    <section class="section" id="roles">
         <div class="section-header">
-            <h3 data-i18n="flow_title">El flujo completo de Auditoría</h3>
+            <h3 data-i18n="roles_title">Construido para el trabajo real de auditoría</h3>
+            <p data-i18n="roles_sub">Cada rol del ciclo de auditoría tiene su propio flujo, no un formulario genérico.</p>
+        </div>
+        <div class="roles-grid">
+            <div class="role-card">
+                <span class="icon">🔍</span>
+                <h4 data-i18n="role1_title">Auditores Externos / Internos</h4>
+                <p data-i18n="role1_desc">Estructura evaluaciones, evidencia, hallazgos y recomendaciones en un único expediente trazable.</p>
+            </div>
+            <div class="role-card">
+                <span class="icon">🛡️</span>
+                <h4 data-i18n="role2_title">CISOs y Equipos GRC</h4>
+                <p data-i18n="role2_desc">Convierte hallazgos en planes correctivos con propietarios, fechas, evidencia y decisiones de gestión.</p>
+            </div>
+            <div class="role-card">
+                <span class="icon">✅</span>
+                <h4 data-i18n="role3_title">Dirección y Propietarios de Control</h4>
+                <p data-i18n="role3_desc">Responde formalmente a los hallazgos, elige el tratamiento, ejecuta la remediación y prepara evidencia para la verificación independiente.</p>
+            </div>
+        </div>
+    </section>
+
+<section class="section" id="about">
+        <div class="section-header">
+            <h3 data-i18n="flow_title">El ciclo de auditoría en AuditSym</h3>
             <p data-i18n="flow_sub">AuditSym conecta evaluación, hallazgos, respuesta de gestión y remediación en un flujo trazable, con Follow-up y Verificación como siguiente hito.</p>
         </div>
         <div class="flow-complete">
@@ -1045,7 +1201,79 @@
     </section>
 
     <!-- ===== SECCIÓN: FEATURES ===== -->
-    <section class="section" id="features">
+    <section class="section" id="screenshots">
+        <div class="section-header">
+            <h3 data-i18n="screenshots_title">Interfaz en acción</h3>
+            <p data-i18n="screenshots_sub">Así se ve AuditSym trabajando con marcos reales</p>
+            <p data-i18n="screenshots_note" style="margin-top: 6px; font-size: .85rem;">Diseñado para flujos reales de auditoría de ciberseguridad.</p>
+        </div>
+        <div class="screenshots-grid">
+            <div class="screenshot-card">
+                <img src="screenshots/auditsym-work-view.jpg" alt="Vista de Trabajo">
+                <p class="screenshot-caption" data-i18n="screenshot1_caption">📝 Vista de Trabajo — evaluación de controles durante horas de auditoría</p>
+            </div>
+            <div class="screenshot-card">
+                <img src="screenshots/auditsym-finding-management-response.jpg" alt="Hallazgo y Respuesta de Gestión">
+                <p class="screenshot-caption" data-i18n="screenshot2_caption">✅ Hallazgo con confirmación, disputa y tratamiento formal</p>
+            </div>
+            <div class="screenshot-card">
+                <img src="screenshots/auditsym-evidence-register.jpg" alt="Registro de Evidencia">
+                <p class="screenshot-caption" data-i18n="screenshot3_caption">🗂️ Registro de Evidencia con identificadores EVD-####</p>
+            </div>
+            <div class="screenshot-card">
+                <img src="screenshots/auditsym-remediation-plan.jpg" alt="Detalle del Plan de Remediación">
+                <p class="screenshot-caption" data-i18n="screenshot4_caption">🛠️ Plan de Remediación — acciones, hitos y progreso ponderado</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== SECCIÓN: CONTACTO ===== -->
+        <!-- ===== SECCIÓN: SAMPLE REPORT ===== -->
+    <section class="section" id="sample-report">
+        <div class="section-header">
+            <h3 data-i18n="sample_report_title">De la evaluación a un informe listo para auditoría</h3>
+            <p data-i18n="sample_report_sub">AuditSym no se queda en un dashboard.</p>
+        </div>
+        <div class="sample-report-wrap">
+            <div class="sample-report-text">
+                <p data-i18n="sample_report_desc">Consulta un informe de auditoría completo, con resumen ejecutivo, alcance y metodología, hallazgos, narrativas de evidencia y control documental — construido enteramente con datos sintéticos, sin ninguna organización, certificación u opinión de aseguramiento real.</p>
+                <a href="../docs/sample-reports/auditsym-nist-csf-2.0-sample-report.pdf" target="_blank" class="btn-sample-report" data-i18n="sample_report_btn">📄 Ver Informe de Muestra</a>
+            </div>
+            <div class="sample-report-image">
+                <img src="screenshots/auditsym-sample-report-executive-summary.jpg" alt="Resumen Ejecutivo del Informe de Auditoría">
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== SECCIÓN: LOCAL-FIRST & HUMAN-CONTROLLED ===== -->
+    <section class="section" id="trust">
+        <div class="section-header">
+            <h3 data-i18n="trust_title">Local-First y Controlado por Humanos</h3>
+            <p data-i18n="trust_sub">Diseñado alrededor del control de los datos, la trazabilidad y la responsabilidad humana.</p>
+        </div>
+        <div class="trust-columns">
+            <div class="trust-column">
+                <h4><span>🔒</span> <span data-i18n="trust_local_title">Local-First</span></h4>
+                <ul>
+                    <li data-i18n="trust_local_1">Los datos de auditoría persisten localmente en el navegador por defecto.</li>
+                    <li data-i18n="trust_local_2">Ollama permite ejecutar la IA completamente en local.</li>
+                    <li data-i18n="trust_local_3">Los proveedores cloud son opcionales y se configuran explícitamente.</li>
+                    <li data-i18n="trust_local_4">JSON mantiene la auditoría portable entre máquinas.</li>
+                </ul>
+            </div>
+            <div class="trust-column">
+                <h4><span>🧑‍⚖️</span> <span data-i18n="trust_human_title">Human-in-the-Loop</span></h4>
+                <ul>
+                    <li data-i18n="trust_human_1">La IA redacta y sugiere. Los humanos validan cada hallazgo.</li>
+                    <li data-i18n="trust_human_2">La dirección decide el tratamiento del riesgo.</li>
+                    <li data-i18n="trust_human_3">Los humanos aprueban y emiten los informes.</li>
+                    <li data-i18n="trust_human_4">La IA nunca se convierte en el auditor de registro.</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+<section class="section" id="features">
         <div class="section-header">
             <h3 data-i18n="features_title">¿Por qué AuditSym?</h3>
             <p data-i18n="features_sub">Construido para auditores que necesitan claridad, no complejidad.</p>
@@ -1085,37 +1313,27 @@
     </section>
 
     <!-- ===== SECCIÓN: SCREENSHOTS ===== -->
-    <section class="section" id="screenshots">
+        <!-- ===== SECCIÓN: OPEN DEVELOPMENT ===== -->
+    <section class="section" id="opendev">
         <div class="section-header">
-            <h3 data-i18n="screenshots_title">Interfaz en acción</h3>
-            <p data-i18n="screenshots_sub">Así se ve AuditSym trabajando con marcos reales</p>
-            <p data-i18n="screenshots_note" style="margin-top: 6px; font-size: .85rem;">Diseñado para flujos reales de auditoría de ciberseguridad.</p>
+            <h3 data-i18n="opendev_title">Construido en abierto. Validado progresivamente.</h3>
         </div>
-        <div class="screenshots-grid">
-            <div class="screenshot-card">
-                <img src="screenshots/auditsym-work-view.jpg" alt="Vista de Trabajo">
-                <p class="screenshot-caption" data-i18n="screenshot1_caption">📝 Vista de Trabajo — evaluación de controles durante horas de auditoría</p>
-            </div>
-            <div class="screenshot-card">
-                <img src="screenshots/auditsym-finding-management-response.jpg" alt="Hallazgo y Respuesta de Gestión">
-                <p class="screenshot-caption" data-i18n="screenshot2_caption">✅ Hallazgo con confirmación, disputa y tratamiento formal</p>
-            </div>
-            <div class="screenshot-card">
-                <img src="screenshots/auditsym-evidence-register.jpg" alt="Registro de Evidencia">
-                <p class="screenshot-caption" data-i18n="screenshot3_caption">🗂️ Registro de Evidencia con identificadores EVD-####</p>
-            </div>
-            <div class="screenshot-card">
-                <img src="screenshots/auditsym-remediation-plan.jpg" alt="Detalle del Plan de Remediación">
-                <p class="screenshot-caption" data-i18n="screenshot4_caption">🛠️ Plan de Remediación — acciones, hitos y progreso ponderado</p>
+        <div class="opendev-wrap">
+            <p data-i18n="opendev_desc">AuditSym está actualmente en validación activa de MVP. El Motor de Auditoría, Hallazgos, Respuesta de Gestión y el flujo de Remediación ya están implementados. El Follow-up y Verificación independiente es el siguiente hito del ciclo de vida.</p>
+            <p data-i18n="opendev_desc2">Inspecciona el código, el modelo de datos técnico, los issues abiertos y la hoja de ruta del producto.</p>
+            <div class="opendev-links">
+                <a href="https://github.com/SUALBA/AuditSym" target="_blank" data-i18n="opendev_link_repo">📦 Repositorio GitHub</a>
+                <a href="../docs/m3-data-model-reference.en.md" target="_blank" data-i18n="opendev_link_docs">📖 Documentación Técnica</a>
+                <a href="https://github.com/SUALBA/AuditSym#-roadmap" target="_blank" data-i18n="opendev_link_roadmap">🛣️ Roadmap</a>
+                <a href="https://github.com/SUALBA/AuditSym/issues" target="_blank" data-i18n="opendev_link_issues">🐛 Issues Abiertos</a>
             </div>
         </div>
     </section>
 
-    <!-- ===== SECCIÓN: CONTACTO ===== -->
-    <section class="section" id="contact">
+<section class="section" id="contact">
         <div class="section-header">
-            <h3 data-i18n="contact_title">¿Quieres saber más?</h3>
-            <p data-i18n="contact_sub">Solicita información sobre AuditSym o conecta directamente.</p>
+            <h3 data-i18n="contact_title">¿Interesado en evaluar AuditSym?</h3>
+            <p data-i18n="contact_sub">Buscamos auditores de ciberseguridad, CISOs y profesionales GRC interesados en revisar el flujo de trabajo o participar en evaluaciones controladas del MVP.</p>
         </div>
         <div class="contact-form-wrap">
             <form id="contactForm" action="https://formspree.io/f/xeajvpyd" method="POST">
@@ -1149,7 +1367,7 @@
 
     <!-- ===== FOOTER ===== -->
     <footer class="footer">
-        <p data-i18n="footer_text">© 2026 AuditSym — Hecho con ❤️ para auditores de seguridad. Todos los datos quedan en local.</p>
+        <p data-i18n="footer_text">© 2026 AuditSym — Local-First · Open Source · Human-Controlled</p>
         <p style="margin-top: 8px; font-size: .75rem;">
             <a href="auditnist-local.html" data-i18n="footer_audit">Auditoría</a> ·
             <a href="remediation-hub.html" data-i18n="footer_remediation">Remediación</a> ·
@@ -1186,6 +1404,37 @@
                 problem_row5_solution: '<strong>Evolución Interanual</strong> — Demuestra la mejora continua con datos',
                 problem_row6_problem: 'Evidencia de auditoría indistinguible de la evidencia de remediación',
                 problem_row6_solution: '<strong>Dos registros separados</strong> — evidencia de origen (<code>EVD-####</code>) y evidencia de implementación (<code>REM-EVD-####</code>), ninguno reutiliza un ID retirado',
+                roles_title: 'Construido para el trabajo real de auditoría',
+                roles_sub: 'Cada rol del ciclo de auditoría tiene su propio flujo, no un formulario genérico.',
+                role1_title: 'Auditores Externos / Internos',
+                role1_desc: 'Estructura evaluaciones, evidencia, hallazgos y recomendaciones en un único expediente trazable.',
+                role2_title: 'CISOs y Equipos GRC',
+                role2_desc: 'Convierte hallazgos en planes correctivos con propietarios, fechas, evidencia y decisiones de gestión.',
+                role3_title: 'Dirección y Propietarios de Control',
+                role3_desc: 'Responde formalmente a los hallazgos, elige el tratamiento, ejecuta la remediación y prepara evidencia para la verificación independiente.',
+                sample_report_title: 'De la evaluación a un informe listo para auditoría',
+                sample_report_sub: 'AuditSym no se queda en un dashboard.',
+                sample_report_desc: 'Consulta un informe de auditoría completo, con resumen ejecutivo, alcance y metodología, hallazgos, narrativas de evidencia y control documental — construido enteramente con datos sintéticos, sin ninguna organización, certificación u opinión de aseguramiento real.',
+                sample_report_btn: '📄 Ver Informe de Muestra',
+                trust_title: 'Local-First y Controlado por Humanos',
+                trust_sub: 'Diseñado alrededor del control de los datos, la trazabilidad y la responsabilidad humana.',
+                trust_local_title: 'Local-First',
+                trust_human_title: 'Human-in-the-Loop',
+                trust_local_1: 'Los datos de auditoría persisten localmente en el navegador por defecto.',
+                trust_local_2: 'Ollama permite ejecutar la IA completamente en local.',
+                trust_local_3: 'Los proveedores cloud son opcionales y se configuran explícitamente.',
+                trust_local_4: 'JSON mantiene la auditoría portable entre máquinas.',
+                trust_human_1: 'La IA redacta y sugiere. Los humanos validan cada hallazgo.',
+                trust_human_2: 'La dirección decide el tratamiento del riesgo.',
+                trust_human_3: 'Los humanos aprueban y emiten los informes.',
+                trust_human_4: 'La IA nunca se convierte en el auditor de registro.',
+                opendev_title: 'Construido en abierto. Validado progresivamente.',
+                opendev_desc: 'AuditSym está actualmente en validación activa de MVP. El Motor de Auditoría, Hallazgos, Respuesta de Gestión y el flujo de Remediación ya están implementados. El Follow-up y Verificación independiente es el siguiente hito del ciclo de vida.',
+                opendev_desc2: 'Inspecciona el código, el modelo de datos técnico, los issues abiertos y la hoja de ruta del producto.',
+                opendev_link_repo: '📦 Repositorio GitHub',
+                opendev_link_docs: '📖 Documentación Técnica',
+                opendev_link_roadmap: '🛣️ Roadmap',
+                opendev_link_issues: '🐛 Issues Abiertos',
                 screenshots_title: 'Interfaz en acción',
                 screenshots_sub: 'Así se ve AuditSym trabajando con marcos reales',
                 screenshots_note: 'Diseñado para flujos reales de auditoría de ciberseguridad.',
@@ -1193,8 +1442,8 @@
                 screenshot2_caption: '✅ Hallazgo con confirmación, disputa y tratamiento formal',
                 screenshot3_caption: '🗂️ Registro de Evidencia con identificadores EVD-####',
                 screenshot4_caption: '🛠️ Plan de Remediación — acciones, hitos y progreso ponderado',
-                contact_title: '¿Quieres saber más?',
-                contact_sub: 'Solicita información sobre AuditSym o conecta directamente.',
+                contact_title: '¿Interesado en evaluar AuditSym?',
+                contact_sub: 'Buscamos auditores de ciberseguridad, CISOs y profesionales GRC interesados en revisar el flujo de trabajo o participar en evaluaciones controladas del MVP.',
                 contact_name_label: 'Nombre',
                 contact_email_label: 'Email corporativo',
                 contact_company_label: 'Empresa',
@@ -1220,7 +1469,7 @@
                 btn_learn: '📖 Saber más',
                 btn_learn_sub: 'Descubre el flujo',
                 scroll_desc: 'Descubre cómo funciona',
-                flow_title: 'El flujo completo de Auditoría',
+                flow_title: 'El ciclo de auditoría en AuditSym',
                 flow_sub: 'AuditSym conecta evaluación, hallazgos, respuesta de gestión y remediación en un flujo trazable, con Follow-up y Verificación como siguiente hito.',
                 flow1_title: '1. Auditoría',
                 flow1_desc: 'Evalúa controles contra NIST, ISO, CIS o COBIT. Asigna riesgos, documenta evidencias y genera hallazgos.',
@@ -1245,7 +1494,7 @@
                 f5_desc: 'ES, EN, FR, DE, PT, AR, ZH — construido para equipos globales y clientes internacionales.',
                 f6_title: 'Local First',
                 f6_desc: 'Los datos de auditoría persisten localmente en el navegador por defecto. Exporta e importa vía JSON cuando lo necesites. Sin backend requerido.',
-                footer_text: '© 2026 AuditSym — Hecho con ❤️ para auditores de seguridad. Todos los datos quedan en local.',
+                footer_text: '© 2026 AuditSym — Local-First · Open Source · Human-Controlled',
                 footer_audit: 'Auditoría',
                 footer_remediation: 'Remediación',
             },
@@ -1253,7 +1502,7 @@
                 nav_about: 'About',
                 nav_features: 'Features',
                 btn_start: '🚀 Start',
-                brand_tagline: 'AI-Powered GRC Platform',
+                brand_tagline: 'AI-Assisted GRC Platform',
                 problem_title: 'Today\'s audit workflows',
                 problem_sub: 'And how AuditSym turns complexity into clarity.',
                 problem_col_problem: '❌ The Common Problem',
@@ -1270,6 +1519,37 @@
                 problem_row5_solution: '<strong>Year-over-Year Evolution</strong> — Demonstrates continuous improvement with data',
                 problem_row6_problem: 'Audit evidence indistinguishable from remediation evidence',
                 problem_row6_solution: '<strong>Two separate registers</strong> — source evidence (<code>EVD-####</code>) and implementation evidence (<code>REM-EVD-####</code>), neither ever reusing a withdrawn ID',
+                roles_title: 'Built for real audit work',
+                roles_sub: 'Every role in the audit cycle gets its own flow, not a generic form.',
+                role1_title: 'External / Internal Auditors',
+                role1_desc: 'Structure assessments, evidence, findings, and recommendations in one traceable case file.',
+                role2_title: 'CISOs & GRC Teams',
+                role2_desc: 'Turn findings into accountable corrective-action plans with owners, dates, evidence, and management decisions.',
+                role3_title: 'Management & Control Owners',
+                role3_desc: 'Respond formally to findings, choose treatment, execute remediation, and prepare evidence for independent verification.',
+                sample_report_title: 'From assessment to an audit-ready deliverable',
+                sample_report_sub: 'AuditSym doesn\'t stop at a dashboard.',
+                sample_report_desc: 'View a complete sample audit report, with executive summary, scope and methodology, findings, evidence narratives, and document control — built entirely with synthetic data, not a real organization, certification, or assurance opinion.',
+                sample_report_btn: '📄 View Sample Audit Report',
+                trust_title: 'Local-First & Human-Controlled',
+                trust_sub: 'Designed around data control, traceability, and human accountability.',
+                trust_local_title: 'Local-First',
+                trust_human_title: 'Human-in-the-Loop',
+                trust_local_1: 'Audit data persists locally in the browser by default.',
+                trust_local_2: 'Ollama enables fully local AI.',
+                trust_local_3: 'Cloud providers are optional and explicitly configured.',
+                trust_local_4: 'JSON keeps the audit portable across machines.',
+                trust_human_1: 'AI drafts and suggests. Humans validate every finding.',
+                trust_human_2: 'Management decides risk treatment.',
+                trust_human_3: 'Humans approve and issue reports.',
+                trust_human_4: 'AI never becomes the auditor of record.',
+                opendev_title: 'Built in the open. Validated progressively.',
+                opendev_desc: 'AuditSym is currently in active MVP validation. The Audit Engine, Findings, Management Response, and Remediation workflow are implemented. Independent Follow-up & Verification is the next lifecycle milestone.',
+                opendev_desc2: 'Inspect the code, technical data model, open issues, and product roadmap.',
+                opendev_link_repo: '📦 GitHub Repository',
+                opendev_link_docs: '📖 Technical Documentation',
+                opendev_link_roadmap: '🛣️ Roadmap',
+                opendev_link_issues: '🐛 Open Issues',
                 screenshots_title: 'Interface in Action',
                 screenshots_sub: 'See AuditSym working with real frameworks',
                 screenshots_note: 'Designed for real cybersecurity audit workflows.',
@@ -1277,8 +1557,8 @@
                 screenshot2_caption: '✅ Finding with confirmation, dispute, and formal treatment',
                 screenshot3_caption: '🗂️ Evidence Register with EVD-#### identifiers',
                 screenshot4_caption: '🛠️ Remediation Plan — actions, milestones, and weighted progress',
-                contact_title: 'Want to know more?',
-                contact_sub: 'Request information about AuditSym or connect directly.',
+                contact_title: 'Interested in evaluating AuditSym?',
+                contact_sub: "We're looking for cybersecurity auditors, CISOs, and GRC professionals interested in reviewing the workflow or participating in controlled MVP evaluations.",
                 contact_name_label: 'Name',
                 contact_email_label: 'Corporate email',
                 contact_company_label: 'Company',
@@ -1304,7 +1584,7 @@
                 btn_learn: '📖 Learn More',
                 btn_learn_sub: 'Discover the flow',
                 scroll_desc: 'Discover how it works',
-                flow_title: 'The complete Audit Flow',
+                flow_title: 'The Audit Cycle in AuditSym',
                 flow_sub: 'AuditSym connects assessment, findings, management response, and remediation in one traceable workflow, with Follow-up & Verification as the next milestone.',
                 flow1_title: '1. Audit',
                 flow1_desc: 'Evaluate controls against NIST, ISO, CIS or COBIT. Assign risks, document evidence and generate findings.',
@@ -1329,7 +1609,7 @@
                 f5_desc: 'ES, EN, FR, DE, PT, AR, ZH — built for global teams and international clients.',
                 f6_title: 'Local First',
                 f6_desc: 'Audit data persists locally in the browser by default. Export and import via JSON when needed. No backend required.',
-                footer_text: '© 2026 AuditSym — Made with ❤️ for security auditors. All data stays local.',
+                footer_text: '© 2026 AuditSym — Local-First · Open Source · Human-Controlled',
                 footer_audit: 'Audit',
                 footer_remediation: 'Remediation',
             },
@@ -1337,7 +1617,7 @@
                 nav_about: 'À propos',
                 nav_features: 'Fonctionnalités',
                 btn_start: '🚀 Commencer',
-                brand_tagline: 'Plateforme GRC Alimentée par l\'IA',
+                brand_tagline: 'Plateforme GRC Assistée par l\'IA',
                 problem_title: 'Le problème des audits actuels',
                 problem_sub: 'Et comment AuditSym transforme la complexité en clarté.',
                 problem_col_problem: '❌ Le Problème Courant',
@@ -1354,6 +1634,37 @@
                 problem_row5_solution: '<strong>Évolution Annuelle</strong> — Démontre l\'amélioration continue avec des données',
                 problem_row6_problem: 'Preuve d\'audit indissociable de la preuve de remédiation',
                 problem_row6_solution: '<strong>Deux registres distincts</strong> — preuve d\'origine (<code>EVD-####</code>) et preuve de mise en œuvre (<code>REM-EVD-####</code>), aucun ne réutilise un ID retiré',
+                roles_title: 'Conçu pour le travail d\'audit réel',
+                roles_sub: 'Chaque rôle du cycle d\'audit dispose de son propre flux, pas d\'un formulaire générique.',
+                role1_title: 'Auditeurs Externes / Internes',
+                role1_desc: 'Structurez évaluations, preuves, constats et recommandations dans un dossier unique et traçable.',
+                role2_title: 'RSSI et Équipes GRC',
+                role2_desc: 'Transformez les constats en plans correctifs responsabilisés avec propriétaires, échéances, preuves et décisions de gestion.',
+                role3_title: 'Direction et Propriétaires de Contrôle',
+                role3_desc: 'Répondez formellement aux constats, choisissez le traitement, exécutez la remédiation et préparez les preuves pour la vérification indépendante.',
+                sample_report_title: 'De l\'évaluation à un livrable prêt pour l\'audit',
+                sample_report_sub: 'AuditSym ne s\'arrête pas à un tableau de bord.',
+                sample_report_desc: "Consultez un rapport d'audit complet, avec résumé exécutif, périmètre et méthodologie, constats, récits de preuves et contrôle documentaire — entièrement construit avec des données synthétiques, sans organisation, certification ou opinion d'assurance réelle.",
+                sample_report_btn: '📄 Voir le Rapport d\'Exemple',
+                trust_title: 'Local-First et Contrôlé par des Humains',
+                trust_sub: 'Conçu autour du contrôle des données, de la traçabilité et de la responsabilité humaine.',
+                trust_local_title: 'Local-First',
+                trust_human_title: 'Human-in-the-Loop',
+                trust_local_1: 'Les données d\'audit persistent localement dans le navigateur par défaut.',
+                trust_local_2: 'Ollama permet une IA entièrement locale.',
+                trust_local_3: 'Les fournisseurs cloud sont optionnels et configurés explicitement.',
+                trust_local_4: 'JSON garde l\'audit portable entre machines.',
+                trust_human_1: 'L\'IA rédige et suggère. Les humains valident chaque constat.',
+                trust_human_2: 'La direction décide du traitement du risque.',
+                trust_human_3: 'Les humains approuvent et émettent les rapports.',
+                trust_human_4: 'L\'IA ne devient jamais l\'auditeur de référence.',
+                opendev_title: 'Construit en open source. Validé progressivement.',
+                opendev_desc: 'AuditSym est actuellement en validation active du MVP. Le Moteur d\'Audit, les Constats, la Réponse de Gestion et le flux de Remédiation sont implémentés. Le Follow-up et la Vérification indépendante constituent le prochain jalon du cycle de vie.',
+                opendev_desc2: 'Inspectez le code, le modèle de données technique, les issues ouvertes et la feuille de route du produit.',
+                opendev_link_repo: '📦 Dépôt GitHub',
+                opendev_link_docs: '📖 Documentation Technique',
+                opendev_link_roadmap: '🛣️ Roadmap',
+                opendev_link_issues: '🐛 Issues Ouvertes',
                 screenshots_title: 'L\'interface en action',
                 screenshots_sub: 'Découvrez AuditSym au travail avec des référentiels réels',
                 screenshots_note: "Conçu pour des flux de travail d'audit de cybersécurité réels.",
@@ -1361,8 +1672,8 @@
                 screenshot2_caption: '✅ Constat avec confirmation, contestation et traitement formel',
                 screenshot3_caption: '🗂️ Registre de Preuves avec identifiants EVD-####',
                 screenshot4_caption: '🛠️ Plan de Remédiation — actions, jalons et progression pondérée',
-                contact_title: 'Vous voulez en savoir plus ?',
-                contact_sub: 'Demandez des informations sur AuditSym ou connectez-vous directement.',
+                contact_title: 'Intéressé par une évaluation d\'AuditSym ?',
+                contact_sub: 'Nous recherchons des auditeurs en cybersécurité, des RSSI et des professionnels GRC intéressés pour examiner le flux de travail ou participer à des évaluations MVP contrôlées.',
                 contact_name_label: 'Nom',
                 contact_email_label: 'Email professionnel',
                 contact_company_label: 'Entreprise',
@@ -1388,7 +1699,7 @@
                 btn_learn: '📖 En savoir plus',
                 btn_learn_sub: 'Découvrir le flux',
                 scroll_desc: 'Découvrez comment ça fonctionne',
-                flow_title: 'Le flux complet d\'audit',
+                flow_title: "Le cycle d'audit dans AuditSym",
                 flow_sub: "AuditSym relie évaluation, constats, réponse de gestion et remédiation en un flux traçable, avec Follow-up & Vérification comme prochain jalon.",
                 flow1_title: '1. Audit',
                 flow1_desc: 'Évalue les contrôles selon NIST, ISO, CIS ou COBIT. Attribue les risques, documente les preuves et génère des constats.',
@@ -1413,7 +1724,7 @@
                 f5_desc: 'ES, EN, FR, DE, PT, AR, ZH — conçu pour les équipes mondiales.',
                 f6_title: 'Local First',
                 f6_desc: "Les données d'audit persistent localement dans le navigateur par défaut. Exportez et importez via JSON si besoin. Aucun backend requis.",
-                footer_text: '© 2026 AuditSym — Fait avec ❤️ pour les auditeurs. Toutes les données restent locales.',
+                footer_text: '© 2026 AuditSym — Local-First · Open Source · Human-Controlled',
                 footer_audit: 'Audit',
                 footer_remediation: 'Remédiation',
             },
@@ -1421,7 +1732,7 @@
                 nav_about: 'Über uns',
                 nav_features: 'Funktionen',
                 btn_start: '🚀 Starten',
-                brand_tagline: 'KI-Gestützte GRC-Plattform',
+                brand_tagline: 'KI-Unterstützte GRC-Plattform',
                 problem_title: 'Das Problem heutiger Audits',
                 problem_sub: 'Und wie AuditSym Komplexität in Klarheit verwandelt.',
                 problem_col_problem: '❌ Das Häufige Problem',
@@ -1438,6 +1749,37 @@
                 problem_row5_solution: '<strong>Jahresvergleich</strong> — Zeigt kontinuierliche Verbesserung anhand von Daten',
                 problem_row6_problem: 'Auditnachweis nicht von Sanierungsnachweis unterscheidbar',
                 problem_row6_solution: '<strong>Zwei getrennte Register</strong> — Ursprungsnachweis (<code>EVD-####</code>) und Umsetzungsnachweis (<code>REM-EVD-####</code>), keines verwendet eine zurückgezogene ID erneut',
+                roles_title: 'Entwickelt für echte Audit-Arbeit',
+                roles_sub: 'Jede Rolle im Audit-Zyklus erhält ihren eigenen Ablauf, kein generisches Formular.',
+                role1_title: 'Externe / Interne Auditoren',
+                role1_desc: 'Strukturieren Sie Bewertungen, Nachweise, Feststellungen und Empfehlungen in einer nachvollziehbaren Fallakte.',
+                role2_title: 'CISOs und GRC-Teams',
+                role2_desc: 'Verwandeln Sie Feststellungen in verantwortliche Sanierungspläne mit Verantwortlichen, Terminen, Nachweisen und Management-Entscheidungen.',
+                role3_title: 'Management und Kontrollverantwortliche',
+                role3_desc: 'Reagieren Sie formell auf Feststellungen, wählen Sie die Behandlung, führen Sie die Sanierung durch und bereiten Sie Nachweise für die unabhängige Verifizierung vor.',
+                sample_report_title: 'Von der Bewertung zu einem auditreifen Ergebnis',
+                sample_report_sub: 'AuditSym hört nicht bei einem Dashboard auf.',
+                sample_report_desc: 'Sehen Sie sich einen vollständigen Musterbericht an, mit Executive Summary, Umfang und Methodik, Feststellungen, Nachweiserzählungen und Dokumentenkontrolle — vollständig mit synthetischen Daten erstellt, keine echte Organisation, Zertifizierung oder Prüfungsmeinung.',
+                sample_report_btn: '📄 Musterbericht ansehen',
+                trust_title: 'Local-First und Menschlich Kontrolliert',
+                trust_sub: 'Gestaltet um Datenkontrolle, Nachvollziehbarkeit und menschliche Verantwortlichkeit.',
+                trust_local_title: 'Local-First',
+                trust_human_title: 'Human-in-the-Loop',
+                trust_local_1: 'Auditdaten bleiben standardmäßig lokal im Browser gespeichert.',
+                trust_local_2: 'Ollama ermöglicht vollständig lokale KI.',
+                trust_local_3: 'Cloud-Anbieter sind optional und werden explizit konfiguriert.',
+                trust_local_4: 'JSON hält das Audit zwischen Rechnern portabel.',
+                trust_human_1: 'KI entwirft und schlägt vor. Menschen validieren jede Feststellung.',
+                trust_human_2: 'Das Management entscheidet über die Risikobehandlung.',
+                trust_human_3: 'Menschen genehmigen und erstellen Berichte.',
+                trust_human_4: 'KI wird niemals zum Auditor of Record.',
+                opendev_title: 'Offen entwickelt. Schrittweise validiert.',
+                opendev_desc: 'AuditSym befindet sich derzeit in aktiver MVP-Validierung. Die Audit-Engine, Feststellungen, Management-Antwort und der Sanierungs-Workflow sind implementiert. Unabhängiges Follow-up & Verifizierung ist der nächste Meilenstein im Lebenszyklus.',
+                opendev_desc2: 'Prüfen Sie den Code, das technische Datenmodell, offene Issues und die Produkt-Roadmap.',
+                opendev_link_repo: '📦 GitHub-Repository',
+                opendev_link_docs: '📖 Technische Dokumentation',
+                opendev_link_roadmap: '🛣️ Roadmap',
+                opendev_link_issues: '🐛 Offene Issues',
                 screenshots_title: 'Die Oberfläche in Aktion',
                 screenshots_sub: 'So arbeitet AuditSym mit echten Frameworks',
                 screenshots_note: 'Entwickelt für reale Cybersicherheits-Auditworkflows.',
@@ -1445,8 +1787,8 @@
                 screenshot2_caption: '✅ Feststellung mit Bestätigung, Anfechtung und formeller Behandlung',
                 screenshot3_caption: '🗂️ Nachweisregister mit EVD-####-Kennungen',
                 screenshot4_caption: '🛠️ Sanierungsplan — Maßnahmen, Meilensteine und gewichteter Fortschritt',
-                contact_title: 'Möchten Sie mehr erfahren?',
-                contact_sub: 'Fordern Sie Informationen zu AuditSym an oder nehmen Sie direkt Kontakt auf.',
+                contact_title: 'Interesse an einer Evaluierung von AuditSym?',
+                contact_sub: 'Wir suchen Cybersicherheitsauditoren, CISOs und GRC-Fachleute, die den Workflow prüfen oder an kontrollierten MVP-Evaluierungen teilnehmen möchten.',
                 contact_name_label: 'Name',
                 contact_email_label: 'Geschäftliche E-Mail',
                 contact_company_label: 'Unternehmen',
@@ -1472,7 +1814,7 @@
                 btn_learn: '📖 Mehr erfahren',
                 btn_learn_sub: 'Entdecken Sie den Ablauf',
                 scroll_desc: 'Entdecken Sie wie es funktioniert',
-                flow_title: 'Der vollständige Audit-Ablauf',
+                flow_title: 'Der Audit-Zyklus in AuditSym',
                 flow_sub: 'AuditSym verbindet Bewertung, Feststellungen, Management-Antwort und Sanierung in einem nachvollziehbaren Workflow, mit Follow-up & Verifizierung als nächstem Meilenstein.',
                 flow1_title: '1. Audit',
                 flow1_desc: 'Bewertet Kontrollen nach NIST, ISO, CIS oder COBIT. Weist Risiken zu, dokumentiert Nachweise und generiert Feststellungen.',
@@ -1497,7 +1839,7 @@
                 f5_desc: 'ES, EN, FR, DE, PT, AR, ZH — entwickelt für globale Teams.',
                 f6_title: 'Lokal zuerst',
                 f6_desc: 'Auditdaten bleiben standardmäßig lokal im Browser gespeichert. Bei Bedarf per JSON exportieren und importieren. Kein Backend erforderlich.',
-                footer_text: '© 2026 AuditSym — Mit ❤️ für Sicherheitsauditoren. Alle Daten bleiben lokal.',
+                footer_text: '© 2026 AuditSym — Local-First · Open Source · Human-Controlled',
                 footer_audit: 'Audit',
                 footer_remediation: 'Sanierung',
             },
@@ -1522,6 +1864,37 @@
                 problem_row5_solution: '<strong>Evolução Anual</strong> — Demonstra a melhoria contínua com dados',
                 problem_row6_problem: 'Evidência de auditoria indistinguível da evidência de remediação',
                 problem_row6_solution: '<strong>Dois registros separados</strong> — evidência de origem (<code>EVD-####</code>) e evidência de implementação (<code>REM-EVD-####</code>), nenhum reutiliza um ID retirado',
+                roles_title: 'Construído para o trabalho real de auditoria',
+                roles_sub: 'Cada função no ciclo de auditoria tem seu próprio fluxo, não um formulário genérico.',
+                role1_title: 'Auditores Externos / Internos',
+                role1_desc: 'Estruture avaliações, evidências, achados e recomendações em um único processo rastreável.',
+                role2_title: 'CISOs e Equipes GRC',
+                role2_desc: 'Transforme achados em planos corretivos responsáveis com proprietários, prazos, evidências e decisões de gestão.',
+                role3_title: 'Direção e Proprietários de Controle',
+                role3_desc: 'Responda formalmente aos achados, escolha o tratamento, execute a remediação e prepare evidências para a verificação independente.',
+                sample_report_title: 'Da avaliação a um relatório pronto para auditoria',
+                sample_report_sub: 'A AuditSym não para em um dashboard.',
+                sample_report_desc: 'Veja um relatório de auditoria completo, com resumo executivo, escopo e metodologia, achados, narrativas de evidência e controle documental — construído inteiramente com dados sintéticos, sem nenhuma organização, certificação ou opinião de garantia real.',
+                sample_report_btn: '📄 Ver Relatório de Amostra',
+                trust_title: 'Local-First e Controlado por Humanos',
+                trust_sub: 'Projetado em torno do controle de dados, rastreabilidade e responsabilidade humana.',
+                trust_local_title: 'Local-First',
+                trust_human_title: 'Human-in-the-Loop',
+                trust_local_1: 'Os dados de auditoria persistem localmente no navegador por padrão.',
+                trust_local_2: 'O Ollama permite executar a IA totalmente em local.',
+                trust_local_3: 'Os provedores cloud são opcionais e configurados explicitamente.',
+                trust_local_4: 'O JSON mantém a auditoria portátil entre máquinas.',
+                trust_human_1: 'A IA redige e sugere. Os humanos validam cada achado.',
+                trust_human_2: 'A direção decide o tratamento do risco.',
+                trust_human_3: 'Os humanos aprovam e emitem os relatórios.',
+                trust_human_4: 'A IA nunca se torna o auditor de registro.',
+                opendev_title: 'Construído em aberto. Validado progressivamente.',
+                opendev_desc: 'A AuditSym está atualmente em validação ativa de MVP. O Motor de Auditoria, Achados, Resposta de Gestão e o fluxo de Remediação já estão implementados. O Follow-up e Verificação independente é o próximo marco do ciclo de vida.',
+                opendev_desc2: 'Inspecione o código, o modelo de dados técnico, os issues abertos e o roadmap do produto.',
+                opendev_link_repo: '📦 Repositório GitHub',
+                opendev_link_docs: '📖 Documentação Técnica',
+                opendev_link_roadmap: '🛣️ Roadmap',
+                opendev_link_issues: '🐛 Issues Abertos',
                 screenshots_title: 'A interface em ação',
                 screenshots_sub: 'Veja a AuditSym funcionando com frameworks reais',
                 screenshots_note: 'Projetada para fluxos reais de auditoria de cibersegurança.',
@@ -1529,8 +1902,8 @@
                 screenshot2_caption: '✅ Achado com confirmação, contestação e tratamento formal',
                 screenshot3_caption: '🗂️ Registro de Evidências com identificadores EVD-####',
                 screenshot4_caption: '🛠️ Plano de Remediação — ações, marcos e progresso ponderado',
-                contact_title: 'Quer saber mais?',
-                contact_sub: 'Solicite informações sobre a AuditSym ou conecte-se diretamente.',
+                contact_title: 'Interessado em avaliar a AuditSym?',
+                contact_sub: 'Procuramos auditores de cibersegurança, CISOs e profissionais GRC interessados em revisar o fluxo de trabalho ou participar de avaliações controladas do MVP.',
                 contact_name_label: 'Nome',
                 contact_email_label: 'Email corporativo',
                 contact_company_label: 'Empresa',
@@ -1556,7 +1929,7 @@
                 btn_learn: '📖 Saber mais',
                 btn_learn_sub: 'Descubra o fluxo',
                 scroll_desc: 'Descubra como funciona',
-                flow_title: 'O fluxo completo de Auditoria',
+                flow_title: 'O ciclo de auditoria na AuditSym',
                 flow_sub: 'AuditSym conecta avaliação, achados, resposta de gestão e remediação em um fluxo rastreável, com Follow-up e Verificação como próximo marco.',
                 flow1_title: '1. Auditoria',
                 flow1_desc: 'Avalia controles contra NIST, ISO, CIS ou COBIT. Atribui riscos, documenta evidências e gera achados.',
@@ -1581,7 +1954,7 @@
                 f5_desc: 'ES, EN, FR, DE, PT, AR, ZH — construído para equipas globais.',
                 f6_title: 'Local First',
                 f6_desc: 'Os dados de auditoria permanecem localmente no navegador por padrão. Exporte e importe via JSON quando necessário. Sem backend necessário.',
-                footer_text: '© 2026 AuditSym — Feito com ❤️ para auditores de segurança. Todos os dados ficam locais.',
+                footer_text: '© 2026 AuditSym — Local-First · Open Source · Human-Controlled',
                 footer_audit: 'Auditoria',
                 footer_remediation: 'Remediação',
             },
@@ -1589,7 +1962,7 @@
                 nav_about: 'حول',
                 nav_features: 'المميزات',
                 btn_start: '🚀 ابدأ',
-                brand_tagline: 'منصة حوكمة ومخاطر وامتثال مدعومة بالذكاء الاصطناعي',
+                brand_tagline: 'منصة حوكمة ومخاطر وامتثال بمساعدة الذكاء الاصطناعي',
                 problem_title: 'مشكلة عمليات التدقيق الحالية',
                 problem_sub: 'وكيف تحول AuditSym التعقيد إلى وضوح.',
                 problem_col_problem: '❌ المشكلة الشائعة',
@@ -1606,6 +1979,37 @@
                 problem_row5_solution: '<strong>التطور السنوي</strong> — يوضح التحسن المستمر بالبيانات',
                 problem_row6_problem: 'دليل التدقيق لا يمكن تمييزه عن دليل المعالجة',
                 problem_row6_solution: '<strong>سجلان منفصلان</strong> — دليل المصدر (<code>EVD-####</code>) ودليل التنفيذ (<code>REM-EVD-####</code>)، ولا يعيد أي منهما استخدام معرف تم سحبه',
+                roles_title: 'مصمم لعمل التدقيق الحقيقي',
+                roles_sub: 'كل دور في دورة التدقيق له سير عمله الخاص، وليس نموذجًا عامًا.',
+                role1_title: 'المدققون الخارجيون / الداخليون',
+                role1_desc: 'نظّم التقييمات والأدلة والملاحظات والتوصيات في ملف قضية واحد قابل للتتبع.',
+                role2_title: 'كبار مسؤولي أمن المعلومات وفرق GRC',
+                role2_desc: 'حوّل الملاحظات إلى خطط تصحيحية خاضعة للمساءلة مع مالكين وتواريخ وأدلة وقرارات إدارية.',
+                role3_title: 'الإدارة ومالكو الضوابط',
+                role3_desc: 'استجب رسميًا للملاحظات، واختر المعالجة، ونفّذ المعالجة، وجهّز الأدلة للتحقق المستقل.',
+                sample_report_title: 'من التقييم إلى مُخرج جاهز للتدقيق',
+                sample_report_sub: 'لا تتوقف AuditSym عند لوحة معلومات.',
+                sample_report_desc: 'اطّلع على تقرير تدقيق كامل يتضمن ملخصًا تنفيذيًا ونطاقًا ومنهجية وملاحظات وسرديات أدلة وضبط المستندات — مبني بالكامل على بيانات اصطناعية، وليس لمنظمة حقيقية أو شهادة أو رأي ضمان فعلي.',
+                sample_report_btn: '📄 عرض نموذج التقرير',
+                trust_title: 'محلي أولاً وخاضع للتحكم البشري',
+                trust_sub: 'مصمم حول التحكم في البيانات وقابلية التتبع والمساءلة البشرية.',
+                trust_local_title: 'محلي أولاً',
+                trust_human_title: 'الإنسان في الحلقة',
+                trust_local_1: 'تبقى بيانات التدقيق محلية في المتصفح افتراضيًا.',
+                trust_local_2: 'يتيح Ollama تشغيل الذكاء الاصطناعي محليًا بالكامل.',
+                trust_local_3: 'مزودو السحابة اختياريون ويتم تكوينهم صراحةً.',
+                trust_local_4: 'يحافظ JSON على إمكانية نقل التدقيق بين الأجهزة.',
+                trust_human_1: 'يقوم الذكاء الاصطناعي بالصياغة والاقتراح. يتحقق البشر من كل ملاحظة.',
+                trust_human_2: 'تقرر الإدارة معالجة المخاطر.',
+                trust_human_3: 'يوافق البشر على التقارير ويصدرونها.',
+                trust_human_4: 'لا يصبح الذكاء الاصطناعي أبدًا المدقق المسؤول رسميًا.',
+                opendev_title: 'مبني بشكل مفتوح. يُتحقق منه تدريجيًا.',
+                opendev_desc: 'تخضع AuditSym حاليًا لتحقق نشط من الحد الأدنى القابل للتطبيق (MVP). تم تنفيذ محرك التدقيق والملاحظات واستجابة الإدارة وسير عمل المعالجة. تشكل المتابعة والتحقق المستقل المرحلة التالية في دورة الحياة.',
+                opendev_desc2: 'افحص الكود ونموذج البيانات التقني والمشكلات المفتوحة وخارطة طريق المنتج.',
+                opendev_link_repo: '📦 مستودع GitHub',
+                opendev_link_docs: '📖 التوثيق التقني',
+                opendev_link_roadmap: '🛣️ خارطة الطريق',
+                opendev_link_issues: '🐛 المشكلات المفتوحة',
                 screenshots_title: 'الواجهة أثناء العمل',
                 screenshots_sub: 'شاهد AuditSym تعمل مع أطر عمل حقيقية',
                 screenshots_note: 'مصممة لسير عمل حقيقي لتدقيق الأمن السيبراني.',
@@ -1613,8 +2017,8 @@
                 screenshot2_caption: '✅ ملاحظة مع التأكيد والاعتراض والمعالجة الرسمية',
                 screenshot3_caption: '🗂️ سجل الأدلة بمعرّفات EVD-####',
                 screenshot4_caption: '🛠️ خطة المعالجة — الإجراءات والمعالم والتقدم الموزون',
-                contact_title: 'هل تريد معرفة المزيد؟',
-                contact_sub: 'اطلب معلومات حول AuditSym أو تواصل مباشرة.',
+                contact_title: 'هل تهتم بتقييم AuditSym؟',
+                contact_sub: 'نبحث عن مدققي الأمن السيبراني وكبار مسؤولي أمن المعلومات ومحترفي GRC المهتمين بمراجعة سير العمل أو المشاركة في تقييمات MVP خاضعة للرقابة.',
                 contact_name_label: 'الاسم',
                 contact_email_label: 'البريد الإلكتروني للشركة',
                 contact_company_label: 'الشركة',
@@ -1640,7 +2044,7 @@
                 btn_learn: '📖 معرفة المزيد',
                 btn_learn_sub: 'اكتشف سير العمل',
                 scroll_desc: 'اكتشف كيف يعمل',
-                flow_title: 'دورة التدقيق الكاملة',
+                flow_title: 'دورة التدقيق في AuditSym',
                 flow_sub: 'يربط AuditSym بين التقييم والملاحظات واستجابة الإدارة والمعالجة في سير عمل قابل للتتبع، مع اعتبار المتابعة والتحقق المرحلة التالية.',
                 flow1_title: '1. التدقيق',
                 flow1_desc: 'قيّم الضوابط مقابل NIST أو ISO أو CIS أو COBIT. حدد المخاطر، وثّق الأدلة، وأنشئ الملاحظات.',
@@ -1665,7 +2069,7 @@
                 f5_desc: 'ES وEN وFR وDE وPT وAR وZH — مصمم للفرق العالمية والعملاء الدوليين.',
                 f6_title: 'المحلي أولاً',
                 f6_desc: 'تبقى بيانات التدقيق محلية في المتصفح افتراضيًا. صدّر واستورد عبر JSON عند الحاجة. لا حاجة لخادم خلفي.',
-                footer_text: '© 2026 AuditSym — صُنع بـ ❤️ لمدققي الأمن. تبقى جميع البيانات محلية.',
+                footer_text: '© 2026 AuditSym — Local-First · Open Source · Human-Controlled',
                 footer_audit: 'التدقيق',
                 footer_remediation: 'المعالجة',
             },
@@ -1673,7 +2077,7 @@
                 nav_about: '关于',
                 nav_features: '功能特性',
                 btn_start: '🚀 开始使用',
-                brand_tagline: 'AI 驱动的 GRC 平台',
+                brand_tagline: 'AI 辅助的 GRC 平台',
                 problem_title: '当今审计工作流程的问题',
                 problem_sub: 'AuditSym 如何将复杂性转化为清晰度。',
                 problem_col_problem: '❌ 常见问题',
@@ -1690,6 +2094,37 @@
                 problem_row5_solution: '<strong>年度演变</strong> — 用数据展示持续改进',
                 problem_row6_problem: '审计证据与整改证据无法区分',
                 problem_row6_solution: '<strong>两个独立的登记册</strong> — 来源证据（<code>EVD-####</code>）和实施证据（<code>REM-EVD-####</code>），两者都不会重复使用已撤回的 ID',
+                roles_title: '为真实审计工作而构建',
+                roles_sub: '审计周期中的每个角色都有其专属流程，而非通用表单。',
+                role1_title: '外部/内部审计员',
+                role1_desc: '在一个可追溯的案例文件中组织评估、证据、发现问题和建议。',
+                role2_title: 'CISO 与 GRC 团队',
+                role2_desc: '将发现问题转化为可问责的整改计划，包含负责人、日期、证据和管理决策。',
+                role3_title: '管理层与控制责任人',
+                role3_desc: '正式回应发现问题，选择处理方式，执行整改，并为独立验证准备证据。',
+                sample_report_title: '从评估到可用于审计的成果',
+                sample_report_sub: 'AuditSym 不止于仪表板。',
+                sample_report_desc: '查看完整的审计报告样本，包含执行摘要、范围与方法论、发现问题、证据叙述和文档控制 — 完全基于合成数据构建，并非真实组织、认证或保证意见。',
+                sample_report_btn: '📄 查看示例报告',
+                trust_title: '本地优先与人工可控',
+                trust_sub: '围绕数据控制、可追溯性和人为问责制而设计。',
+                trust_local_title: '本地优先',
+                trust_human_title: '人在回路中',
+                trust_local_1: '默认情况下审计数据保留在浏览器本地。',
+                trust_local_2: 'Ollama 支持完全本地化运行 AI。',
+                trust_local_3: '云服务提供商是可选的，需要明确配置。',
+                trust_local_4: 'JSON 使审计数据可在不同设备间移植。',
+                trust_human_1: 'AI 起草并提出建议，人工验证每一项发现问题。',
+                trust_human_2: '管理层决定风险处理方式。',
+                trust_human_3: '人工批准并签发报告。',
+                trust_human_4: 'AI 永远不会成为正式审计员。',
+                opendev_title: '公开构建，逐步验证。',
+                opendev_desc: 'AuditSym 目前正处于积极的 MVP 验证阶段。审计引擎、发现问题、管理层响应和整改工作流程均已实现。独立的后续跟进与验证是下一个生命周期里程碑。',
+                opendev_desc2: '查看代码、技术数据模型、开放问题和产品路线图。',
+                opendev_link_repo: '📦 GitHub 仓库',
+                opendev_link_docs: '📖 技术文档',
+                opendev_link_roadmap: '🛣️ 路线图',
+                opendev_link_issues: '🐛 开放问题',
                 screenshots_title: '界面实际运行效果',
                 screenshots_sub: '查看 AuditSym 如何处理真实框架',
                 screenshots_note: '为真实的网络安全审计工作流程而设计。',
@@ -1697,8 +2132,8 @@
                 screenshot2_caption: '✅ 包含确认、争议和正式处理的发现问题',
                 screenshot3_caption: '🗂️ 带有 EVD-#### 标识符的证据登记册',
                 screenshot4_caption: '🛠️ 整改计划 — 措施、里程碑和加权进度',
-                contact_title: '想了解更多吗？',
-                contact_sub: '请求有关 AuditSym 的信息或直接联系我们。',
+                contact_title: '有兴趣评估 AuditSym 吗？',
+                contact_sub: '我们正在寻找有兴趣审查工作流程或参与受控 MVP 评估的网络安全审计员、CISO 和 GRC 专业人士。',
                 contact_name_label: '姓名',
                 contact_email_label: '公司邮箱',
                 contact_company_label: '公司',
@@ -1724,7 +2159,7 @@
                 btn_learn: '📖 了解更多',
                 btn_learn_sub: '探索工作流程',
                 scroll_desc: '了解它是如何工作的',
-                flow_title: '完整的审计流程',
+                flow_title: 'AuditSym 中的审计周期',
                 flow_sub: 'AuditSym 将评估、发现问题、管理层响应和整改连接在一个可追溯的工作流程中，后续跟进与验证是下一个里程碑。',
                 flow1_title: '1. 审计',
                 flow1_desc: '根据 NIST、ISO、CIS 或 COBIT 评估控制项。评定风险、记录证据并生成发现问题。',
@@ -1749,7 +2184,7 @@
                 f5_desc: 'ES、EN、FR、DE、PT、AR、ZH — 专为全球团队和国际客户打造。',
                 f6_title: '本地优先',
                 f6_desc: '默认情况下审计数据保留在浏览器本地。需要时可通过 JSON 导出和导入。无需后端。',
-                footer_text: '© 2026 AuditSym — 为安全审计人员用 ❤️ 打造。所有数据均保留在本地。',
+                footer_text: '© 2026 AuditSym — Local-First · Open Source · Human-Controlled',
                 footer_audit: '审计',
                 footer_remediation: '整改',
             }

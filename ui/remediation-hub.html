@@ -728,6 +728,8 @@ const I18N = {
 remediation_plan_title:'Plan de Remediación',
 autosaved_toast:'Guardado automáticamente',
 source_audit_evidence_title:'Evidencia de Auditoría de Origen',
+auditor_recommendation_label:'Recomendación del Auditor', recommendation_not_provided:'No se incluyó recomendación en la auditoría de origen', remediation_guidance_label:'Orientación de Remediación',
+finding_details_label:'Detalle del Hallazgo', finding_condition_label:'Condición', finding_criteria_label:'Criterio', finding_cause_label:'Causa', finding_consequence_label:'Consecuencia',
 evidence_type_document:'Documento',
 evidence_type_screenshot:'Captura de Pantalla',
 evidence_type_system_export:'Exportación de Sistema',
@@ -1065,6 +1067,8 @@ plan_error_missing_resolution:'Debes describir cómo se resolvió.',
 remediation_plan_title:'Remediation Plan',
 autosaved_toast:'Auto-saved',
 source_audit_evidence_title:'Source Audit Evidence',
+auditor_recommendation_label:'Auditor Recommendation', recommendation_not_provided:'Not provided in source audit', remediation_guidance_label:'Remediation Guidance',
+finding_details_label:'Finding Detail', finding_condition_label:'Condition', finding_criteria_label:'Criteria', finding_cause_label:'Cause', finding_consequence_label:'Consequence',
 evidence_type_document:'Document',
 evidence_type_screenshot:'Screenshot',
 evidence_type_system_export:'System Export',
@@ -1434,6 +1438,8 @@ plan_error_missing_resolution:'You must describe how it was resolved.',
 remediation_plan_title:'Plan de Remédiation',
 autosaved_toast:'Enregistré automatiquement',
 source_audit_evidence_title:'Preuve d\'Audit d\'Origine',
+auditor_recommendation_label:'Recommandation de l\'Auditeur', recommendation_not_provided:'Non fournie dans l\'audit d\'origine', remediation_guidance_label:'Orientation de Remédiation',
+finding_details_label:'Détail du Constat', finding_condition_label:'Condition', finding_criteria_label:'Critère', finding_cause_label:'Cause', finding_consequence_label:'Conséquence',
 evidence_type_document:'Document',
 evidence_type_screenshot:'Capture d\'Écran',
 evidence_type_system_export:'Export Système',
@@ -1816,6 +1822,8 @@ plan_error_missing_resolution:'Vous devez décrire comment cela a été résolu.
 remediation_plan_title:'Sanierungsplan',
 autosaved_toast:'Automatisch gespeichert',
 source_audit_evidence_title:'Ursprüngliche Auditnachweise',
+auditor_recommendation_label:'Empfehlung des Auditors', recommendation_not_provided:'Im Ursprungsaudit nicht angegeben', remediation_guidance_label:'Sanierungsempfehlung',
+finding_details_label:'Feststellungsdetail', finding_condition_label:'Zustand', finding_criteria_label:'Kriterium', finding_cause_label:'Ursache', finding_consequence_label:'Konsequenz',
 evidence_type_document:'Dokument',
 evidence_type_screenshot:'Bildschirmfoto',
 evidence_type_system_export:'Systemexport',
@@ -2198,6 +2206,8 @@ plan_error_missing_resolution:'Sie müssen beschreiben, wie dies gelöst wurde.'
 remediation_plan_title:'Plano de Remediação',
 autosaved_toast:'Salvo automaticamente',
 source_audit_evidence_title:'Evidência de Auditoria de Origem',
+auditor_recommendation_label:'Recomendação do Auditor', recommendation_not_provided:'Não fornecida na auditoria de origem', remediation_guidance_label:'Orientação de Remediação',
+finding_details_label:'Detalhe do Achado', finding_condition_label:'Condição', finding_criteria_label:'Critério', finding_cause_label:'Causa', finding_consequence_label:'Consequência',
 evidence_type_document:'Documento',
 evidence_type_screenshot:'Captura de Tela',
 evidence_type_system_export:'Exportação de Sistema',
@@ -2580,6 +2590,8 @@ plan_error_missing_resolution:'Você deve descrever como isso foi resolvido.',
 remediation_plan_title:'خطة المعالجة',
 autosaved_toast:'تم الحفظ تلقائيًا',
 source_audit_evidence_title:'دليل التدقيق الأصلي',
+auditor_recommendation_label:'توصية المدقق', recommendation_not_provided:'لم تُقدَّم في التدقيق الأصلي', remediation_guidance_label:'إرشادات المعالجة',
+finding_details_label:'تفاصيل الملاحظة', finding_condition_label:'الحالة', finding_criteria_label:'المعيار', finding_cause_label:'السبب', finding_consequence_label:'الأثر',
 evidence_type_document:'مستند',
 evidence_type_screenshot:'لقطة شاشة',
 evidence_type_system_export:'تصدير من النظام',
@@ -2962,6 +2974,8 @@ plan_error_missing_resolution:'يجب وصف كيفية حل هذا.',
 remediation_plan_title:'整改计划',
 autosaved_toast:'已自动保存',
 source_audit_evidence_title:'来源审计证据',
+auditor_recommendation_label:'审计员建议', recommendation_not_provided:'原始审计中未提供', remediation_guidance_label:'整改指导',
+finding_details_label:'发现问题详情', finding_condition_label:'现状', finding_criteria_label:'标准', finding_cause_label:'原因', finding_consequence_label:'影响',
 evidence_type_document:'文档',
 evidence_type_screenshot:'屏幕截图',
 evidence_type_system_export:'系统导出',
@@ -4711,6 +4725,12 @@ function computeContentFingerprint(findings) {
   const relevant = findings.map(f => ({
     id: f.id || '', scfId: f.scfId || '', severity: f.severity || f.riskLevel || '',
     title: f.title || '', controlCode: f.controlCode || '',
+    // 4C — authored by the auditor as part of the source Finding, same
+    // category as evidence/question below: a change here on re-issuance
+    // is a material content change, not remediation progress.
+    condition: f.condition || '', criteria: f.criteria || '',
+    cause: f.cause || '', consequence: f.consequence || '',
+    recommendation: f.recommendationSource === 'audit_engine' ? (f.recommendation || '') : '',
     evidence: f.evidence || f.reason || '', question: f.question || ''
   })).sort((a, b) => (a.id || a.scfId).localeCompare(b.id || b.scfId));
   return JSON.stringify(relevant);
@@ -4737,6 +4757,19 @@ function processImportedData(data) {
           riskLevel: severity,
           reason: c.evidencia || c.notes || '',
           evidence: c.evidencia || '',
+          // Vandan (round 3): this compatibility path (a bare controls[]
+          // JSON, not the normal findings[] handoff) was silently
+          // dropping 4C entirely — never the normal path for an issued
+          // handoff, but cheap to get right, and it avoids a silent data
+          // loss if someone imports a controls-based Audit JSON instead.
+          // recommendationSource is set the same way buildFinding() does
+          // it in the engine: only when real content exists.
+          condition: c.condition || '',
+          criteria: c.criteria || '',
+          cause: c.cause || '',
+          consequence: c.consequence || '',
+          recommendation: c.recommendation || '',
+          recommendationSource: c.recommendation ? 'audit_engine' : null,
           // No decision/treatment here on purpose — a freshly-derived finding
           // must start unvalidated (see normalizeFinding's hadRealDecision
           // guard). Baking in 'mitigate' here used to silently pre-confirm
@@ -4889,7 +4922,7 @@ function processImportedData(data) {
 // (severity, title, control, evidence/criteria) — a finding matching by
 // ID doesn't mean nothing about it changed, and those changes deserve to
 // be visible before confirming, not silently absorbed into the merge.
-const DIFF_COMPARE_FIELDS = ['severity', 'riskLevel', 'title', 'controlCode', 'recommendation', 'evidence', 'reason', 'question'];
+const DIFF_COMPARE_FIELDS = ['severity', 'riskLevel', 'title', 'controlCode', 'condition', 'criteria', 'cause', 'consequence', 'recommendation', 'evidence', 'reason', 'question'];
 function computeFindingsDiff(existingFindings, incomingFindings) {
   const coincident = [], added = [], removed = [], modified = [];
   const matchedExistingIds = new Set();
@@ -4989,7 +5022,22 @@ function commitImportedAudit(data, incomingFindings, existingFindings, isOfficia
         evidence: existing.evidence || '',
         history: existing.history || [],
         remediationNotes: existing.remediationNotes || '',
-        recommendation: existing.recommendation || '',
+        // Finish Line follow-up (Vandan, round 2): made EXPLICIT rather
+        // than relying on the `...newF` spread above to get this right
+        // silently. `recommendation` is source-of-truth audit content —
+        // same category as condition/criteria/cause/consequence — so a
+        // re-issued version must ALWAYS win, even when the auditor
+        // deliberately cleared it to ''. Using `||` here would be a real
+        // bug: if the new version's recommendation is '', `||` falls
+        // through to `existing.recommendation` and silently resurrects
+        // a stale value the auditor meant to remove. `??` only falls
+        // back on null/undefined, never on a deliberate empty string.
+        recommendation: newF.recommendation ?? '',
+        // `remediationRecommendation` is the opposite case: purely
+        // Hub-owned work with no competing "incoming" value to defer to,
+        // so there's no empty-string-vs-unset ambiguity here — `||` is
+        // fine. Never populated by anything in the imported payload.
+        remediationRecommendation: existing.remediationRecommendation || '',
         riskAcceptance: existing.riskAcceptance || null,
         compensatingControl: existing.compensatingControl || '',
         // Preserve the recorded management response across re-imports, exactly
@@ -5938,7 +5986,7 @@ function getFilteredFindings() {
       else { if (!plan || plan.status !== planFilter) return false; }
     }
     if (search) {
-      const hay = `${f.id} ${f.controlCode} ${f.controlName} ${f.title} ${f.owner} ${f.reason}`.toLowerCase();
+      const hay = `${f.id} ${f.controlCode} ${f.controlName} ${f.title} ${f.owner} ${f.reason} ${f.condition || ''} ${f.criteria || ''} ${f.cause || ''} ${f.consequence || ''}`.toLowerCase();
       if (!hay.includes(search)) return false;
     }
     return true;
@@ -6163,6 +6211,39 @@ function renderSourceAuditEvidence(f) {
   `;
 }
 
+// 4C Finding Detail (Condition/Criteria/Cause/Consequence) — Finish Line
+// decision gate, closed: the auditor authors these in the Audit Engine as
+// part of the canonical Finding structure, frozen into the issued
+// snapshot. The Hub displays them read-only, exactly like source audit
+// evidence above — Management responds to and remediates the finding,
+// it does not rewrite the auditor's own analysis of it. Renders nothing
+// for a legacy pre-4C finding (all four empty), so an old audit's detail
+// panel looks exactly as it did before 4C existed.
+function renderFindingFourC(f) {
+  // "Condition" is rendered above as the finding's main Description (with
+  // `reason` as the legacy fallback for pre-4C findings) — not repeated
+  // here, so a 4C finding doesn't show the same text twice.
+  const fields = [
+    [t('finding_criteria_label') || 'Criteria', f.criteria],
+    [t('finding_cause_label') || 'Cause', f.cause],
+    [t('finding_consequence_label') || 'Consequence', f.consequence],
+  ].filter(([, v]) => v && String(v).trim());
+  if (!fields.length) return '';
+  return `
+    <div class="mb-4">
+      <p class="text-[10px] text-slate-400 uppercase tracking-wider mb-1">🔒 ${t('finding_details_label') || 'Finding Detail'}</p>
+      <div class="bg-slate-900/50 rounded p-2 border border-slate-700/50 space-y-1.5">
+        ${fields.map(([label, val]) => `
+          <div>
+            <p class="text-[9px] text-slate-500 uppercase font-bold">${escapeHTML(label)}</p>
+            <p class="text-xs text-slate-300 leading-relaxed">${escapeHTML(val)}</p>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
 function renderDetail(id) {
   const f = state.findings.find(x => x.id === id);
   if (!f) return;
@@ -6172,6 +6253,15 @@ function renderDetail(id) {
   const sevBorder = { critical: 'border-red-500', high: 'border-orange-500', medium: 'border-yellow-500', low: 'border-green-500' };
   const effortIcon = { low: '', medium: '🟡', high: '🔴' }[f.effort] || '🟡';
   const costLabel = COST_LABELS[f.cost] || '$$';
+  // Vandan (round 3): don't rely on recommendationSource alone. In the
+  // engine's own buildFinding() the two are always set together, but
+  // relying on that correlation here would silently break the moment
+  // anyone changes that in the future. Explicit and defensive: a finding
+  // only counts as having a real auditor recommendation when the source
+  // marker AND non-empty content both hold. Ambiguous pre-session data
+  // (content present, no marker at all) is handled separately below —
+  // it still gets shown, just without claiming a source.
+  const hasAuditorRecommendation = f.recommendationSource === 'audit_engine' && String(f.recommendation || '').trim() !== '';
 
   panel.innerHTML = `
     <div class="fade-in">
@@ -6202,18 +6292,28 @@ function renderDetail(id) {
 
       <div class="mb-4">
         <p class="text-[10px] text-slate-400 uppercase tracking-wider mb-1">${t('description')}</p>
-        <p class="text-xs text-slate-300 bg-slate-900/50 rounded p-2 leading-relaxed">${escapeHTML(f.reason || '—')}</p>
+        <p class="text-xs text-slate-300 bg-slate-900/50 rounded p-2 leading-relaxed">${escapeHTML(f.condition || f.reason || '—')}</p>
       </div>
 
       ${renderSourceAuditEvidence(f)}
 
+      ${renderFindingFourC(f)}
+
+      <div class="mb-4">
+        <p class="text-[10px] text-slate-400 uppercase tracking-wider mb-1">${t('auditor_recommendation_label')}</p>
+        ${f.recommendation
+          ? `<p class="text-xs text-slate-300 bg-slate-900/50 rounded p-2 leading-relaxed">${hasAuditorRecommendation ? '🔒 ' : ''}${escapeHTML(f.recommendation)}</p>`
+          : `<p class="text-xs text-slate-500 italic bg-slate-900/50 rounded p-2 leading-relaxed">${t('recommendation_not_provided')}</p>`}
+      </div>
+
+      ${f.recommendation ? '' : `
       <div class="mb-4">
         <div class="flex items-center justify-between mb-1">
-          <p class="text-[10px] text-slate-400 uppercase tracking-wider">${t('ai_recommendation')}</p>
+          <p class="text-[10px] text-slate-400 uppercase tracking-wider">${t('remediation_guidance_label')}</p>
           <button onclick="generateAIRecommendation('${escapeHTML(f.id)}')" class="text-[10px] text-indigo-400 hover:text-indigo-300">✨ ${t('generate_recommendation')}</button>
         </div>
-        <p class="text-xs text-slate-300 bg-slate-900/50 rounded p-2 leading-relaxed min-h-[40px]">${f.recommendation ? escapeHTML(f.recommendation) : '<span class="text-slate-500 italic">Click to generate</span>'}</p>
-      </div>
+        <p class="text-xs text-slate-300 bg-slate-900/50 rounded p-2 leading-relaxed min-h-[40px]">${f.remediationRecommendation ? escapeHTML(f.remediationRecommendation) : '<span class="text-slate-500 italic">Click to generate</span>'}</p>
+      </div>`}
 
       <div class="mb-4">
         <label class="text-[10px] text-slate-400 uppercase">${t('owner')}</label>
@@ -7666,15 +7766,22 @@ function generateAIRecommendation(id) {
   };
   
   const sev = (f.severity || f.riskLevel || 'medium').toLowerCase();
-  f.recommendation = recommendations[sev] || recommendations.medium;
+  // Finish Line follow-up (Vandan): `recommendation` is now exclusively
+  // the auditor's own recommendation, authored in the Audit Engine as
+  // part of 4C and frozen into the issued Finding — the Hub must never
+  // write to it, or a later reader can't tell an AI-generated Hub
+  // suggestion from something the auditor actually recommended in the
+  // original audit. This writes to a separate field instead: Management's
+  // own remediation-planning aid, distinct from the audit record.
+  f.remediationRecommendation = recommendations[sev] || recommendations.medium;
   f.updatedAt = Date.now();
   if (!f.history) f.history = [];
   f.history.push({
     ts: Date.now(),
     actor: 'ai',
-    field: 'recommendation',
+    field: 'remediationRecommendation',
     to: 'generated',
-    note: 'AI recommendation generated'
+    note: 'AI remediation guidance generated (Hub-side, not the audit-authored recommendation)'
   });
   
   saveState();

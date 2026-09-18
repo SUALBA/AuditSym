@@ -343,9 +343,236 @@ async function main() {
       check('All 4 product screenshot cards render', cardCount === 4);
 
       const imgSrcs = await page.evaluate(() => Array.from(document.querySelectorAll('.screenshot-card img')).map(i => i.getAttribute('src')));
-      const expectedSrcs = ['screenshots/vistaTrabajo2.jpg', 'screenshots/findingManagementResponse.jpg', 'screenshots/evidenceRegister.jpg', 'screenshots/remediationPlanDetail.jpg'];
+      const expectedSrcs = ['screenshots/auditsym-work-view.jpg', 'screenshots/auditsym-finding-management-response.jpg', 'screenshots/auditsym-evidence-register.jpg', 'screenshots/auditsym-remediation-plan.jpg'];
       check('Screenshot paths match the shared set also referenced by the README (same 4 new photos serve both)',
         JSON.stringify(imgSrcs) === JSON.stringify(expectedSrcs), `got ${JSON.stringify(imgSrcs)}`);
+
+      await page.close(); await ctx.close();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    section('9. Landing accuracy — AI providers, M3->M5 boundary in the flow cards, and logo navigation');
+    // Second review round found two more overclaims that had slipped
+    // past the first pass: the "Local AI" feature card still said ALL AI
+    // runs locally and only listed Ollama/OpenAI/Groq (missing
+    // Anthropic/OpenRouter, and implying cloud providers keep data local
+    // too) — contradicting the Problem/Solution table's own correct
+    // wording right above it. And the "how it works" flow's third card
+    // presented "Continuous Improvement" as a finished capability,
+    // contradicting the README's honest Follow-up/Verification boundary.
+    {
+      const ctx = await browser.newContext();
+      const page = await ctx.newPage();
+      await page.goto(`http://localhost:${PORT}/index.html`, { waitUntil: 'domcontentloaded' });
+      await page.waitForTimeout(500);
+
+      // Only Ollama is genuinely local; the other four are optional and
+      // explicitly user-configured cloud providers, never both "runs
+      // locally" and "all these are compatible" in the same breath.
+      const aiCardText = await page.evaluate(() => document.querySelector('[data-i18n="f2_desc"]')?.textContent || '');
+      check('The AI feature card lists all 4 cloud providers (Anthropic and OpenRouter were missing)',
+        aiCardText.includes('Anthropic') && aiCardText.includes('OpenRouter'), `got: "${aiCardText}"`);
+      check('The AI feature card no longer claims ALL AI runs locally / no data ever leaves the machine',
+        !aiCardText.toLowerCase().includes('toda la ia corre localmente') && !aiCardText.toLowerCase().includes('ningún dato sale'));
+
+      // The third flow card must present Follow-up/Verification as the
+      // next milestone, not Continuous Improvement as a finished stage.
+      const flow3Title = await page.evaluate(() => document.querySelector('[data-i18n="flow3_title"]')?.textContent || '');
+      check('The third flow card is Follow-up & Verification, not "Continuous Improvement" presented as done',
+        /follow.?up|verificaci|vérification|verifizierung|后续跟进|المتابعة/i.test(flow3Title), `got: "${flow3Title}"`);
+
+      const flowSub = await page.evaluate(() => document.querySelector('[data-i18n="flow_sub"]')?.textContent || '');
+      check('The flow section intro no longer claims the entire lifecycle is covered end to end',
+        !/cubre todo el ciclo de vida|covers the entire lifecycle|couvre tout le cycle|deckt den gesamten|cobre todo o ciclo|يغطي.*دورة الحياة الكاملة|覆盖整个生命周期/i.test(flowSub), `got: "${flowSub}"`);
+
+      // Confirm the correctly-scoped closure mention (closure belongs to
+      // Follow-up, the NEXT milestone) doesn't trip the earlier check
+      // that Remediation itself never claims to close a finding.
+      const flow3Desc = await page.evaluate(() => document.querySelector('[data-i18n="flow3_desc"]')?.textContent || '');
+      check('Closure is mentioned only as part of the next Follow-up milestone, not attributed to Remediation itself',
+        /follow.?up|verificaci|vérification|verifizierung|后续|المتابعة/i.test(await page.evaluate(() => document.querySelector('[data-i18n="flow3_title"]')?.textContent || '')) && flow3Desc.length > 0);
+
+      // Logo/shield now return to the hero instead of jumping straight
+      // into the audit engine — the CTA buttons remain the real entry
+      // points, per standard landing-page convention.
+      const brandHref = await page.evaluate(() => document.querySelector('a.brand')?.getAttribute('href'));
+      const shieldHref = await page.evaluate(() => document.querySelector('a.shield-link')?.getAttribute('href'));
+      check('Header logo now links back to the hero, not directly into the audit engine', brandHref === '#hero');
+      check('The large shield graphic also links back to the hero', shieldHref === '#hero');
+
+      // The real CTAs must still work exactly as before.
+      const startHref = await page.evaluate(() => document.querySelector('a.btn-start')?.getAttribute('href'));
+      const auditCtaHref = await page.evaluate(() => document.querySelector('a.btn-audit')?.getAttribute('href'));
+      check('The "Start" and "Audit" CTA buttons still correctly link into the audit engine', startHref === 'auditnist-local.html' && auditCtaHref === 'auditnist-local.html');
+
+      await page.close(); await ctx.close();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    section('10. Landing accuracy — HTML fallback text and meta description no longer contradict the (already-correct) i18n dictionary');
+    // Third review round found that several fixes to the i18n dictionary
+    // in earlier rounds never touched the raw HTML fallback text — the
+    // content actually present in the markup before setLanguage() runs,
+    // which is also what a crawler or a JS-disabled browser would see.
+    // A translated string being correct while its own HTML source still
+    // says something else is exactly the "two truths in one file"
+    // problem Vandan flagged.
+    {
+      const ctx = await browser.newContext();
+      const page = await ctx.newPage();
+      await page.goto(`http://localhost:${PORT}/index.html`, { waitUntil: 'domcontentloaded' });
+      await page.waitForTimeout(300);
+
+      const metaDesc = await page.evaluate(() => document.querySelector('meta[name="description"]')?.content || '');
+      check('Meta description no longer promises data never leaves the machine',
+        !metaDesc.toLowerCase().includes('sin que tus datos salgan'), `got: "${metaDesc}"`);
+      check('Meta description mentions Local-First design and optional cloud providers instead',
+        metaDesc.includes('Local-First') && metaDesc.includes('Ollama'));
+
+      const f2DescRaw = await page.evaluate(() => document.querySelector('[data-i18n="f2_desc"]')?.textContent || '');
+      check('The raw HTML fallback for the AI card (not just the i18n dictionary) mentions all cloud providers',
+        f2DescRaw.includes('Anthropic') && f2DescRaw.includes('OpenRouter'), `got: "${f2DescRaw}"`);
+      check('The raw HTML fallback for the AI card no longer claims all AI is local with no data leaving the machine',
+        !f2DescRaw.toLowerCase().includes('toda la ia corre localmente'));
+
+      const f6DescRaw = await page.evaluate(() => document.querySelector('[data-i18n="f6_desc"]')?.textContent || '');
+      check('Local First card no longer says "no cloud" while the product genuinely supports optional cloud AI providers',
+        !f6DescRaw.toLowerCase().includes('sin nube'), `got: "${f6DescRaw}"`);
+
+      const flowSubRaw = await page.evaluate(() => document.querySelector('[data-i18n="flow_sub"]')?.textContent || '');
+      check('The raw HTML fallback for the flow intro matches the corrected i18n dictionary, not the old "covers the entire lifecycle" claim',
+        !flowSubRaw.toLowerCase().includes('cubre todo el ciclo de vida'), `got: "${flowSubRaw}"`);
+
+      // Softer claim: "designed for real workflows" instead of "by and
+      // for auditors", which overstated who actually built the product.
+      let anyOverstatedNote = false;
+      for (const lang of ['es', 'en', 'fr', 'de', 'pt', 'ar', 'zh']) {
+        await page.evaluate((l) => onLanguagePicked(l), lang);
+        await page.waitForTimeout(80);
+        const note = (await page.evaluate(() => document.querySelector('[data-i18n="screenshots_note"]')?.textContent || '')).toLowerCase();
+        if (/by and for|por y para|par et pour|von und für|por e para|من قبل.*ولهم|由.*为.*设计/i.test(note)) anyOverstatedNote = true;
+      }
+      check('No language claims the product was designed "by and for" auditors — softened to "for real workflows"', !anyOverstatedNote);
+
+      await page.close(); await ctx.close();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    section('11. Landing restructure — Roles, Sample Report, Local-First & Human-Controlled, and Open Development sections, in the credibility-layer order');
+    // Comprehensive review comparing AuditSym's landing against mature
+    // GRC products (Drata, Vanta, Secureframe) found it explained WHAT
+    // AuditSym is but not who it's for, what it produces, why to trust
+    // it, or how to verify it before trying it. Rather than inventing
+    // social proof AuditSym doesn't have yet (customer counts, logos,
+    // testimonials — deliberately NOT added), this adds a "credibility
+    // layer" built entirely from real, existing assets: audience roles,
+    // the actual 13-page sample report, the real Local-First/human-in-
+    // the-loop architecture, and honest MVP-stage transparency.
+    {
+      const ctx = await browser.newContext();
+      const page = await ctx.newPage();
+      await page.goto(`http://localhost:${PORT}/index.html`, { waitUntil: 'domcontentloaded' });
+      await page.waitForTimeout(500);
+
+      const sectionOrder = await page.evaluate(() => Array.from(document.querySelectorAll('section[id]')).map(s => s.id));
+      const expectedOrder = ['hero', 'roles', 'about', 'problem', 'screenshots', 'sample-report', 'trust', 'features', 'opendev', 'contact'];
+      check('Section order matches the credibility-layer structure (Hero > Roles > Lifecycle > Problem/Solution > Screenshots > Sample Report > Local-First&Human > Features > Open Dev > Contact)',
+        JSON.stringify(sectionOrder) === JSON.stringify(expectedOrder), `got ${JSON.stringify(sectionOrder)}`);
+
+      const roleCount = await page.evaluate(() => document.querySelectorAll('.role-card').length);
+      check('All 3 role cards render (Auditors, CISOs & GRC, Management & Control Owners)', roleCount === 3);
+
+      const sampleImgSrc = await page.evaluate(() => document.querySelector('.sample-report-image img')?.getAttribute('src'));
+      check('The Sample Report section uses the real executive-summary screenshot, not a placeholder',
+        sampleImgSrc === 'screenshots/auditsym-sample-report-executive-summary.jpg', `got ${sampleImgSrc}`);
+      const sampleLink = await page.evaluate(() => document.querySelector('.btn-sample-report')?.getAttribute('href'));
+      check('The Sample Report link correctly resolves relative to ui/, one level up to docs/sample-reports/',
+        sampleLink === '../docs/sample-reports/auditsym-nist-csf-2.0-sample-report.pdf', `got ${sampleLink}`);
+
+      const trustColCount = await page.evaluate(() => document.querySelectorAll('.trust-column').length);
+      check('Local-First & Human-Controlled renders as its own two-column section, not another small feature card', trustColCount === 2);
+
+      const opendevLinks = await page.evaluate(() => Array.from(document.querySelectorAll('.opendev-links a')).map(a => a.getAttribute('href')));
+      const expectedOpendevLinks = ['https://github.com/SUALBA/AuditSym', '../docs/m3-data-model-reference.en.md', 'https://github.com/SUALBA/AuditSym#-roadmap', 'https://github.com/SUALBA/AuditSym/issues'];
+      check('Open Development section links to the repo, technical docs, roadmap anchor, and issues — all real, no placeholder hrefs',
+        JSON.stringify(opendevLinks) === JSON.stringify(expectedOpendevLinks), `got ${JSON.stringify(opendevLinks)}`);
+
+      // The explicit choice NOT to add fabricated social proof (customer
+      // counts, "trusted by X companies", star ratings) must hold.
+      const bodyText = await page.evaluate(() => document.body.innerText.toLowerCase());
+      check('No fabricated social-proof numbers (customer counts, "trusted by", star ratings) were introduced',
+        !/trusted by \d|\d+,?\d* (customers|clients|companies)|★|⭐/i.test(bodyText));
+
+      // The final CTA now reflects the actual MVP-evaluation stage
+      // rather than a generic "want to know more?".
+      const contactTitle = await page.evaluate(() => document.querySelector('[data-i18n="contact_title"]')?.textContent || '');
+      check('Final CTA now targets MVP evaluation interest, not a generic "want to know more"',
+        /evaluat/i.test(contactTitle), `got: "${contactTitle}"`);
+
+      // Across all 7 languages: no raw i18n keys leak, and none of the
+      // new sections reintroduce closure-claim or absolute-promise
+      // language in the WRONG context (Remediation/Problem-Solution/AI
+      // card), while still allowing the correctly-scoped mention inside
+      // the Follow-up flow card and the honest opendev MVP description.
+      for (const lang of ['es', 'en', 'fr', 'de', 'pt', 'ar', 'zh']) {
+        await page.evaluate((l) => onLanguagePicked(l), lang);
+        await page.waitForTimeout(80);
+        const text = await page.evaluate(() => document.body.innerText);
+        const hasRawKey = /roles_title|role1_title|sample_report_title|trust_title|opendev_title|opendev_link_repo/.test(text);
+        check(`${lang}: no raw i18n keys leak in the new sections`, !hasRawKey);
+      }
+
+      await page.close(); await ctx.close();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    section('12. Landing polish — Trust subtitle tone, page-count staleness risk, footer contradiction, and "AI-Powered" vs "AI-Assisted" positioning');
+    // Fourth review round: the Trust subtitle read as defensive ("not a
+    // marketing promise"); the Sample Report description hard-coded "13
+    // pages", which will silently go stale the next time the report is
+    // regenerated with more content; the footer still claimed "all data
+    // stays local" right after the page correctly explained optional
+    // cloud providers elsewhere; and "AI-Powered" contradicts the
+    // product's own human-in-the-loop philosophy — the AI never powers
+    // the decision, it assists it.
+    {
+      const ctx = await browser.newContext();
+      const page = await ctx.newPage();
+      await page.goto(`http://localhost:${PORT}/index.html`, { waitUntil: 'domcontentloaded' });
+      await page.waitForTimeout(500);
+
+      const trustSub = await page.evaluate(() => document.querySelector('[data-i18n="trust_sub"]')?.textContent || '');
+      check('Trust subtitle states the principle directly instead of defensively denying it\'s a marketing promise',
+        !/not a marketing promise|no una promesa de marketing|pas une promesse marketing|kein marketingversprechen|não uma promessa de marketing|وعدًا تسويقيًا|营销承诺/i.test(trustSub), `got: "${trustSub}"`);
+
+      const sampleDesc = await page.evaluate(() => document.querySelector('[data-i18n="sample_report_desc"]')?.textContent || '');
+      check('Sample Report description no longer hard-codes a specific page count that will go stale on regeneration',
+        !/13\s*(pages|páginas|pages|seiten|páginas|صفحة|页)/i.test(sampleDesc), `got: "${sampleDesc}"`);
+
+      const footerText = await page.evaluate(() => document.querySelector('[data-i18n="footer_text"]')?.textContent || '');
+      check('Footer no longer contradicts the optional-cloud-providers explanation by claiming all data stays local',
+        !/all data stays local|todos los datos quedan en local|données restent locales|daten bleiben lokal|dados ficam locais|البيانات محلية|数据均保留在本地/i.test(footerText), `got: "${footerText}"`);
+      check('Footer now states Local-First / Open Source / Human-Controlled as the brand summary',
+        footerText.includes('Local-First') && footerText.includes('Open Source') && footerText.includes('Human-Controlled'));
+
+      const brandTagline = await page.evaluate(() => document.querySelector('[data-i18n="brand_tagline"]')?.textContent || '');
+      check('Header tagline no longer says "AI-Powered" — the product\'s own philosophy is that AI assists, never decides',
+        brandTagline !== 'AI-Powered GRC Platform');
+
+      const flowTitle = await page.evaluate(() => document.querySelector('[data-i18n="flow_title"]')?.textContent || '');
+      check('Flow section title no longer claims the audit cycle is "complete" — Follow-up & Verification is explicitly the next milestone',
+        !/complete audit flow|flujo completo de auditoría|flux complet|vollständige audit|fluxo completo|دورة التدقيق الكاملة|完整的审计流程/i.test(flowTitle), `got: "${flowTitle}"`);
+
+      // Same checks across all 7 languages, not just the default.
+      for (const lang of ['es', 'en', 'fr', 'de', 'pt', 'ar', 'zh']) {
+        await page.evaluate((l) => onLanguagePicked(l), lang);
+        await page.waitForTimeout(80);
+        const desc = (await page.evaluate(() => document.querySelector('[data-i18n="sample_report_desc"]')?.textContent || ''));
+        const footer = (await page.evaluate(() => document.querySelector('[data-i18n="footer_text"]')?.textContent || ''));
+        check(`${lang}: sample report description has no stale page count`, !/\b13\b/.test(desc), `got: "${desc}"`);
+        check(`${lang}: footer states the Local-First/Open Source/Human-Controlled summary`,
+          footer.includes('Local-First') && footer.includes('Open Source') && footer.includes('Human-Controlled'), `got: "${footer}"`);
+      }
 
       await page.close(); await ctx.close();
     }

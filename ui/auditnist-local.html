@@ -1585,6 +1585,13 @@ function loadAuditById(key) {
     autoGrowTextarea(wrapper.querySelector('.evidencia'), 180);
     wrapper.querySelector('.notes').value = c.notes || '';
     autoGrowTextarea(wrapper.querySelector('.notes'), 240);
+    // 4C Finding Details — restored regardless of current compliance value;
+    // applyComplianceStyling() below decides visibility, never clears these.
+    if (wrapper.querySelector('.finding-condition')) wrapper.querySelector('.finding-condition').value = c.condition || '';
+    if (wrapper.querySelector('.finding-criteria')) wrapper.querySelector('.finding-criteria').value = c.criteria || '';
+    if (wrapper.querySelector('.finding-cause')) wrapper.querySelector('.finding-cause').value = c.cause || '';
+    if (wrapper.querySelector('.finding-consequence')) wrapper.querySelector('.finding-consequence').value = c.consequence || '';
+    if (wrapper.querySelector('.finding-recommendation')) wrapper.querySelector('.finding-recommendation').value = c.recommendation || '';
     // Issue #34: restore this control's structured evidence items (if
     // any) and render them — addControl() always starts a fresh control
     // with an empty array, since it has no way to know a saved one is
@@ -2080,6 +2087,47 @@ rows="4" style="min-height:100px;max-height:180px;overflow-y:auto;" spellcheck="
 
 </div>
 
+<!-- 4C Finding Details — only meaningful once buildFinding() would
+     actually generate a Finding for this control (Non-Compliant/Partial).
+     Hidden (never cleared) for Compliant/N/A by applyComplianceStyling()
+     so switching back and forth during a draft never loses work — see
+     that function's own comment. These feed buildFinding() directly;
+     "reason" (evidencia/notes) remains as a separate legacy field, never
+     auto-migrated into "cause". -->
+<div class="finding-details-block hidden mt-3 pt-3 border-t border-gray-700">
+<label class="text-[10px] uppercase tracking-wide text-cyberaccent font-bold" data-i18n="finding_details_label">${T('finding_details_label')}</label>
+
+<div class="field-group mt-2">
+<label class="text-[10px] uppercase tracking-wide text-gray-400 font-bold" data-i18n="finding_condition_label">${T('finding_condition_label')}</label>
+<textarea class="finding-condition w-full mt-1 p-2.5 rounded bg-gray-800 border border-gray-600 text-gray-100 text-sm leading-relaxed resize-y focus:outline-none focus:border-cyberaccent"
+rows="2" style="min-height:60px;max-height:160px;overflow-y:auto;" spellcheck="true" lang="es" placeholder="${T('finding_condition_ph')}" data-i18n-placeholder="finding_condition_ph" oninput="autoGrowTextarea(this, 160); isDirty = true;"></textarea>
+</div>
+
+<div class="field-group mt-2">
+<label class="text-[10px] uppercase tracking-wide text-gray-400 font-bold" data-i18n="finding_criteria_label">${T('finding_criteria_label')}</label>
+<textarea class="finding-criteria w-full mt-1 p-2.5 rounded bg-gray-800 border border-gray-600 text-gray-100 text-sm leading-relaxed resize-y focus:outline-none focus:border-cyberaccent"
+rows="2" style="min-height:60px;max-height:160px;overflow-y:auto;" spellcheck="true" lang="es" placeholder="${T('finding_criteria_ph')}" data-i18n-placeholder="finding_criteria_ph" oninput="autoGrowTextarea(this, 160); isDirty = true;"></textarea>
+</div>
+
+<div class="field-group mt-2">
+<label class="text-[10px] uppercase tracking-wide text-gray-400 font-bold" data-i18n="finding_cause_label">${T('finding_cause_label')}</label>
+<textarea class="finding-cause w-full mt-1 p-2.5 rounded bg-gray-800 border border-gray-600 text-gray-100 text-sm leading-relaxed resize-y focus:outline-none focus:border-cyberaccent"
+rows="2" style="min-height:60px;max-height:160px;overflow-y:auto;" spellcheck="true" lang="es" placeholder="${T('finding_cause_ph')}" data-i18n-placeholder="finding_cause_ph" oninput="autoGrowTextarea(this, 160); isDirty = true;"></textarea>
+</div>
+
+<div class="field-group mt-2">
+<label class="text-[10px] uppercase tracking-wide text-gray-400 font-bold" data-i18n="finding_consequence_label">${T('finding_consequence_label')}</label>
+<textarea class="finding-consequence w-full mt-1 p-2.5 rounded bg-gray-800 border border-gray-600 text-gray-100 text-sm leading-relaxed resize-y focus:outline-none focus:border-cyberaccent"
+rows="2" style="min-height:60px;max-height:160px;overflow-y:auto;" spellcheck="true" lang="es" placeholder="${T('finding_consequence_ph')}" data-i18n-placeholder="finding_consequence_ph" oninput="autoGrowTextarea(this, 160); isDirty = true;"></textarea>
+</div>
+
+<div class="field-group mt-2">
+<label class="text-[10px] uppercase tracking-wide text-gray-400 font-bold" data-i18n="finding_recommendation_label">${T('finding_recommendation_label')}</label>
+<textarea class="finding-recommendation w-full mt-1 p-2.5 rounded bg-gray-800 border border-gray-600 text-gray-100 text-sm leading-relaxed resize-y focus:outline-none focus:border-cyberaccent"
+rows="2" style="min-height:60px;max-height:160px;overflow-y:auto;" spellcheck="true" lang="es" placeholder="${T('finding_recommendation_ph')}" data-i18n-placeholder="finding_recommendation_ph" oninput="autoGrowTextarea(this, 160); isDirty = true;"></textarea>
+</div>
+</div>
+
 <!-- Issue #34: structured evidence register (EVD-####) — an optional
      layer alongside the free-text evidence above, not a replacement.
      evidence-items-list is populated by renderEvidenceItemsList(); this
@@ -2357,6 +2405,18 @@ function applyComplianceStyling(controlBlock, value) {
   // auditor happened to touch the evidence field.
   const evidenciaEl = controlBlock.querySelector('.evidencia');
   if (evidenciaEl) updateNAEvidenceWarning(evidenciaEl);
+
+  // 4C Finding Details — visible only when this control would actually
+  // produce a Finding (Non-Compliant/Partial). Hidden, never cleared, for
+  // Compliant/N/A: switching a control's compliance back and forth during
+  // a draft must never silently discard 4C the auditor already wrote (see
+  // buildFinding()'s own comment on why `reason` isn't auto-migrated —
+  // same "don't destroy real work" principle applies here to the fields
+  // themselves).
+  const findingDetailsBlock = controlBlock.querySelector('.finding-details-block');
+  if (findingDetailsBlock) {
+    findingDetailsBlock.classList.toggle('hidden', !(value === 'no' || value === 'partial'));
+  }
 }
 
 // Live companion to findEmptyEvidenceNAControls() — updates a single
@@ -4061,6 +4121,18 @@ function collectAuditData() {
       riesgo: blk.querySelector('.riesgo')?.value,
       evidencia: blk.querySelector('.evidencia')?.value,
       notes: blk.querySelector('.notes')?.value,
+      // 4C Finding Details — only meaningful for Non-Compliant/Partial (the
+      // only states that produce a Finding), but always read from the DOM
+      // regardless of current compliance value: applyComplianceStyling()
+      // hides the block without clearing it, specifically so a value typed
+      // while Non-Compliant survives a temporary switch to Compliant/N/A
+      // and back. buildFinding() itself decides whether these are actually
+      // used based on the CURRENT compliance value.
+      condition: blk.querySelector('.finding-condition')?.value || '',
+      criteria: blk.querySelector('.finding-criteria')?.value || '',
+      cause: blk.querySelector('.finding-cause')?.value || '',
+      consequence: blk.querySelector('.finding-consequence')?.value || '',
+      recommendation: blk.querySelector('.finding-recommendation')?.value || '',
       // Issue #34: structured evidence lives alongside the free-text
       // evidencia field above, never replacing it.
       evidenceItems: getEvidenceItems(blk)
@@ -4418,6 +4490,21 @@ function buildFinding(control, auditId) {
     
     const reason = control.evidencia || control.notes || 'No specific evidence provided.';
     const evidence = control.evidencia || control.evidence || '';
+
+    // 4C canonical Finding model (Finish Line decision gate, closed):
+    // condition/criteria/cause/consequence/recommendation are the Finding's
+    // real structure going forward. `reason` above is kept ONLY as a legacy
+    // field for backward compatibility with audits saved before 4C existed
+    // — it is never auto-migrated into `cause`, since free-text evidence/
+    // notes often isn't actually a root cause. A finding built from a
+    // pre-4C control simply has empty 4C fields until an auditor reviews
+    // and fills them in; nothing here invents a cause that was never
+    // actually established.
+    const condition = control.condition || '';
+    const criteria = control.criteria || '';
+    const cause = control.cause || '';
+    const consequence = control.consequence || '';
+    const recommendationText = control.recommendation || '';
     
     // ✅ NUEVO: calcular effort, score y cost
     const effort = estimateEffort({ controlCode, controlName });
@@ -4450,7 +4537,14 @@ function buildFinding(control, auditId) {
         title: `${controlCode} – ${controlName}`,
         severity: riskLevel,                 // ✅ Estándar GRC
         riskLevel: riskLevel,                // ✅ Backward compatibility
-        reason: reason,
+        // 4C — canonical structure. Frozen into the issued snapshot exactly
+        // as the auditor left them; the Hub displays these read-only, the
+        // same way it already treats EVD-#### source evidence.
+        condition: condition,
+        criteria: criteria,
+        cause: cause,
+        consequence: consequence,
+        reason: reason,                      // legacy — kept for backward compatibility, not migrated into `cause`
         evidence: evidence,
         // ── PRIORITY SCORING (Innovación) ──
         effort: effort,                      // low/medium/high
@@ -4466,7 +4560,17 @@ function buildFinding(control, auditId) {
         timeframe: `${days} days`,           // "X days"
         status: 'open',
         notes: '',
-        recommendation: '',
+        // Finish Line decision: the Finding that gets issued should already
+        // be complete — recommendation is authored by the auditor alongside
+        // 4C, not left empty for Remediation to fill in later.
+        recommendation: recommendationText,
+        // Distinguishes a recommendation the auditor wrote as part of 4C
+        // (frozen, never editable in the Hub) from one Management might
+        // generate with AI inside the Hub itself for a legacy pre-4C
+        // finding (still regenerable there). Only set when the auditor
+        // actually wrote something — an empty 4C recommendation on a new
+        // finding must NOT block the Hub's own AI-generation path.
+        recommendationSource: recommendationText ? 'audit_engine' : null,
         // Provenance of the auditee's response — seeded empty so the shape is
         // consistent from creation. The audit engine now emits the COMPLETE
         // M2 contract itself rather than a partial shape the Remediation
@@ -4660,6 +4764,12 @@ toggleValidateBtn(wrapper.querySelector('.evidencia'));
 autoGrowTextarea(wrapper.querySelector('.evidencia'), 180);
 wrapper.querySelector('.notes').value = c.notes || '';
 autoGrowTextarea(wrapper.querySelector('.notes'), 240);
+// 4C Finding Details — same restoration as loadAuditById.
+if (wrapper.querySelector('.finding-condition')) wrapper.querySelector('.finding-condition').value = c.condition || '';
+if (wrapper.querySelector('.finding-criteria')) wrapper.querySelector('.finding-criteria').value = c.criteria || '';
+if (wrapper.querySelector('.finding-cause')) wrapper.querySelector('.finding-cause').value = c.cause || '';
+if (wrapper.querySelector('.finding-consequence')) wrapper.querySelector('.finding-consequence').value = c.consequence || '';
+if (wrapper.querySelector('.finding-recommendation')) wrapper.querySelector('.finding-recommendation').value = c.recommendation || '';
 // Issue #34: same restoration as loadAuditById.
 wrapper.evidenceItems = Array.isArray(c.evidenceItems) ? c.evidenceItems : [];
 renderEvidenceItemsList(wrapper);
@@ -6127,6 +6237,12 @@ function generatePDF(overrideFilename, sourceSnapshot = null) {
         compliance: c.cumple || '',
         risk: c.riesgo || '',
         evidence, notes, question: c.question || '',
+        // 4C — read straight from the frozen snapshot's control object,
+        // same as evidence/notes above. Empty for pre-4C audits; never
+        // backfilled from `reason`/evidence (see buildFinding()'s comment).
+        condition: c.condition || '', criteria: c.criteria || '',
+        cause: c.cause || '', consequence: c.consequence || '',
+        recommendation: c.recommendation || '',
         hasEvidence: !!evidence.trim() && evidence.trim().toLowerCase() !== 'no evidence provided',
         hasNotes: !!notes.trim(),
         domain: domainOf(code),
@@ -6156,6 +6272,13 @@ function generatePDF(overrideFilename, sourceSnapshot = null) {
         compliance: blk.querySelector('.cumple')?.value || '',
         risk: blk.querySelector('.riesgo')?.value || '',
         evidence, notes, question,
+        // 4C — same fields as the snapshot path above, read live from the
+        // DOM here since this branch runs for a not-yet-issued audit.
+        condition: blk.querySelector('.finding-condition')?.value || '',
+        criteria: blk.querySelector('.finding-criteria')?.value || '',
+        cause: blk.querySelector('.finding-cause')?.value || '',
+        consequence: blk.querySelector('.finding-consequence')?.value || '',
+        recommendation: blk.querySelector('.finding-recommendation')?.value || '',
         hasEvidence: !!evidence.trim() && evidence.trim().toLowerCase() !== 'no evidence provided',
         hasNotes: !!notes.trim(),
         domain: domainOf(code),
@@ -7288,6 +7411,56 @@ function scopeSection(title, body, color) {
 );
         y += 8;
 
+        // 4C Finding Detail — Condition/Criteria/Cause/Consequence/
+        // Recommendation, the canonical Finding structure (Finish Line
+        // decision gate, closed). Rendered only when the control is
+        // CURRENTLY Non-Compliant/Partial — the only states that actually
+        // constitute a Finding. This guard matters specifically because
+        // applyComplianceStyling() deliberately preserves 4C content
+        // (never clears it) when a control is switched to Compliant/N/A
+        // mid-draft, so the auditor doesn't lose work if they toggle
+        // compliance back and forth. Without this check, that preserved-
+        // but-stale 4C would leak into the PDF for a control that is no
+        // longer a Finding — the data is correctly kept in the DOM/saved
+        // audit, just correctly withheld from THIS render. `c.notes`
+        // stays excluded per the comment above; these 5 fields are a
+        // separate, formal structure the auditor explicitly authored for
+        // the report, not raw working notes.
+        const isFinding = c.compliance === 'no' || c.compliance === 'partial';
+        const fourCFields = isFinding ? [
+          [pdfL('Condición', 'Condition'), c.condition], [pdfL('Criterio', 'Criteria'), c.criteria],
+          [pdfL('Causa', 'Cause'), c.cause], [pdfL('Consecuencia', 'Consequence'), c.consequence],
+          [pdfL('Recomendación', 'Recommendation'), c.recommendation]
+        ].filter(([, v]) => v && v.trim()) : [];
+        if (fourCFields.length) {
+          if (y > pageHeight - 100) { doc.addPage(); y = drawContinuationHeader('Anexo · Evidencia Detallada'); }
+          doc.setFillColor(240, 249, 255);
+          doc.setDrawColor(186, 230, 253);
+          const blockStartY = y;
+          let measureY = y + 8;
+          fourCFields.forEach(([label, val]) => {
+            doc.setFont('Roboto', 'bold').setFontSize(7.5);
+            measureY += 9;
+            doc.setFont('Roboto', 'normal').setFontSize(8);
+            const lines = doc.splitTextToSize(pdfSafe(val), pageWidth - 2*margin - 44);
+            measureY += lines.length * 10 + 4;
+          });
+          const blockH = measureY - blockStartY + 4;
+          doc.roundedRect(margin + 12, blockStartY, pageWidth - 2*margin - 24, blockH, 3, 3, 'FD');
+          y = blockStartY + 8;
+          doc.setTextColor(COLORS.text[0], COLORS.text[1], COLORS.text[2]);
+          fourCFields.forEach(([label, val]) => {
+            doc.setFont('Roboto', 'bold').setFontSize(7.5);
+            txt(label.toUpperCase(), margin + 20, y + 7);
+            y += 9;
+            doc.setFont('Roboto', 'normal').setFontSize(8);
+            const lines = doc.splitTextToSize(pdfSafe(val), pageWidth - 2*margin - 44);
+            lines.forEach(l => { txt(l, margin + 20, y + 7); y += 10; });
+            y += 4;
+          });
+          y += 8;
+        }
+
         // Issue #34: structured evidence register — alongside the
         // free-text evidence above, never replacing it. Fixed Spanish
         // labels, matching this whole annex's convention (the PDF doesn't
@@ -8049,6 +8222,7 @@ weak_domains_label:'⚠️ Dominios Débiles', exec_summary_label:'📋 Resumen 
 strengths_label:'✅ Fortalezas', key_gaps_label:'❌ Brechas Clave',
 immediate_actions_label:'🔴 Acciones Inmediatas (0–30 días)', medium_term_label:'🟡 Mejoras a Medio Plazo (30–90 días)',
 strategic_label:'🔵 Recomendaciones Estratégicas', close_btn:'Cerrar',
+finding_details_label:'📋 Detalle del Hallazgo', finding_condition_label:'Condición', finding_condition_ph:'¿Qué se encontró? (situación observada)', finding_criteria_label:'Criterio', finding_criteria_ph:'¿Qué debería cumplirse? (norma, política o control esperado)', finding_cause_label:'Causa', finding_cause_ph:'¿Por qué ocurrió? (causa raíz)', finding_consequence_label:'Consecuencia', finding_consequence_ph:'¿Qué riesgo o impacto genera?', finding_recommendation_label:'Recomendación', finding_recommendation_ph:'¿Qué se recomienda hacer al respecto?',
 generate_pdf_btn:'📄 PDF', export_txt_btn:'📄 TXT',
 export_json_btn:'💾 Exportar JSON', import_json_btn:'📂 Importar JSON',
 save_progress_btn:'💾 Guardar', view_saved_btn:'📋 Ver Informes',
@@ -8269,6 +8443,7 @@ weak_domains_label:'⚠️ Weak Domains', exec_summary_label:'📋 Executive Sum
 strengths_label:'✅ Strengths', key_gaps_label:'❌ Key Gaps',
 immediate_actions_label:'🔴 Immediate Actions (0–30 days)', medium_term_label:'🟡 Medium-Term Improvements (30–90 days)',
 strategic_label:'🔵 Strategic Recommendations', close_btn:'Close',
+finding_details_label:'📋 Finding Detail', finding_condition_label:'Condition', finding_condition_ph:'What was found? (observed situation)', finding_criteria_label:'Criteria', finding_criteria_ph:'What should be met? (standard, policy, or expected control)', finding_cause_label:'Cause', finding_cause_ph:'Why did it happen? (root cause)', finding_consequence_label:'Consequence', finding_consequence_ph:'What risk or impact does this create?', finding_recommendation_label:'Recommendation', finding_recommendation_ph:'What is recommended to address this?',
 generate_pdf_btn:'📄 PDF', export_txt_btn:'📄 TXT',
 export_json_btn:'💾 Export JSON', import_json_btn:'📂 Import JSON', issue_report_btn: "📢 Issue Final Report",
 post_issuance_message:'✅ Report issued successfully. Download and keep both official files.',
@@ -8610,7 +8785,18 @@ overall_score_label:'Score Global', posture_label:'Posture de Sécurité', matur
 weak_domains_label:'⚠️ Domaines Faibles', exec_summary_label:'📋 Résumé Exécutif',
 strengths_label:'✅ Points Forts', key_gaps_label:'❌ Lacunes Clés',
 immediate_actions_label:'🔴 Actions Immédiates (0–30 jours)', medium_term_label:'🟡 Améliorations à Moyen Terme (30–90 jours)',
-strategic_label:'🔵 Recommandations Stratégiques', close_btn:'Fermer'
+new_audit_tooltip:'Nouveau', dash_remaining:'restants', dash_controls:'contrôles',
+work_filter_pending:'⚠️ Seulement en attente de validation', nav_prev:'◀ Précédent', nav_next:'Suivant ▶',
+focus_close:'✕ Fermer', focus_autosave_note:'Les modifications sont enregistrées automatiquement au fur et à mesure — vous pouvez fermer à tout moment.',
+work_view_toggle_title:'Basculer entre la vue tableau de bord et une vue compacte par contrôle',
+fw_switch_title:'Cliquez pour passer à', status_dot_title:'Statut de conformité',
+focus_mode_btn_title:'Mode Focus — éditeur plein écran', evaluated_label:'évalué', focus_mode_title:'Mode Focus',
+alert_unsaved_changes:'⚠️ Vous avez des modifications non enregistrées. Continuer sans enregistrer ?', alert_audit_not_found:'⚠️ Audit introuvable', alert_audit_loaded:'✅ Audit "{name}" chargé avec succès', alert_library_load_failed:'⚠️ Impossible de charger la bibliothèque de contrôles.', alert_control_already_evaluated:'⚠️ Ce contrôle a déjà été évalué. Supprimez-le pour l\'évaluer à nouveau.', alert_control_already_added:'⚠️ Ce contrôle est déjà ajouté à l\'audit en cours.', alert_ai_no_valid_response:'⚠️ L\'IA n\'a pas généré de réponse valide', alert_ollama_error:'❌ Erreur : {err}\n\nAssurez-vous qu\'Ollama fonctionne avec :\nOLLAMA_ORIGINS=\'*\' ollama serve\n\nEt que le modèle est téléchargé :\nollama pull qwen2.5:3b', alert_report_saved:'✅ Rapport enregistré localement.', alert_json_imported:'✅ JSON importé avec succès.', alert_json_import_error:'❌ Erreur lors de l\'import JSON : ', alert_fill_company:'🛑 Renseignez les entreprises auditée et auditrice pour générer le rapport', alert_pdf_gen_error:'⚠️ Erreur lors de la génération du PDF : ', alert_no_controls_selected:'🛑 Aucun contrôle sélectionné', alert_skipped_evaluated:'⚠️ Ignorés (déjà évalués) : ', no_saved_reports:'Aucun rapport enregistré pour le moment.', no_saved_evaluations:'Aucune évaluation enregistrée.', work_no_controls:'Aucun contrôle ajouté pour le moment.', pending_validation:'En attente de validation', grid_already_added:'Déjà dans votre liste de contrôles, en attente d\'évaluation — ', recommended_control:'Contrôle recommandé', control_of:'Contrôle de ', work_filter_none:'✅ Rien en attente de validation.',
+strategic_label:'🔵 Recommandations Stratégiques', close_btn:'Fermer',
+finding_details_label:'📋 Détail du Constat', finding_condition_label:'Condition', finding_condition_ph:'Qu\'a-t-on constaté ? (situation observée)', finding_criteria_label:'Critère', finding_criteria_ph:'Que devrait-il être respecté ? (norme, politique ou contrôle attendu)', finding_cause_label:'Cause', finding_cause_ph:'Pourquoi cela est-il arrivé ? (cause profonde)', finding_consequence_label:'Conséquence', finding_consequence_ph:'Quel risque ou impact cela crée-t-il ?', finding_recommendation_label:'Recommandation', finding_recommendation_ph:'Que recommande-t-on de faire ?',
+eng_draft_report_actual_label:'Rapport Préliminaire — Réel', eng_final_actual_ref_label:'Rapport Final — Réel',
+eng_final_actual_ref_help:'Voir « Date d\'Émission Réelle » sous Document, ci-dessous — se remplit automatiquement lors de l\'émission.',
+issue_blocked_ai_drafts:'Impossible d\'émettre le rapport : les contrôles suivants ont encore des preuves générées par IA non validées. Vérifiez-les et cliquez sur « Valider le Brouillon » avant d\'émettre :'
 },
 de: {
 clear_data:'Daten löschen', nist_function_label:'Domäne',
@@ -8764,7 +8950,18 @@ overall_score_label:'Gesamtpunktzahl', posture_label:'Sicherheitslage', maturity
 weak_domains_label:'⚠️ Schwache Domänen', exec_summary_label:'📋 Führungszusammenfassung',
 strengths_label:'✅ Stärken', key_gaps_label:'❌ Wichtige Lücken',
 immediate_actions_label:'🔴 Sofortmaßnahmen (0–30 Tage)', medium_term_label:'🟡 Mittelfristige Verbesserungen (30–90 Tage)',
-strategic_label:'🔵 Strategische Empfehlungen', close_btn:'Schließen'
+new_audit_tooltip:'Neu', dash_remaining:'verbleibend', dash_controls:'Kontrollen',
+work_filter_pending:'⚠️ Nur ausstehende Validierung', nav_prev:'◀ Zurück', nav_next:'Weiter ▶',
+focus_close:'✕ Schließen', focus_autosave_note:'Änderungen werden beim Tippen automatisch gespeichert — Sie können jederzeit schließen.',
+work_view_toggle_title:'Zwischen Dashboard-Ansicht und kompakter Einzelkontrollansicht wechseln',
+fw_switch_title:'Klicken zum Wechseln zu', status_dot_title:'Compliance-Status',
+focus_mode_btn_title:'Fokusmodus — Vollbildeditor', evaluated_label:'bewertet', focus_mode_title:'Fokusmodus',
+alert_unsaved_changes:'⚠️ Sie haben ungespeicherte Änderungen. Ohne Speichern fortfahren?', alert_audit_not_found:'⚠️ Audit nicht gefunden', alert_audit_loaded:'✅ Audit „{name}" erfolgreich geladen', alert_library_load_failed:'⚠️ Die Kontrollbibliothek konnte nicht geladen werden.', alert_control_already_evaluated:'⚠️ Diese Kontrolle wurde bereits bewertet. Entfernen Sie sie, um sie erneut zu bewerten.', alert_control_already_added:'⚠️ Diese Kontrolle wurde bereits zum aktuellen Audit hinzugefügt.', alert_ai_no_valid_response:'⚠️ Die KI hat keine gültige Antwort generiert', alert_ollama_error:'❌ Fehler: {err}\n\nStellen Sie sicher, dass Ollama läuft mit:\nOLLAMA_ORIGINS=\'*\' ollama serve\n\nUnd das Modell heruntergeladen ist:\nollama pull qwen2.5:3b', alert_report_saved:'✅ Bericht lokal gespeichert.', alert_json_imported:'✅ JSON erfolgreich importiert.', alert_json_import_error:'❌ Fehler beim Importieren von JSON: ', alert_fill_company:'🛑 Geben Sie die geprüfte und prüfende Organisation ein, um den Bericht zu erstellen', alert_pdf_gen_error:'⚠️ Fehler beim Erstellen des PDF: ', alert_no_controls_selected:'🛑 Keine Kontrollen ausgewählt', alert_skipped_evaluated:'⚠️ Übersprungen (bereits bewertet): ', no_saved_reports:'Noch keine gespeicherten Berichte.', no_saved_evaluations:'Keine gespeicherten Bewertungen.', work_no_controls:'Noch keine Kontrollen hinzugefügt.', pending_validation:'Validierung ausstehend', grid_already_added:'Bereits in Ihrer Kontrollliste, Bewertung ausstehend — ', recommended_control:'Empfohlene Kontrolle', control_of:'Kontrolle für ', work_filter_none:'✅ Nichts zur Validierung ausstehend.',
+strategic_label:'🔵 Strategische Empfehlungen', close_btn:'Schließen',
+finding_details_label:'📋 Feststellungsdetail', finding_condition_label:'Zustand', finding_condition_ph:'Was wurde festgestellt? (beobachtete Situation)', finding_criteria_label:'Kriterium', finding_criteria_ph:'Was sollte erfüllt sein? (Standard, Richtlinie oder erwartete Kontrolle)', finding_cause_label:'Ursache', finding_cause_ph:'Warum ist es passiert? (Grundursache)', finding_consequence_label:'Konsequenz', finding_consequence_ph:'Welches Risiko oder welche Auswirkung entsteht dadurch?', finding_recommendation_label:'Empfehlung', finding_recommendation_ph:'Was wird empfohlen, um dies zu beheben?',
+eng_draft_report_actual_label:'Entwurfsbericht — Tatsächlich', eng_final_actual_ref_label:'Abschlussbericht — Tatsächlich',
+eng_final_actual_ref_help:'Siehe „Tatsächliches Ausstellungsdatum" unter Dokument, unten — wird bei der Ausstellung automatisch ausgefüllt.',
+issue_blocked_ai_drafts:'Der Bericht kann nicht ausgestellt werden: Die folgenden Kontrollen enthalten noch nicht überprüfte KI-generierte Nachweise. Überprüfen Sie sie und klicken Sie vor der Ausstellung auf „Entwurf validieren":'
 },
 pt: {
 clear_data:'Limpar dados', nist_function_label:'Domínio',
@@ -8918,7 +9115,18 @@ overall_score_label:'Pontuação Global', posture_label:'Postura de Segurança',
 weak_domains_label:'⚠️ Domínios Fracos', exec_summary_label:'📋 Resumo Executivo',
 strengths_label:'✅ Pontos Fortes', key_gaps_label:'❌ Lacunas Críticas',
 immediate_actions_label:'🔴 Ações Imediatas (0–30 dias)', medium_term_label:'🟡 Melhorias a Médio Prazo (30–90 dias)',
-strategic_label:'🔵 Recomendações Estratégicas', close_btn:'Fechar'
+new_audit_tooltip:'Nova', dash_remaining:'restantes', dash_controls:'controles',
+work_filter_pending:'⚠️ Apenas pendentes de validação', nav_prev:'◀ Anterior', nav_next:'Próximo ▶',
+focus_close:'✕ Fechar', focus_autosave_note:'As alterações são salvas automaticamente ao digitar — você pode fechar a qualquer momento.',
+work_view_toggle_title:'Alternar entre a vista de painel e uma vista compacta por controle',
+fw_switch_title:'Clique para mudar para', status_dot_title:'Status de conformidade',
+focus_mode_btn_title:'Modo Foco — editor em tela cheia', evaluated_label:'avaliado', focus_mode_title:'Modo Foco',
+alert_unsaved_changes:'⚠️ Você tem alterações não salvas. Continuar sem salvar?', alert_audit_not_found:'⚠️ Auditoria não encontrada', alert_audit_loaded:'✅ Auditoria "{name}" carregada com sucesso', alert_library_load_failed:'⚠️ Não foi possível carregar a biblioteca de controles.', alert_control_already_evaluated:'⚠️ Este controle já foi avaliado. Remova-o para avaliá-lo novamente.', alert_control_already_added:'⚠️ Este controle já foi adicionado à auditoria atual.', alert_ai_no_valid_response:'⚠️ A IA não gerou uma resposta válida', alert_ollama_error:'❌ Erro: {err}\n\nCertifique-se de que o Ollama está em execução com:\nOLLAMA_ORIGINS=\'*\' ollama serve\n\nE que o modelo foi baixado:\nollama pull qwen2.5:3b', alert_report_saved:'✅ Relatório salvo localmente.', alert_json_imported:'✅ JSON importado com sucesso.', alert_json_import_error:'❌ Erro ao importar JSON: ', alert_fill_company:'🛑 Preencha as empresas auditada e auditora para gerar o relatório', alert_pdf_gen_error:'⚠️ Erro ao gerar o PDF: ', alert_no_controls_selected:'🛑 Nenhum controle selecionado', alert_skipped_evaluated:'⚠️ Ignorados (já avaliados): ', no_saved_reports:'Nenhum relatório salvo ainda.', no_saved_evaluations:'Nenhuma avaliação salva.', work_no_controls:'Nenhum controle adicionado ainda.', pending_validation:'Pendente de validação', grid_already_added:'Já está na sua lista de controles, pendente de avaliação — ', recommended_control:'Controle recomendado', control_of:'Controle de ', work_filter_none:'✅ Nada pendente de validação.',
+strategic_label:'🔵 Recomendações Estratégicas', close_btn:'Fechar',
+finding_details_label:'📋 Detalhe do Achado', finding_condition_label:'Condição', finding_condition_ph:'O que foi encontrado? (situação observada)', finding_criteria_label:'Critério', finding_criteria_ph:'O que deveria ser cumprido? (norma, política ou controle esperado)', finding_cause_label:'Causa', finding_cause_ph:'Por que aconteceu? (causa raiz)', finding_consequence_label:'Consequência', finding_consequence_ph:'Que risco ou impacto isso gera?', finding_recommendation_label:'Recomendação', finding_recommendation_ph:'O que se recomenda fazer a respeito?',
+eng_draft_report_actual_label:'Relatório Preliminar — Real', eng_final_actual_ref_label:'Relatório Final — Real',
+eng_final_actual_ref_help:'Veja "Data Real de Emissão" em Documento, abaixo — é preenchida automaticamente na emissão.',
+issue_blocked_ai_drafts:'Não é possível emitir o relatório: os seguintes controles ainda têm evidências geradas por IA não revisadas. Revise-as e clique em "Validar Rascunho" antes de emitir:'
 },
 ar: {
 clear_data:'مسح البيانات', nist_function_label:'النطاق',
@@ -9072,7 +9280,18 @@ overall_score_label:'النتيجة الإجمالية', posture_label:'الوض
 weak_domains_label:'⚠️ النطاقات الضعيفة', exec_summary_label:'📋 الملخص التنفيذي',
 strengths_label:'✅ نقاط القوة', key_gaps_label:'❌ الثغرات الرئيسية',
 immediate_actions_label:'🔴 الإجراءات الفورية (0–30 يوم)', medium_term_label:'🟡 التحسينات متوسطة المدى (30–90 يوم)',
-strategic_label:'🔵 التوصيات الاستراتيجية', close_btn:'إغلاق'
+new_audit_tooltip:'جديد', dash_remaining:'متبقٍ', dash_controls:'ضوابط',
+work_filter_pending:'⚠️ المعلقة للتحقق فقط', nav_prev:'◀ السابق', nav_next:'التالي ▶',
+focus_close:'✕ إغلاق', focus_autosave_note:'يتم حفظ التغييرات تلقائيًا أثناء الكتابة — يمكنك الإغلاق في أي وقت.',
+work_view_toggle_title:'التبديل بين عرض لوحة المعلومات وعرض مضغوط لكل ضابط',
+fw_switch_title:'انقر للتبديل إلى', status_dot_title:'حالة الامتثال',
+focus_mode_btn_title:'وضع التركيز — محرر بملء الشاشة', evaluated_label:'تم التقييم', focus_mode_title:'وضع التركيز',
+alert_unsaved_changes:'⚠️ لديك تغييرات غير محفوظة. المتابعة دون حفظ؟', alert_audit_not_found:'⚠️ لم يتم العثور على التدقيق', alert_audit_loaded:'✅ تم تحميل التدقيق "{name}" بنجاح', alert_library_load_failed:'⚠️ تعذر تحميل مكتبة الضوابط.', alert_control_already_evaluated:'⚠️ تم تقييم هذا الضابط بالفعل. قم بإزالته لتقييمه مرة أخرى.', alert_control_already_added:'⚠️ تمت إضافة هذا الضابط بالفعل إلى التدقيق الحالي.', alert_ai_no_valid_response:'⚠️ لم يُنشئ الذكاء الاصطناعي استجابة صالحة', alert_ollama_error:'❌ خطأ: {err}\n\nتأكد من أن Ollama يعمل باستخدام:\nOLLAMA_ORIGINS=\'*\' ollama serve\n\nوأن النموذج تم تنزيله:\nollama pull qwen2.5:3b', alert_report_saved:'✅ تم حفظ التقرير محليًا.', alert_json_imported:'✅ تم استيراد JSON بنجاح.', alert_json_import_error:'❌ خطأ في استيراد JSON: ', alert_fill_company:'🛑 أكمل الشركة المدققة والشركة المدققة لإنشاء التقرير', alert_pdf_gen_error:'⚠️ خطأ في إنشاء PDF: ', alert_no_controls_selected:'🛑 لم يتم تحديد أي ضوابط', alert_skipped_evaluated:'⚠️ تم التخطي (تم تقييمها بالفعل): ', no_saved_reports:'لا توجد تقارير محفوظة بعد.', no_saved_evaluations:'لا توجد تقييمات محفوظة.', work_no_controls:'لم تتم إضافة أي ضوابط بعد.', pending_validation:'معلق للتحقق', grid_already_added:'موجود بالفعل في قائمة ضوابطك، بانتظار التقييم — ', recommended_control:'ضابط موصى به', control_of:'ضابط لـ ', work_filter_none:'✅ لا يوجد شيء معلق للتحقق.',
+strategic_label:'🔵 التوصيات الاستراتيجية', close_btn:'إغلاق',
+finding_details_label:'📋 تفاصيل الملاحظة', finding_condition_label:'الحالة', finding_condition_ph:'ما الذي تم العثور عليه؟ (الوضع الملاحظ)', finding_criteria_label:'المعيار', finding_criteria_ph:'ما الذي يجب استيفاؤه؟ (المعيار أو السياسة أو الضابط المتوقع)', finding_cause_label:'السبب', finding_cause_ph:'لماذا حدث ذلك؟ (السبب الجذري)', finding_consequence_label:'الأثر', finding_consequence_ph:'ما المخاطر أو التأثير الناتج؟', finding_recommendation_label:'التوصية', finding_recommendation_ph:'بماذا يُوصى للتعامل مع هذا؟',
+eng_draft_report_actual_label:'التقرير الأولي — الفعلي', eng_final_actual_ref_label:'التقرير النهائي — الفعلي',
+eng_final_actual_ref_help:'انظر "تاريخ الإصدار الفعلي" ضمن المستند أدناه — يُملأ تلقائيًا عند الإصدار.',
+issue_blocked_ai_drafts:'لا يمكن إصدار التقرير: لا تزال الضوابط التالية تحتوي على أدلة تم إنشاؤها بواسطة الذكاء الاصطناعي ولم تتم مراجعتها. راجعها وانقر على "التحقق من المسودة" قبل الإصدار:'
 },
 zh: {
 clear_data:'清除数据', nist_function_label:'域',
@@ -9226,7 +9445,18 @@ overall_score_label:'总体评分', posture_label:'安全态势', maturity_label
 weak_domains_label:'⚠️ 薄弱域', exec_summary_label:'📋 高管摘要',
 strengths_label:'✅ 优势', key_gaps_label:'❌ 关键缺口',
 immediate_actions_label:'🔴 即时行动 (0–30天)', medium_term_label:'🟡 中期改进 (30–90天)',
-strategic_label:'🔵 战略建议', close_btn:'关闭'
+new_audit_tooltip:'新', dash_remaining:'剩余', dash_controls:'控制项',
+work_filter_pending:'⚠️ 仅显示待验证', nav_prev:'◀ 上一个', nav_next:'下一个 ▶',
+focus_close:'✕ 关闭', focus_autosave_note:'更改会在您输入时自动保存 — 您可以随时关闭。',
+work_view_toggle_title:'在仪表板视图和逐项控制紧凑视图之间切换',
+fw_switch_title:'点击切换到', status_dot_title:'合规状态',
+focus_mode_btn_title:'专注模式 — 全屏编辑器', evaluated_label:'已评估', focus_mode_title:'专注模式',
+alert_unsaved_changes:'⚠️ 您有未保存的更改。是否继续而不保存？', alert_audit_not_found:'⚠️ 未找到审计', alert_audit_loaded:'✅ 审计"{name}"加载成功', alert_library_load_failed:'⚠️ 无法加载控制项库。', alert_control_already_evaluated:'⚠️ 该控制项已被评估。请先删除后再重新评估。', alert_control_already_added:'⚠️ 该控制项已添加到当前审计中。', alert_ai_no_valid_response:'⚠️ AI 未生成有效响应', alert_ollama_error:'❌ 错误：{err}\n\n请确保 Ollama 正在运行：\nOLLAMA_ORIGINS=\'*\' ollama serve\n\n并已下载模型：\nollama pull qwen2.5:3b', alert_report_saved:'✅ 报告已保存到本地。', alert_json_imported:'✅ JSON 导入成功。', alert_json_import_error:'❌ 导入 JSON 时出错：', alert_fill_company:'🛑 请填写被审计公司和审计公司以生成报告', alert_pdf_gen_error:'⚠️ 生成 PDF 时出错：', alert_no_controls_selected:'🛑 未选择任何控制项', alert_skipped_evaluated:'⚠️ 已跳过（已评估）：', no_saved_reports:'尚无已保存的报告。', no_saved_evaluations:'没有已保存的评估。', work_no_controls:'尚未添加控制项。', pending_validation:'待验证', grid_already_added:'已在您的控制项列表中，待评估 — ', recommended_control:'推荐控制项', control_of:'控制项：', work_filter_none:'✅ 没有待验证的项目。',
+strategic_label:'🔵 战略建议', close_btn:'关闭',
+finding_details_label:'📋 发现问题详情', finding_condition_label:'现状', finding_condition_ph:'发现了什么？（观察到的情况）', finding_criteria_label:'标准', finding_criteria_ph:'应符合什么？（标准、政策或预期控制）', finding_cause_label:'原因', finding_cause_ph:'为什么会发生？（根本原因）', finding_consequence_label:'影响', finding_consequence_ph:'这会带来什么风险或影响？', finding_recommendation_label:'建议', finding_recommendation_ph:'建议采取什么措施？',
+eng_draft_report_actual_label:'草稿报告 — 实际', eng_final_actual_ref_label:'最终报告 — 实际',
+eng_final_actual_ref_help:'请参见下方文档中的"实际签发日期" — 签发时自动填写。',
+issue_blocked_ai_drafts:'无法签发报告：以下控制项仍有未经审核的 AI 生成证据。请审核后点击"验证草稿"再签发：'
 }
 };
 

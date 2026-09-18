@@ -1743,6 +1743,228 @@ async function main() {
       await page.close(); await ctx.close();
     }
 
+    // ═══════════════════════════════════════════════════════════════════
+    section('22. i18n completeness — Vandan\'s deduplication fix and PDF translation update added ~37 new UI strings only in Spanish and English');
+    // Found while reviewing the change: the new alerts, tooltips, and
+    // Focus Mode labels this update introduced (alert_control_already_added,
+    // focus_mode_title, no_saved_reports, etc.) were only translated into
+    // es/en — French, German, Portuguese, Arabic, and Chinese would show
+    // the raw key instead of translated text for every one of them.
+    {
+      const ctx = await browser.newContext();
+      const page = await newPage(browser, ctx);
+      const newKeys = ['new_audit_tooltip', 'dash_remaining', 'dash_controls', 'work_filter_pending', 'nav_prev', 'nav_next',
+        'focus_close', 'focus_autosave_note', 'work_view_toggle_title', 'fw_switch_title', 'status_dot_title',
+        'focus_mode_btn_title', 'evaluated_label', 'focus_mode_title', 'alert_unsaved_changes', 'alert_audit_not_found',
+        'alert_audit_loaded', 'alert_library_load_failed', 'alert_control_already_evaluated', 'alert_control_already_added',
+        'alert_ai_no_valid_response', 'alert_ollama_error', 'alert_report_saved', 'alert_json_imported', 'alert_json_import_error',
+        'alert_fill_company', 'alert_pdf_gen_error', 'alert_no_controls_selected', 'alert_skipped_evaluated',
+        'no_saved_evaluations', 'work_no_controls', 'pending_validation', 'grid_already_added', 'recommended_control',
+        'control_of', 'work_filter_none'];
+      let allTranslated = true;
+      const missingByLang = {};
+      for (const lang of ['fr', 'de', 'pt', 'ar', 'zh']) {
+        const missing = await page.evaluate(({ lang, keys }) => {
+          currentLang = lang;
+          return keys.filter(k => !TRANSLATIONS[lang] || !(k in TRANSLATIONS[lang]));
+        }, { lang, keys: newKeys });
+        if (missing.length > 0) { allTranslated = false; missingByLang[lang] = missing; }
+      }
+      check('All UI strings added by the deduplication/PDF-translation update exist in all 7 languages, not just es/en',
+        allTranslated, `missing: ${JSON.stringify(missingByLang)}`);
+
+      await page.close(); await ctx.close();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    section('23. 4C Finding Detail — Condition/Criteria/Cause/Consequence/Recommendation as the canonical Finding structure (Finish Line decision gate)');
+    // Closed decision: 4C lives in the control's own evaluation view (not
+    // a separate Findings panel), visible only for Non-Compliant/Partial
+    // — the only compliance values that actually produce a Finding.
+    // `reason` (evidence/notes) is kept as a legacy field, NEVER
+    // auto-migrated into `cause` — free-text evidence isn't necessarily a
+    // root cause. Recommendation is authored alongside 4C so the issued
+    // Finding is complete, not left for Remediation to fill in later.
+    {
+      const ctx = await browser.newContext();
+      const page = await newPage(browser, ctx);
+
+      await page.evaluate(() => {
+        document.getElementById('controls').innerHTML = '';
+        addControl(false, 'Q', 'GV.RM-01', 'GV.RM-01', 'Key Risk Indicators', '');
+      });
+
+      // Hidden by default (no compliance value set yet).
+      const hiddenInitially = await page.evaluate(() => document.querySelector('.finding-details-block').classList.contains('hidden'));
+      check('4C block hidden with no compliance value set', hiddenInitially);
+
+      // Appears for Non-Compliant and Partial; hidden for Compliant/N/A.
+      const visibilityByCompliance = await page.evaluate(() => {
+        const sel = document.querySelector('.cumple');
+        const results = {};
+        ['no', 'partial', 'si', 'na'].forEach(v => {
+          sel.value = v; sel.dispatchEvent(new Event('change'));
+          results[v] = !document.querySelector('.finding-details-block').classList.contains('hidden');
+        });
+        return results;
+      });
+      check('4C visible for Non-Compliant ("no")', visibilityByCompliance.no === true);
+      check('4C visible for Partial', visibilityByCompliance.partial === true);
+      check('4C hidden for Compliant ("si") — does not produce a Finding', visibilityByCompliance.si === false);
+      check('4C hidden for N/A — does not produce a Finding', visibilityByCompliance.na === false);
+
+      // Switching to Compliant/N/A hides the block WITHOUT clearing its
+      // content — a draft toggling compliance back and forth must never
+      // lose 4C the auditor already wrote.
+      const preserved = await page.evaluate(() => {
+        document.querySelector('.finding-condition').value = 'Preserve me';
+        const sel = document.querySelector('.cumple');
+        sel.value = 'si'; sel.dispatchEvent(new Event('change'));
+        const clearedWhileHidden = document.querySelector('.finding-condition').value;
+        sel.value = 'no'; sel.dispatchEvent(new Event('change'));
+        const restoredWhenVisible = document.querySelector('.finding-condition').value;
+        return { clearedWhileHidden, restoredWhenVisible };
+      });
+      check('4C content survives switching to Compliant and back — never destructively cleared',
+        preserved.clearedWhileHidden === 'Preserve me' && preserved.restoredWhenVisible === 'Preserve me');
+
+      // buildFinding() includes all 5 fields, and `reason` is NOT
+      // auto-migrated from/into `cause` — they can legitimately differ.
+      const findingResult = await page.evaluate(() => {
+        document.querySelector('.evidencia').value = 'Free-text fieldwork evidence, not a root cause statement.';
+        document.querySelector('.finding-condition').value = 'Condition text';
+        document.querySelector('.finding-criteria').value = 'Criteria text';
+        document.querySelector('.finding-cause').value = 'Cause text';
+        document.querySelector('.finding-consequence').value = 'Consequence text';
+        document.querySelector('.finding-recommendation').value = 'Recommendation text';
+        document.getElementById('empresa_auditada').value = 'Test Co';
+        document.getElementById('empresa_auditora').value = 'Test Auditor Firm';
+        document.getElementById('auditor').value = 'Tester';
+        document.getElementById('id_informe').value = 'REG-4C-001';
+        return collectAuditData().findings[0];
+      });
+      check('buildFinding() includes condition/criteria/cause/consequence/recommendation',
+        findingResult.condition === 'Condition text' && findingResult.criteria === 'Criteria text' &&
+        findingResult.cause === 'Cause text' && findingResult.consequence === 'Consequence text' &&
+        findingResult.recommendation === 'Recommendation text');
+      check('`reason` (legacy) is preserved separately, never overwritten by `cause`',
+        findingResult.reason === 'Free-text fieldwork evidence, not a root cause statement.' && findingResult.reason !== findingResult.cause);
+      check('recommendationSource is tagged "audit_engine" when the auditor wrote it — lets the Hub know not to offer regeneration',
+        findingResult.recommendationSource === 'audit_engine');
+
+      // A legacy control with NO 4C fields touched produces empty 4C —
+      // never fabricates a cause from old free-text evidence.
+      const legacyResult = await page.evaluate(() => {
+        document.getElementById('controls').innerHTML = '';
+        addControl(false, 'Legacy Q', 'AST-01', 'AST-01', 'Asset Mgmt', '');
+        const sel = document.querySelector('.cumple');
+        sel.value = 'no'; sel.dispatchEvent(new Event('change'));
+        document.querySelector('.evidencia').value = 'Old free-text notes from a pre-4C audit.';
+        return collectAuditData().findings[0];
+      });
+      check('A pre-4C control produces empty 4C fields, not a cause fabricated from reason',
+        legacyResult.cause === '' && legacyResult.condition === '' && legacyResult.reason === 'Old free-text notes from a pre-4C audit.');
+      check('recommendationSource is null for a legacy finding — the Hub must still offer AI generation for it',
+        legacyResult.recommendationSource === null);
+
+      // Save/reload preserves all 5 fields exactly.
+      await page.evaluate(() => {
+        document.getElementById('controls').innerHTML = '';
+        addControl(false, 'Q', 'GV.RM-01', 'GV.RM-01', 'Key Risk Indicators', '');
+        const sel = document.querySelector('.cumple');
+        sel.value = 'no'; sel.dispatchEvent(new Event('change'));
+        document.querySelector('.finding-condition').value = 'Reload Condition';
+        document.querySelector('.finding-cause').value = 'Reload Cause';
+        document.getElementById('empresa_auditada').value = 'Test Co';
+        document.getElementById('empresa_auditora').value = 'Test Auditor Firm';
+        document.getElementById('auditor').value = 'Tester';
+        document.getElementById('id_informe').value = 'REG-4C-002';
+      });
+      await page.evaluate(() => saveProgress());
+      await page.evaluate(() => { document.getElementById('controls').innerHTML = ''; });
+      await page.evaluate(() => loadAuditById('auditnist_REG-4C-002'));
+      await page.waitForTimeout(150);
+      const reloaded = await page.evaluate(() => ({
+        condition: document.querySelector('.finding-condition')?.value,
+        cause: document.querySelector('.finding-cause')?.value,
+        visible: !document.querySelector('.finding-details-block')?.classList.contains('hidden'),
+      }));
+      check('Save + reload preserves 4C field values exactly',
+        reloaded.condition === 'Reload Condition' && reloaded.cause === 'Reload Cause');
+      check('Save + reload keeps 4C visible for a control that is still Non-Compliant', reloaded.visible === true);
+
+      await page.close(); await ctx.close();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    section('24. PDF 4C guard (Vandan, final review) — stale 4C from a control switched away from Non-Compliant/Partial must never leak into the report');
+    // Real bug found on the last pass: applyComplianceStyling() correctly
+    // PRESERVES 4C content when a control moves to Compliant/N/A (so a
+    // draft toggling back and forth never loses work) — but the PDF's
+    // renderControlCard() previously printed 4C whenever the fields had
+    // text, with no check against the control's CURRENT compliance value.
+    // Non-Compliant → write 4C → switch to Compliant → issue: the stale
+    // 4C would appear in the report for a control that is no longer a
+    // Finding. The data itself was never the bug — only the PDF's
+    // decision to print it regardless of current state.
+    {
+      const ctx = await browser.newContext();
+      const page = await newPage(browser, ctx);
+      const jspdfAvailable = await page.waitForFunction(() => !!window.jspdf, { timeout: 5000 }).then(() => true).catch(() => false);
+      if (jspdfAvailable) {
+        const capturedText = await page.evaluate(async () => {
+          document.getElementById('controls').innerHTML = '';
+          addControl(false, 'Q', 'GV.RM-01', 'GV.RM-01', 'Key Risk Indicators', '');
+          const sel = document.querySelector('.cumple');
+          sel.value = 'no'; sel.dispatchEvent(new Event('change'));
+          document.querySelector('.evidencia').value = 'evidence text';
+          document.querySelector('.finding-condition').value = 'STALE CONDITION SHOULD NOT PRINT';
+          sel.value = 'si'; sel.dispatchEvent(new Event('change')); // switch away from Finding — 4C preserved but hidden
+          document.getElementById('empresa_auditada').value = 'Test Co';
+          document.getElementById('empresa_auditora').value = 'Test Auditor Firm';
+          document.getElementById('auditor').value = 'Tester';
+          document.getElementById('id_informe').value = 'REG-PDF-GUARD-001';
+
+          const captured = [];
+          const jsPDFClass = window.jspdf.jsPDF;
+          const origText = jsPDFClass.API.text;
+          jsPDFClass.API.text = function(str, ...rest) {
+            if (typeof str === 'string') captured.push(str);
+            return origText.call(this, str, ...rest);
+          };
+          jsPDFClass.API.save = function() { return this; };
+          await generatePDF('test.pdf');
+          jsPDFClass.API.text = origText;
+          return captured.join(' | ');
+        });
+        check('Stale 4C content is NOT printed in the PDF once the control is Compliant, even though it is still preserved in the DOM',
+          !capturedText.includes('STALE CONDITION SHOULD NOT PRINT'));
+
+        // Round-trip: switching back to Non-Compliant brings it back —
+        // confirms this is a presentation guard, not data loss.
+        const roundtripText = await page.evaluate(async () => {
+          const sel = document.querySelector('.cumple');
+          sel.value = 'no'; sel.dispatchEvent(new Event('change'));
+          const captured = [];
+          const jsPDFClass = window.jspdf.jsPDF;
+          const origText = jsPDFClass.API.text;
+          jsPDFClass.API.text = function(str, ...rest) {
+            if (typeof str === 'string') captured.push(str);
+            return origText.call(this, str, ...rest);
+          };
+          jsPDFClass.API.save = function() { return this; };
+          await generatePDF('test.pdf');
+          jsPDFClass.API.text = origText;
+          return captured.join(' | ');
+        });
+        check('Switching back to Non-Compliant brings the SAME 4C content back into the PDF — confirms this is a presentation guard, not data loss',
+          roundtripText.includes('STALE CONDITION SHOULD NOT PRINT'));
+      } else {
+        console.log('  ⚠️  jsPDF unavailable in this environment — skipping the PDF-rendering check for the 4C guard. The underlying compliance-state guard (isFinding) is still exercised at the code level by the other 4C tests in this suite.');
+      }
+      await page.close(); await ctx.close();
+    }
+
   } finally {
     await browser.close();
     server.close();
