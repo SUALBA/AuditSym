@@ -1269,7 +1269,6 @@ async function generateAI(prompt) {
   return callAI(finalPrompt);
 }
 
-
 // ─────────────────────────────────────────────────────────────────────────────
 // 🔹 PARSEADOR DE RESPUESTA DE IA
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1353,6 +1352,12 @@ function addAISuggestedControl(rec) {
 
 let gridTimeout = null;
 let scfData = null;
+// Multilingual control library (Vandan's plan): translated name/question
+// for the SCF catalogue, keyed by control ID. scf-controls.json itself
+// stays English-only and untouched — this is a SEPARATE overlay, never
+// merged into scfData, so the canonical source never needs to change and
+// a missing/failed translation load can never corrupt it.
+let controlsI18n = {}; // { es: { 'GOV-01': { name, question }, ... } }
 let activeVertical = 'general';
 let chartComp, chartRisk, chartFramework;
 let currentLang = 'es';
@@ -1483,8 +1488,44 @@ function loadAuditById(key) {
   const ctrlsContainer = document.getElementById('controls');
   while (ctrlsContainer.firstChild) ctrlsContainer.removeChild(ctrlsContainer.firstChild);
 
+  // Review gap 2: displayName/displayQuestion (Parche 8) live inside a
+  // specific versionSnapshots[version] entry, NOT on data.controls[i]
+  // itself (that top-level array is always canonical English, per Parche
+  // 7 — it's the live working record, not the issued artifact). To
+  // restore a locked audit's actual presented language, find the most
+  // recently issued snapshot and look up each control's frozen text by
+  // scfId within it. data.engagement.docControl.version can be blank or
+  // stale (the doc_version input isn't always kept in sync with which
+  // version key was actually issued), so the LAST key in
+  // versionSnapshots — insertion order is preserved for string keys — is
+  // the more reliable source of "the version this audit is currently
+  // locked as." A control with no scfId, or missing from that snapshot
+  // (a genuinely old control never captured in it), has no frozen text
+  // to restore and falls through to canonical English as before.
+  const snapshotsMap = data.engagement?.docControl?.versionSnapshots || {};
+  const snapshotKeys = Object.keys(snapshotsMap);
+  const latestSnapshot = snapshotKeys.length ? snapshotsMap[snapshotKeys[snapshotKeys.length - 1]] : null;
+  const snapshotControlsByScfId = {};
+  (latestSnapshot?.controls || []).forEach(sc => { if (sc.scfId) snapshotControlsByScfId[sc.scfId] = sc; });
+
   data.controls?.forEach(c => {
-    addControl(false, c.question || '', c.scfId || '', getFrameworkCodeForControl(c.scfId, currentFramework), c.ctrl.split(' – ')[1] || '', '', true);
+    // Review gap 2: for an ISSUED (locked) audit, retranslateOpenControls()
+    // deliberately never runs (it must not retroactively rewrite a frozen
+    // historical record — see its own comment). But that means restoring
+    // an issued audit purely from c.question/c.ctrl (canonical English,
+    // per Parche 7) would show the locked screen in English even when the
+    // report was actually issued in Spanish — a real, visible mismatch
+    // against the PDF the client actually received. When this audit is
+    // locked, prefer the frozen displayName/displayQuestion from the
+    // matching snapshot control (frozen at issuance by Parche 8) for
+    // what's shown; fall back to canonical English for a snapshot issued
+    // before Parche 8 existed, a control missing from it, or any other
+    // gap.
+    const isIssuedAudit = isAuditLocked();
+    const snapshotControl = isIssuedAudit ? snapshotControlsByScfId[c.scfId] : null;
+    const restoredQuestion = snapshotControl ? (snapshotControl.displayQuestion ?? c.question ?? '') : (c.question || '');
+    const restoredName = snapshotControl ? (snapshotControl.displayName ?? (c.ctrl || '').split(' – ')[1] ?? '') : ((c.ctrl || '').split(' – ')[1] || '');
+    addControl(false, restoredQuestion, c.scfId || '', getFrameworkCodeForControl(c.scfId, currentFramework), restoredName, '', true);
 
     const wrapper = document.querySelectorAll('.control')[document.querySelectorAll('.control').length - 1];
 
@@ -1537,6 +1578,16 @@ updateAll();
 // applyEngagement() already applied the lock — they were never disabled.
 // Re-apply now that the real control set exists, closing that gap.
 applyEditLock();
+// Multilingual control library review fix: a DRAFT audit's controls were
+// just rebuilt from canonical English (c.question/c.ctrl, per Parche 7) —
+// correct for the persisted record, but the auditor is looking at a page
+// that may currently be showing a different language, and would
+// otherwise see English until manually toggling the language selector.
+// This call is a no-op for an ISSUED/locked audit (its own guard refuses
+// to touch one) — that case is already handled above by constructing the
+// controls directly from the matching snapshot's frozen displayName/
+// displayQuestion, so there is nothing left to retranslate.
+retranslateOpenControls();
 
 alert(T('alert_audit_loaded').replace('{name}', data.empresa));
 isDirty = false;
@@ -1736,15 +1787,111 @@ existing.closest('.control').scrollIntoView({ behavior: 'smooth', block: 'center
 return;
 }
 const scfControl = scfData?.controls.find(c => c.id === scfId);
-const question = scfControl?.question || '';
+// Multilingual control library (Vandan's plan): always resolve name and
+// question through getControlName()/getControlQuestion() at the moment
+// of adding — not whatever English text a caller might still pass as
+// `name` — so a control added while browsing in Spanish is added WITH
+// its Spanish text from the start, not English-then-fixed-on-next-
+// language-switch.
+const question = getControlQuestion(scfId);
+const resolvedName = getControlName(scfId) || name || scfId;
 const vertical = scfControl?.verticals?.[0] || '';
-addControl(false, question, scfId, fwCode, name, vertical);
+addControl(false, question, scfId, fwCode, resolvedName, vertical);
 document.getElementById('controls').lastElementChild?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 🔹 LOAD JSON DATA
 // ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// 🔹 CONTROL LIBRARY LOCALIZATION (name/question, per Vandan's plan)
+// ─────────────────────────────────────────────────────────────────────────────
+// scf-controls.json (data/scf-controls.json) stays the single canonical
+// SCF source, English-only, untouched. Each additional language gets its
+// own small overlay file at data/i18n/controls.<lang>.json containing
+// ONLY translated `name`/`question` per control ID — never IDs, framework
+// codes or mappings, which are never translated. Loaded lazily, once per
+// language, and cached in controlsI18n so switching back to a
+// already-loaded language never re-fetches it.
+async function loadControlsI18nFor(lang) {
+  if (lang === 'en') return true; // English IS scf-controls.json; nothing to load.
+  if (controlsI18n[lang]) return true; // already loaded/cached
+  try {
+    const response = await fetch(`../data/i18n/controls.${lang}.json`);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    controlsI18n[lang] = await response.json();
+    return true;
+  } catch (e) {
+    // Deliberately silent beyond a console warning: a missing translation
+    // file for a given language is not a blocking error — getControlName()/
+    // getControlQuestion() below fall back to the English SCF source for
+    // every control, so the auditor still sees complete, correct content,
+    // just not translated. Never leaves a control blank.
+    console.warn(`No control-library translation available for "${lang}":`, e.message);
+    controlsI18n[lang] = null;
+    return false;
+  }
+}
+
+// Both functions take either a raw scfId string OR a control-like object
+// with a `.id`/`.scfId` property, since callers reach for this from a few
+// different shapes of data (a scfData.controls entry has `.id`; a saved/
+// live control object has `.scfId`).
+function getControlName(control) {
+  const scfId = typeof control === 'string' ? control : (control?.id || control?.scfId);
+  const englishControl = scfData?.controls?.find(c => c.id === scfId);
+  const englishName = (typeof control === 'object' && control?.name) ? control.name : (englishControl?.name || '');
+  if (currentLang === 'en' || !scfId) return englishName;
+  const translated = controlsI18n[currentLang]?.[scfId]?.name;
+  return translated || englishName; // fallback: never a blank control name
+}
+
+function getControlQuestion(control) {
+  const scfId = typeof control === 'string' ? control : (control?.id || control?.scfId);
+  const englishControl = scfData?.controls?.find(c => c.id === scfId);
+  const englishQuestion = englishControl?.question || (typeof control === 'object' ? (control?.question || '') : '');
+  if (currentLang === 'en' || !scfId) return englishQuestion;
+  const translated = controlsI18n[currentLang]?.[scfId]?.question;
+  return translated || englishQuestion; // fallback: never a blank question
+}
+
+// Re-translates every control CURRENTLY open in the draft — the live DOM,
+// not any frozen snapshot — whenever the language changes. Deliberately
+// does nothing when the audit is locked/issued: an issued audit is a
+// frozen historical record (see issueFinalReport()'s own versioning), and
+// its Findings/PDF/handoff were generated in whatever language the
+// auditor was working in at that moment. Letting the language selector
+// retroactively rewrite an already-issued control's displayed question
+// would break that traceability guarantee, even though nothing here
+// would touch the actual stored snapshot data either way — this guard
+// keeps the VIEW honest too, not just the underlying record.
+function retranslateOpenControls() {
+  if (isAuditLocked()) return;
+  document.querySelectorAll('.control').forEach(block => {
+    const ctrlInput = block.querySelector('.ctrl');
+    const scfId = ctrlInput?.dataset?.scfId;
+    if (!scfId) return; // a custom, non-library control has no translation to apply
+    const questionEl = block.querySelector('.control-body p');
+    const fwCode = ctrlInput.value.split(' – ')[0] || '';
+    const name = getControlName(scfId);
+    const question = getControlQuestion(scfId);
+    ctrlInput.value = `${fwCode} – ${name}`;
+    if (questionEl) questionEl.textContent = question;
+  });
+}
+
+// Review gap 1 ("falsedad trazable"): the PDF's own pdfT()/pdfL() are
+// strictly binary — Spanish or English, nothing else, with every other
+// language falling back to English (see their own comments). A UI in
+// French/German/Portuguese/Arabic/Chinese would still generate an
+// English PDF, so reportLanguage must record THAT reality, not whatever
+// the language selector currently shows. Anything anywhere in this
+// codebase that needs "what language does the issued artifact actually
+// render in" should call this, not read currentLang directly.
+function getEffectiveReportLanguage() {
+  return currentLang === 'es' ? 'es' : 'en';
+}
+
 async function loadScfDataAndCountControls() {
   try {
     const response = await fetch('../data/scf-controls.json');
@@ -1809,9 +1956,11 @@ async function suggestControls() {
     container.innerHTML = filtered.map(c => {
       const fwCode = pickFrameworkCode(c.mappings[currentFramework], currentFramework) || c.id;
       const isEvaluated = evaluatedControls[c.id];
-      const fullQuestion    = (c.question || '').replace(/"/g, '&quot;');
-      const previewQuestion = (c.question || '').substring(0, 60).replace(/"/g, '&quot;');
-      const safeName = c.name.replace(/"/g, '&quot;');
+      const localizedName = getControlName(c.id);
+      const localizedQuestion = getControlQuestion(c.id);
+      const fullQuestion    = localizedQuestion.replace(/"/g, '&quot;');
+      const previewQuestion = localizedQuestion.substring(0, 60).replace(/"/g, '&quot;');
+      const safeName = localizedName.replace(/"/g, '&quot;');
 
       return `
         <button class="suggest-btn px-3 py-2 rounded text-xs text-left cursor-pointer border
@@ -1825,8 +1974,8 @@ async function suggestControls() {
           data-vertical="${c.verticals?.[0] || 'general'}"
           ${isEvaluated ? 'disabled' : ''}>
           <div class="font-semibold text-cyberaccent">${fwCode}</div>
-          <div class="text-gray-400 text-[10px] mt-1 truncate">${c.name}</div>
-          <div class="text-gray-500 text-[9px] mt-1 italic truncate">"${previewQuestion}${(c.question||'').length > 60 ? '…' : ''}"</div>
+          <div class="text-gray-400 text-[10px] mt-1 truncate">${localizedName}</div>
+          <div class="text-gray-500 text-[9px] mt-1 italic truncate">"${previewQuestion}${localizedQuestion.length > 60 ? '…' : ''}"</div>
           ${isEvaluated ? '<div class="text-cyberok text-[10px] mt-1">✅ Evaluado</div>' : ''}
         </button>
       `;
@@ -2605,10 +2754,10 @@ return `
 <div class="ctrl-box text-xs p-2 rounded border border-gray-600 ${statusClass} ${extraClass} cursor-pointer relative"
 data-scf-id="${c.id}"
 data-fw-code="${fwCode}"
-title="${isAddedPending ? T('grid_already_added') + c.name : c.name}"
-onclick="addControlFromGrid('${c.id}','${fwCode}','${c.name.replace(/'/g,'&#39;')}')">
+title="${isAddedPending ? T('grid_already_added') + getControlName(c.id) : getControlName(c.id)}"
+onclick="addControlFromGrid('${c.id}','${fwCode}')">
 <div class="font-bold">${fwCode}</div>
-<div class="text-[10px] opacity-70 truncate">${c.name}</div>
+<div class="text-[10px] opacity-70 truncate">${getControlName(c.id)}</div>
 <div class="absolute top-1 right-1 text-[10px]">${statusIcon}</div>
 </div>
 `;
@@ -3995,14 +4144,30 @@ function collectAuditData() {
     const ctrlValue = ctrlInput?.value || '';
     const fwCode = ctrlInput?.dataset?.fwCode || '';
     const scfId = ctrlInput?.dataset?.scfId || '';
-    const name = ctrlValue.includes(' – ') ? ctrlValue.split(' – ').slice(1).join(' – ') : ctrlValue;
+    const domName = ctrlValue.includes(' – ') ? ctrlValue.split(' – ').slice(1).join(' – ') : ctrlValue;
+
+    // Multilingual control library, Parche 7 (closed design): the audit
+    // record persisted here must NEVER encode whatever language the UI
+    // happens to be in at save time — that's presentation, not data.
+    // retranslateOpenControls() rewrites the DOM's .ctrl value and
+    // .control-body p text live when the language changes; if this
+    // function read those DOM nodes directly for an SCF control, saving
+    // in Spanish vs English would persist two different records for the
+    // exact same audit. The canonical English source (scf-controls.json)
+    // is always the one persisted for a recognized SCF control; a custom
+    // control (no scfId, or an scfId not found in the catalogue) has no
+    // canonical alternative, so it falls back to the DOM as-is.
+    const scfControl = scfId ? scfData?.controls?.find(c => c.id === scfId) : null;
+    const canonicalCtrl = scfControl ? `${fwCode || scfId} – ${scfControl.name}` : ctrlValue;
+    const persistedName = scfControl ? scfControl.name : domName;
+    const persistedQuestion = scfControl ? (scfControl.question || '') : (questionEl ? questionEl.textContent : '');
 
     data.controls.push({
       scfId: scfId,
-      ctrl: ctrlValue,
+      ctrl: canonicalCtrl,
       fwCode: fwCode,
-      name: name,
-      question: questionEl ? questionEl.textContent : '',
+      name: persistedName,
+      question: persistedQuestion,
       cumple: blk.querySelector('.cumple')?.value,
       riesgo: blk.querySelector('.riesgo')?.value,
       evidencia: blk.querySelector('.evidencia')?.value,
@@ -4275,6 +4440,44 @@ function issueFinalReport() {
   // re-issuance instead of growing by one entry.
   const frozenCopy = JSON.parse(JSON.stringify(data));
   if (frozenCopy.engagement?.docControl) delete frozenCopy.engagement.docControl.versionSnapshots;
+  // Multilingual control library, Parche 8 (closed design): the issued
+  // snapshot is the artifact actually delivered to the client — unlike
+  // the working audit record (Parche 7, always canonical English), the
+  // ISSUED report must preserve whatever language it was presented in at
+  // the moment of issuance. reportLanguage records that language, and
+  // each control gets a frozen displayName/displayQuestion resolved from
+  // its scfId against the catalogue AT THIS EXACT MOMENT — never
+  // recomputed later, so reopening the audit and switching the UI's
+  // language afterward can never retroactively change what v1.0 says it
+  // said. name/question stay canonical English (from Parche 7) so the
+  // underlying data is still comparable/re-exportable regardless of the
+  // language it was issued in. A custom control (no matching scfId) has
+  // no catalogue text to resolve, so displayName/displayQuestion just
+  // fall back to whatever name/question it already carries.
+  //
+  // Review gap 1 ("falsedad trazable"): recording currentLang directly
+  // would be a lie for any language other than 'es'/'en' — pdfT()/pdfL()
+  // are strictly binary (see their own comments), so a UI in French,
+  // German, Portuguese, Arabic or Chinese still generates the PDF in
+  // English via fallback. reportLanguage must record what the PDF
+  // ACTUALLY renders in, not whatever the language selector currently
+  // shows — getEffectiveReportLanguage() collapses to that same binary
+  // choice, and the override below makes displayName/displayQuestion use
+  // that same effective language (not currentLang directly), since
+  // getControlName()/getControlQuestion() read currentLang internally.
+  const effectiveReportLang = getEffectiveReportLanguage();
+  const savedLangForIssuance = currentLang;
+  currentLang = effectiveReportLang;
+  frozenCopy.reportLanguage = effectiveReportLang;
+  frozenCopy.controls = (frozenCopy.controls || []).map(c => {
+    const scfControl = c.scfId ? scfData?.controls?.find(sc => sc.id === c.scfId) : null;
+    return {
+      ...c,
+      displayName: scfControl ? getControlName(scfControl) : c.name,
+      displayQuestion: scfControl ? getControlQuestion(scfControl) : c.question,
+    };
+  });
+  currentLang = savedLangForIssuance;
   // Fixed once, here, at the exact moment of issuance — never recomputed
   // on a later re-download (see buildRemediationHandoffPayload). This is
   // what remediationHandoff.generatedAt reports: the birth of the
@@ -4638,8 +4841,25 @@ updateFrameworkDomainSelector();
 const ctrlsContainer = document.getElementById('controls');
 while (ctrlsContainer.firstChild) ctrlsContainer.removeChild(ctrlsContainer.firstChild);
 
+// Review gap 2 (same fix as loadAuditById — see its own comment for the
+// full reasoning): displayName/displayQuestion live inside a specific
+// versionSnapshots[version] entry, not on data.controls[i] itself.
+const snapshotsMapImport = data.engagement?.docControl?.versionSnapshots || {};
+const snapshotKeysImport = Object.keys(snapshotsMapImport);
+const latestSnapshotImport = snapshotKeysImport.length ? snapshotsMapImport[snapshotKeysImport[snapshotKeysImport.length - 1]] : null;
+const snapshotControlsByScfIdImport = {};
+(latestSnapshotImport?.controls || []).forEach(sc => { if (sc.scfId) snapshotControlsByScfIdImport[sc.scfId] = sc; });
+
 data.controls?.forEach(c => {
-addControl(false, c.question || '', c.scfId || '', getFrameworkCodeForControl(c.scfId, currentFramework), (c.ctrl || '').split(' – ')[1] || c.ctrl || '', '', true);
+// Review gap 2 (same fix as loadAuditById — see its own comment for the
+// full reasoning): an issued/locked audit must show what it was actually
+// issued as, not canonical English, since retranslateOpenControls()
+// deliberately never touches a locked audit.
+const isIssuedAuditImport = isAuditLocked();
+const snapshotControlImport = isIssuedAuditImport ? snapshotControlsByScfIdImport[c.scfId] : null;
+const restoredQuestionImport = snapshotControlImport ? (snapshotControlImport.displayQuestion ?? c.question ?? '') : (c.question || '');
+const restoredNameImport = snapshotControlImport ? (snapshotControlImport.displayName ?? (c.ctrl || '').split(' – ')[1] ?? c.ctrl ?? '') : ((c.ctrl || '').split(' – ')[1] || c.ctrl || '');
+addControl(false, restoredQuestionImport, c.scfId || '', getFrameworkCodeForControl(c.scfId, currentFramework), restoredNameImport, '', true);
 const wrapper = document.querySelectorAll('.control')[document.querySelectorAll('.control').length - 1];
 wrapper.querySelector('.cumple').value = c.cumple || '';
 wrapper.querySelector('.riesgo').addEventListener('change', (e) => {
@@ -4669,6 +4889,12 @@ updateAll();
 // Same gap as loadAuditById: these controls were rebuilt AFTER
 // applyEngagement() already applied the lock, so they were never disabled.
 applyEditLock();
+// Multilingual control library review fix: same reasoning as
+// loadAuditById() — a no-op for a locked/issued audit (already built
+// directly from the matching snapshot's frozen display text above), but
+// necessary for a draft imported while the UI shows a different language
+// than canonical English.
+retranslateOpenControls();
 alert(T('alert_json_imported'));
 } catch (err) {
 alert(T('alert_json_import_error') + err.message);
@@ -5760,6 +5986,24 @@ function pdfL(es, en){
 }
 
 function generatePDF(overrideFilename, sourceSnapshot = null) {
+  // Multilingual control library, Parche 8 (closed design), option 8.b:
+  // a temporary override of currentLang for the DURATION of this PDF's
+  // generation, rather than threading an explicit language parameter
+  // through every one of the dozens of pdfL()/pdfT() calls in this
+  // function. Every pdfL/pdfT call already reads currentLang internally,
+  // so this single override makes the ENTIRE PDF — headers, labels,
+  // callouts, the 4C annex, everything — consistently render in the
+  // language the report was ISSUED in (sourceSnapshot.reportLanguage),
+  // never the UI's current language at re-download time. For a live,
+  // not-yet-issued PDF (no sourceSnapshot), this is a no-op: currentLang
+  // stays exactly what the UI is showing right now, which is correct
+  // since a draft PDF should reflect the auditor's current language.
+  // The try/finally guarantees currentLang is restored even if PDF
+  // generation throws — this must never leak a snapshot's frozen
+  // language into the rest of the live UI.
+  const savedLangForPdf = currentLang;
+  if (sourceSnapshot?.reportLanguage) currentLang = sourceSnapshot.reportLanguage;
+  try {
   try {
     // The empty-evidence-for-"na" check only makes sense against the LIVE
     // form being actively edited — a snapshot being re-rendered already
@@ -6109,7 +6353,14 @@ function generatePDF(overrideFilename, sourceSnapshot = null) {
 
     const controlsData = sourceSnapshot ? controlsSource.map((c, idx) => {
       const scfId = c.scfId || '';
-      const rawName = c.ctrl || c.name || '';
+      // Multilingual control library, Parche 8 (closed design): an issued
+      // snapshot's controls carry a frozen displayName/displayQuestion in
+      // the language the report was ISSUED in — that's what must render
+      // here, not c.name/c.ctrl (canonical English, Parche 7) recomputed
+      // fresh. `??` (not `||`) is deliberate: it only falls back for
+      // snapshots issued BEFORE this feature existed (genuinely absent
+      // field), never for an empty-but-real value.
+      const rawName = c.displayName ?? (c.ctrl || c.name || '');
       const name = rawName.includes(' – ') ? rawName.split(' – ').slice(1).join(' – ') : rawName;
       // Recomputed fresh against the snapshot's OWN framework — same
       // reasoning as the live path below: trust the SCF mapping, not
@@ -6122,7 +6373,7 @@ function generatePDF(overrideFilename, sourceSnapshot = null) {
         code, name: name || code, scfId,
         compliance: c.cumple || '',
         risk: c.riesgo || '',
-        evidence, notes, question: c.question || '',
+        evidence, notes, question: c.displayQuestion ?? (c.question || ''),
         // 4C — read straight from the frozen snapshot's control object,
         // same as evidence/notes above. Empty for pre-4C audits; never
         // backfilled from `reason`/evidence (see buildFinding()'s comment).
@@ -7612,6 +7863,9 @@ function scopeSection(title, body, color) {
     console.error('PDF Error:', e);
     alert(T('alert_pdf_gen_error') + e.message);
   }
+  } finally {
+    currentLang = savedLangForPdf;
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -7692,8 +7946,8 @@ if (!c.mappings[fw] || c.mappings[fw].length === 0) return false;
 if (!query) return true;
 return (
 c.id.toLowerCase().includes(query) ||
-c.name.toLowerCase().includes(query) ||
-c.question.toLowerCase().includes(query)
+getControlName(c.id).toLowerCase().includes(query) ||
+getControlQuestion(c.id).toLowerCase().includes(query)
 );
 });
 
@@ -7705,9 +7959,11 @@ return;
 
 list.innerHTML = filtered.map(c => {
 const fwCode = c.mappings[fw]?.[0] || '';
-const fullQuestion    = (c.question || '').replace(/"/g, '&quot;');
-const previewQuestion = (c.question || '').substring(0, 100).replace(/"/g, '&quot;');
-const safeName = c.name.replace(/"/g, '&quot;');
+const localizedName = getControlName(c.id);
+const localizedQuestion = getControlQuestion(c.id);
+const fullQuestion    = localizedQuestion.replace(/"/g, '&quot;');
+const previewQuestion = localizedQuestion.substring(0, 100).replace(/"/g, '&quot;');
+const safeName = localizedName.replace(/"/g, '&quot;');
 const isEvaluated = evaluatedControls[c.id];
 
 return `
@@ -7724,10 +7980,10 @@ ${isEvaluated ? 'disabled checked' : ''} />
 <div class="flex items-center gap-2 flex-wrap">
 <div class="w-2 h-2 rounded-full ${VERTICAL_META[c.verticals?.[0] || 'general']?.color || 'bg-gray-600'}"></div>
 <span class="font-bold text-cyberaccent text-sm">${fwCode || c.id}</span>
-<span class="text-white text-sm">${c.name}</span>
+<span class="text-white text-sm">${localizedName}</span>
 ${isEvaluated ? '<span class="text-cyberok text-xs">✅ Evaluado</span>' : ''}
 </div>
-<p class="text-xs text-gray-400 mt-1 truncate">${previewQuestion}${(c.question||'').length > 100 ? '…' : ''}</p>
+<p class="text-xs text-gray-400 mt-1 truncate">${previewQuestion}${localizedQuestion.length > 100 ? '…' : ''}</p>
 </div>
 </label>
 `;
@@ -9363,11 +9619,12 @@ function setSuggestStatus(key, prefix) {
   el.textContent = autoPrefix + T(key);
 }
 
-function setLanguage(lang) {
+async function setLanguage(lang) {
 currentLang = lang;
 localStorage.setItem('auditnist_lang', lang);
 document.documentElement.lang = lang;
 document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+await loadControlsI18nFor(lang);
 
 document.querySelectorAll('[data-i18n]').forEach(el => {
 el.textContent = T(el.getAttribute('data-i18n'));
@@ -9386,9 +9643,9 @@ if (chartComp) { chartComp.data.labels = [T('yes'), T('no'), T('partial')]; char
 if (chartRisk) { chartRisk.data.labels = [T('critical'), T('high'), T('medium'), T('low')]; chartRisk.update(); }
 if (document.getElementById('vertical-tabs')?.children.length) renderVerticalTabs();
 if (typeof updateFrameworkProgressBars === 'function') updateFrameworkProgressBars();
-// The live dashboard counters ("N pendientes", "N/N controles") are rendered
-// by EvaluationRegistry.updateDashboard() — refresh them too so those
-// T()-built strings re-translate on a language switch.
+// The live dashboard counters ("N pendientes", "N/N controles") are
+// rendered by EvaluationRegistry.updateDashboard() — refresh it too so
+// those T()-built strings re-translate on a language switch.
 if (typeof EvaluationRegistry !== 'undefined') EvaluationRegistry.updateDashboard();
 // Dynamic panels whose innerHTML is built with T() at render time (no
 // data-i18n) don't re-translate on their own — re-render them here. Each
@@ -9398,6 +9655,13 @@ if (typeof renderVersionHistoryRows === 'function') renderVersionHistoryRows();
 if (typeof renderApprovalTable === 'function') renderApprovalTable();
 if (typeof listSavedReports === 'function') listSavedReports();
 if (typeof renderControlGrid === 'function') renderControlGrid();
+// Multilingual control library (Vandan's plan): same treatment for the
+// control library panel (search + vertical browsing) as the grid above.
+if (typeof renderTemplateControls === 'function' && document.getElementById('template-controls-list')) renderTemplateControls(activeVertical);
+// Multilingual control library (Vandan's plan): re-translate every
+// control open in the CURRENT draft — never a frozen issued snapshot,
+// see retranslateOpenControls()'s own comment on why.
+retranslateOpenControls();
 
 const ls = document.getElementById('lang-select');
 if (ls) ls.value = lang;
@@ -9410,7 +9674,7 @@ if (ls) ls.value = lang;
 // recently had the user explicitly choose. setLanguage() itself stays
 // "pure": apply this language, write only this page's own key.
 function onLanguagePicked(lang) {
-  setLanguage(lang);
+  setLanguage(lang); // async internally; fire-and-forget is fine — onchange handlers don't need to be awaited by the caller
   localStorage.setItem('auditsym_shared_lang', lang);
 }
 
@@ -9447,7 +9711,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // ANY of the three AuditSym pages) wins at load time — see the matching
   // comment in landingPAge.html.
   const savedLang = localStorage.getItem('auditsym_shared_lang') || localStorage.getItem('auditnist_lang') || 'en';
-  setLanguage(savedLang);
+  await setLanguage(savedLang);
 
   const savedFw = localStorage.getItem('auditnist_framework') || 'nist-csf';
   currentFramework = savedFw;

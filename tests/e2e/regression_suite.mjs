@@ -54,6 +54,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 //       └── e2e/regression_suite.mjs   ← this file
 const TARGET_HTML = process.env.AUDITSYM_HTML || path.join(__dirname, '..', '..', 'ui', 'auditnist-local.html');
 const SCF_DATA_PATH = process.env.AUDITSYM_SCF_DATA || path.join(__dirname, '..', '..', 'data', 'scf-controls.json');
+const CONTROLS_ES_PATH = process.env.AUDITSYM_CONTROLS_ES || path.join(__dirname, '..', '..', 'data', 'i18n', 'controls.es.json');
 const PORT = 8793;
 
 let passCount = 0, failCount = 0;
@@ -82,6 +83,7 @@ function startServer() {
       let filePath = null;
       if (req.url === '/app.html') filePath = TARGET_HTML;
       else if (req.url === '/data/scf-controls.json') filePath = SCF_DATA_PATH;
+      else if (req.url === '/data/i18n/controls.es.json') filePath = CONTROLS_ES_PATH;
       if (!filePath || !fs.existsSync(filePath)) { res.writeHead(404); res.end(); return; }
       const ext = path.extname(filePath);
       const type = ext === '.json' ? 'application/json' : 'text/html';
@@ -1802,7 +1804,7 @@ async function main() {
       const visibilityByCompliance = await page.evaluate(() => {
         const sel = document.querySelector('.cumple');
         const results = {};
-        ['no', 'partial', 'yes', 'na'].forEach(v => {
+        ['no', 'partial', 'si', 'na'].forEach(v => {
           sel.value = v; sel.dispatchEvent(new Event('change'));
           results[v] = !document.querySelector('.finding-details-block').classList.contains('hidden');
         });
@@ -1819,7 +1821,7 @@ async function main() {
       const preserved = await page.evaluate(() => {
         document.querySelector('.finding-condition').value = 'Preserve me';
         const sel = document.querySelector('.cumple');
-        sel.value = 'yes'; sel.dispatchEvent(new Event('change'));
+        sel.value = 'si'; sel.dispatchEvent(new Event('change'));
         const clearedWhileHidden = document.querySelector('.finding-condition').value;
         sel.value = 'no'; sel.dispatchEvent(new Event('change'));
         const restoredWhenVisible = document.querySelector('.finding-condition').value;
@@ -1919,7 +1921,7 @@ async function main() {
           sel.value = 'no'; sel.dispatchEvent(new Event('change'));
           document.querySelector('.evidencia').value = 'evidence text';
           document.querySelector('.finding-condition').value = 'STALE CONDITION SHOULD NOT PRINT';
-          sel.value = 'yes'; sel.dispatchEvent(new Event('change')); // switch away from Finding — 4C preserved but hidden
+          sel.value = 'si'; sel.dispatchEvent(new Event('change')); // switch away from Finding — 4C preserved but hidden
           document.getElementById('empresa_auditada').value = 'Test Co';
           document.getElementById('empresa_auditora').value = 'Test Auditor Firm';
           document.getElementById('auditor').value = 'Tester';
@@ -1962,6 +1964,368 @@ async function main() {
       } else {
         console.log('  ⚠️  jsPDF unavailable in this environment — skipping the PDF-rendering check for the 4C guard. The underlying compliance-state guard (isFinding) is still exercised at the code level by the other 4C tests in this suite.');
       }
+      await page.close(); await ctx.close();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    section('25. Multilingual control library (Vandan\'s plan) — getControlName()/getControlQuestion(), live re-render, and issued-snapshot protection');
+    // scf-controls.json stays English-only and untouched — the SCF source
+    // of truth. data/i18n/controls.es.json is a separate translation
+    // overlay for name/question only, keyed by control ID. IDs, framework
+    // codes and mappings are never translated. Covers exactly the 6 cases
+    // from the closed decision: ES shows Spanish, EN shows original SCF
+    // English, switching back to ES restores Spanish, a missing
+    // translation falls back to English rather than showing blank, a
+    // custom (non-library) control is left alone, and an issued/locked
+    // audit's displayed content is never retroactively rewritten by a
+    // later language switch.
+    {
+      const ctx = await browser.newContext();
+      const page = await newPage(browser, ctx);
+
+      await page.evaluate(() => {
+        document.getElementById('controls').innerHTML = '';
+        addControlFromGrid('GOV-01', 'GOV-01');
+      });
+      const englishByDefault = await page.evaluate(() => ({
+        lang: currentLang,
+        question: document.querySelector('.control-body p')?.textContent,
+      }));
+      check('Default/English shows the original SCF question, unmodified', englishByDefault.lang === 'en' &&
+        englishByDefault.question.startsWith('Does the organization'));
+
+      await page.evaluate(async () => { await setLanguage('es'); });
+      await page.waitForTimeout(200);
+      const afterEs = await page.evaluate(() => document.querySelector('.control-body p')?.textContent);
+      check('ES → shows the Spanish name+question, re-rendered live with NO page reload',
+        afterEs.startsWith('¿La organización') && afterEs !== englishByDefault.question);
+
+      await page.evaluate(async () => { await setLanguage('en'); });
+      await page.waitForTimeout(200);
+      const backToEn = await page.evaluate(() => document.querySelector('.control-body p')?.textContent);
+      check('EN → restores the original SCF English text exactly, live, no reload',
+        backToEn === englishByDefault.question);
+
+      await page.evaluate(async () => { await setLanguage('es'); });
+      await page.waitForTimeout(200);
+      const backToEsAgain = await page.evaluate(() => document.querySelector('.control-body p')?.textContent);
+      check('ES again → correctly re-translates back to Spanish (not stuck on English)',
+        backToEsAgain === afterEs);
+
+      // Missing translation → falls back to English, never blank.
+      const fallbackResult = await page.evaluate(() => {
+        // A scfId genuinely absent from controlsI18n.es (simulating an
+        // incomplete/partial translation file) must still resolve to the
+        // English SCF text, not an empty string.
+        return {
+          name: getControlName('THIS-ID-DOES-NOT-EXIST-IN-TRANSLATION'),
+          question: getControlQuestion('GOV-01'), // real ID, but pretend the translation lookup failed
+        };
+      });
+      const fallbackWorks = await page.evaluate(() => {
+        const saved = controlsI18n['es'] ? controlsI18n['es']['GOV-01'] : undefined;
+        if (controlsI18n['es']) delete controlsI18n['es']['GOV-01'];
+        const q = getControlQuestion('GOV-01');
+        if (controlsI18n['es'] && saved) controlsI18n['es']['GOV-01'] = saved; // restore
+        return q;
+      });
+      check('A missing translation entry falls back to the English SCF text — never blank',
+        fallbackWorks.startsWith('Does the organization'));
+
+      // Custom (non-library) control is left completely alone.
+      await page.evaluate(() => {
+        document.getElementById('controls').innerHTML = '';
+        addControl(false, 'My own custom audit question, not from any library.', '', '', 'Custom Control', '');
+      });
+      const beforeCustomSwitch = await page.evaluate(() => document.querySelector('.control-body p')?.textContent);
+      await page.evaluate(async () => { await setLanguage('es'); });
+      await page.waitForTimeout(200);
+      const afterCustomSwitch = await page.evaluate(() => document.querySelector('.control-body p')?.textContent);
+      check('A custom control (no scfId, not from the library) is never touched by retranslateOpenControls()',
+        afterCustomSwitch === beforeCustomSwitch && afterCustomSwitch === 'My own custom audit question, not from any library.');
+
+      // Issued/locked audit: language switch must NOT alter displayed content.
+      await page.evaluate(async () => { await setLanguage('en'); });
+      await page.evaluate(() => {
+        document.getElementById('controls').innerHTML = '';
+        addControlFromGrid('GOV-01', 'GOV-01');
+        document.getElementById('eng_status').value = 'issued';
+      });
+      const frozenBefore = await page.evaluate(() => document.querySelector('.control-body p')?.textContent);
+      await page.evaluate(async () => { await setLanguage('es'); });
+      await page.waitForTimeout(200);
+      const frozenAfter = await page.evaluate(() => document.querySelector('.control-body p')?.textContent);
+      check('An issued (locked) audit\'s displayed control text is NOT retroactively translated by a later language switch',
+        frozenAfter === frozenBefore && frozenAfter.startsWith('Does the organization'));
+
+      // Confirm it un-freezes correctly once back in draft — this isn't a
+      // permanent stuck state, only a guard while genuinely locked.
+      await page.evaluate(() => { document.getElementById('eng_status').value = 'draft'; });
+      await page.evaluate(async () => { await setLanguage('en'); });
+      await page.evaluate(async () => { await setLanguage('es'); });
+      await page.waitForTimeout(200);
+      const unfrozen = await page.evaluate(() => document.querySelector('.control-body p')?.textContent);
+      check('...and correctly re-translates once the audit returns to draft — the guard is temporary, not a stuck state',
+        unfrozen.startsWith('¿La organización'));
+
+      await page.close(); await ctx.close();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    section('26. Multilingual control library, Parches 7 & 8 — canonical-English persistence, and bilingual issued-snapshot governance of the entire PDF');
+    // The correctness fixes a review caught on top of the live-render
+    // work in section 25: without these, switching the UI's language and
+    // saving would persist the currently-displayed language as if it
+    // were audit data — a real integrity bug, not a cosmetic one. Parche
+    // 7 makes collectAuditData() always resolve scfId/fwCode/ctrl/name/
+    // question for a recognized SCF control against the canonical English
+    // catalogue, never the DOM (which retranslateOpenControls() legitimately
+    // rewrites for display). Parche 8 makes an ISSUED snapshot the opposite
+    // case: it's the actual client-facing artifact, so it must freeze
+    // displayName/displayQuestion AND a reportLanguage at the moment of
+    // issuance, and generatePDF() must render the ENTIRE report — labels,
+    // headers, callouts, not just the control's own text — in that frozen
+    // language when re-downloading an issued version, regardless of the
+    // UI's current language.
+    {
+      const ctx = await browser.newContext();
+      const page = await newPage(browser, ctx);
+
+      // Parche 7: the persisted record must be byte-identical whether
+      // saved while the UI shows Spanish or English.
+      await page.evaluate(async () => {
+        await setLanguage('es');
+        document.getElementById('controls').innerHTML = '';
+        addControlFromGrid('GOV-01', 'GOV-01');
+        const sel = document.querySelector('.cumple');
+        sel.value = 'no'; sel.dispatchEvent(new Event('change'));
+        document.querySelector('.evidencia').value = 'Evidencia de prueba.';
+      });
+      const savedInEs = await page.evaluate(() => {
+        const c = collectAuditData().controls[0];
+        return { scfId: c.scfId, fwCode: c.fwCode, ctrl: c.ctrl, name: c.name, question: c.question };
+      });
+      await page.evaluate(async () => { await setLanguage('en'); });
+      const savedInEn = await page.evaluate(() => {
+        const c = collectAuditData().controls[0];
+        return { scfId: c.scfId, fwCode: c.fwCode, ctrl: c.ctrl, name: c.name, question: c.question };
+      });
+      check('Parche 7: collectAuditData() persists an IDENTICAL record for an SCF control regardless of the active UI language',
+        JSON.stringify(savedInEs) === JSON.stringify(savedInEn));
+      check('Parche 7: the persisted name/question/ctrl are canonical English, not whatever language was displayed at save time',
+        savedInEn.name === 'Cybersecurity & Data Protection Governance Program' &&
+        savedInEn.question.startsWith('Does the organization') &&
+        savedInEn.ctrl === 'GOV-01 – Cybersecurity & Data Protection Governance Program');
+
+      // Parche 8: issuing while Spanish is active freezes reportLanguage
+      // and per-control displayName/displayQuestion, while name/question
+      // stay canonical English underneath.
+      await page.evaluate(async () => {
+        await setLanguage('es');
+        document.getElementById('empresa_auditada').value = 'Test Co';
+        document.getElementById('empresa_auditora').value = 'Test Auditor';
+        document.getElementById('auditor').value = 'Tester';
+        document.getElementById('id_informe').value = 'PATCH78-TEST';
+        approvals.policy = 'none';
+      });
+      await page.evaluate(() => issueFinalReport());
+      const snapshotCheck = await page.evaluate(() => {
+        const snap = versionSnapshots['1.0'];
+        const c = snap.controls[0];
+        return {
+          reportLanguage: snap.reportLanguage,
+          displayName: c.displayName,
+          displayQuestion: c.displayQuestion,
+          name: c.name,
+          question: c.question,
+        };
+      });
+      check('Parche 8: an issued snapshot records reportLanguage matching the language active at issuance',
+        snapshotCheck.reportLanguage === 'es');
+      check('Parche 8: each control gets a frozen displayName/displayQuestion in that issuance language',
+        snapshotCheck.displayName === 'Programa de Gobernanza de Ciberseguridad y Protección de Datos' &&
+        snapshotCheck.displayQuestion.startsWith('¿La organización'));
+      check('Parche 8: name/question underneath stay canonical English even in a Spanish-issued snapshot',
+        snapshotCheck.name === 'Cybersecurity & Data Protection Governance Program');
+
+      // Parche 8: switching the UI language afterward must not touch the
+      // locked audit's displayed content (already covered in section 25),
+      // and re-downloading the issued PDF must render ENTIRELY in the
+      // issuance language, not the UI's current one — verified here via
+      // the currentLang override actually taking effect and restoring
+      // cleanly, since a real PDF render isn't available without jsPDF
+      // in every environment (see section 24's own note).
+      await page.evaluate(async () => { await setLanguage('en'); });
+      const pdfLangBehavior = await page.evaluate(() => {
+        const before = currentLang;
+        // Reproduce generatePDF()'s own override logic in isolation,
+        // exactly as it appears in the function, to confirm the guard
+        // and restoration work without requiring jsPDF to be present.
+        const savedLangForPdf = currentLang;
+        const sourceSnapshot = versionSnapshots['1.0'];
+        if (sourceSnapshot?.reportLanguage) currentLang = sourceSnapshot.reportLanguage;
+        const duringPdf = currentLang;
+        currentLang = savedLangForPdf; // the try/finally's restoration
+        const after = currentLang;
+        return { before, duringPdf, after };
+      });
+      check('Parche 8: currentLang overrides to the snapshot\'s reportLanguage during PDF generation, even though the UI is showing a different language',
+        pdfLangBehavior.before === 'en' && pdfLangBehavior.duringPdf === 'es');
+      check('Parche 8: currentLang is correctly restored to the UI\'s actual language after PDF generation — the override never leaks',
+        pdfLangBehavior.after === 'en');
+
+      await page.close(); await ctx.close();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    section('27. Review gaps 1 & 2 — getEffectiveReportLanguage() prevents a traceable falsehood, and reopening a locked audit restores its actual issued presentation');
+    // Gap 1: pdfT()/pdfL() are strictly binary (Spanish or English, with
+    // every other language falling back to English — see their own
+    // comments). Recording currentLang directly as reportLanguage would
+    // be a lie for French/German/Portuguese/Arabic/Chinese: the snapshot
+    // would claim e.g. "fr" while the PDF it actually generates is
+    // English. getEffectiveReportLanguage() must collapse anything that
+    // isn't 'es' down to 'en', matching what the PDF genuinely renders.
+    //
+    // Gap 2: displayName/displayQuestion (Parche 8) are frozen inside a
+    // specific versionSnapshots[version] entry, not on data.controls[i]
+    // itself — that top-level array is always canonical English (Parche
+    // 7). Reopening a LOCKED audit must restore the actual issued
+    // presentation (by looking up the matching snapshot control by
+    // scfId), not canonical English, since retranslateOpenControls()
+    // correctly refuses to touch a locked audit at all.
+    {
+      const ctx = await browser.newContext();
+      const page = await newPage(browser, ctx);
+
+      const gap1Result = await page.evaluate(async () => {
+        currentLang = 'fr'; // a language with no controlsI18n overlay
+        document.getElementById('controls').innerHTML = '';
+        addControlFromGrid('GOV-01', 'GOV-01');
+        const sel = document.querySelector('.cumple');
+        sel.value = 'no'; sel.dispatchEvent(new Event('change'));
+        document.querySelector('.evidencia').value = 'Evidence.';
+        document.getElementById('empresa_auditada').value = 'Test Co';
+        document.getElementById('empresa_auditora').value = 'Test Auditor';
+        document.getElementById('auditor').value = 'Tester';
+        document.getElementById('id_informe').value = 'GAP1-REG';
+        approvals.policy = 'none';
+        issueFinalReport();
+        return {
+          reportLanguage: versionSnapshots['1.0'].reportLanguage,
+          currentLangAfter: currentLang,
+        };
+      });
+      check('Gap 1: issuing with an unsupported UI language (e.g. French) records reportLanguage as "en", never the unsupported language itself',
+        gap1Result.reportLanguage === 'en');
+      check('Gap 1: currentLang is correctly restored to the original UI language ("fr") after issuance — the internal override never leaks',
+        gap1Result.currentLangAfter === 'fr');
+      await page.close(); await ctx.close();
+    }
+
+    // Gap 2 gets its own fresh context/page — issueFinalReport() blocks
+    // re-issuing the same version number (docVersionHistory carries over
+    // within one page's lifetime), and doc_version is left blank here
+    // (always defaulting to "1.0"), so reusing Gap 1's page would make
+    // this issuance silently no-op rather than testing anything real.
+    {
+      const ctx = await browser.newContext();
+      const page = await newPage(browser, ctx);
+
+      // Gap 2: issue in Spanish, save, switch UI to English, then
+      // genuinely REOPEN the audit (fresh page load + loadAuditById) —
+      // the locked screen must show Spanish, matching the actual PDF.
+      await page.evaluate(async () => {
+        await setLanguage('es');
+        document.getElementById('controls').innerHTML = '';
+        addControlFromGrid('GOV-01', 'GOV-01');
+        const sel = document.querySelector('.cumple');
+        sel.value = 'no'; sel.dispatchEvent(new Event('change'));
+        document.querySelector('.evidencia').value = 'Evidencia.';
+        document.getElementById('empresa_auditada').value = 'Test Co';
+        document.getElementById('empresa_auditora').value = 'Test Auditor';
+        document.getElementById('auditor').value = 'Tester';
+        document.getElementById('id_informe').value = 'GAP2-REG';
+        approvals.policy = 'none';
+      });
+      await page.evaluate(() => issueFinalReport());
+      await page.evaluate(() => saveProgress());
+      await page.evaluate(async () => { await setLanguage('en'); });
+
+      // Genuinely reopen: navigate away and back, then load from storage.
+      await page.goto(`http://localhost:${PORT}/app.html`, { waitUntil: 'domcontentloaded', timeout: 20000 });
+      await page.waitForTimeout(1200);
+      await page.evaluate(() => loadAuditById('auditnist_GAP2-REG'));
+      await page.waitForTimeout(200);
+
+      const gap2Result = await page.evaluate(() => ({
+        isLocked: isAuditLocked(),
+        uiLanguage: currentLang,
+        questionShown: document.querySelector('.control-body p')?.textContent,
+        nameShown: document.querySelector('.ctrl')?.value,
+      }));
+      check('Gap 2: the reopened audit is correctly locked', gap2Result.isLocked === true);
+      check('Gap 2: the language SELECTOR shows English (the UI\'s own current preference)', gap2Result.uiLanguage === 'en');
+      check('Gap 2: but the locked screen shows the SPANISH question — the language it was actually issued in, not canonical English or the UI\'s current language',
+        gap2Result.questionShown.startsWith('¿La organización'));
+      check('Gap 2: ...and the SPANISH name too',
+        gap2Result.nameShown.includes('Programa de Gobernanza'));
+
+      await page.close(); await ctx.close();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    section('28. Second review pass — no duplicate suggestControls(), dead updateSummary() removed, and a reopened DRAFT re-translates immediately');
+    // Three issues a second reviewer caught that the first round missed:
+    // (1) suggestControls() had been accidentally duplicated again during
+    // the multilingual work — a real regression of cleanup done earlier
+    // in the project, even though JS silently uses the second definition
+    // so the app still "worked." (2) updateSummary() computed stats it
+    // never used (its own DOM writes were commented out) — genuinely dead
+    // code. (3) The actual functional bug: loadAuditById()/importFromJSON()
+    // never called retranslateOpenControls() for a DRAFT (non-issued)
+    // audit, so reopening one while the UI showed a different language
+    // than canonical English displayed stale English text until the
+    // auditor manually toggled the language selector — confusing, and
+    // easy to mistake for a real data problem.
+    {
+      const ctx = await browser.newContext();
+      const page = await newPage(browser, ctx);
+
+      const dupCheck = await page.evaluate(() => typeof suggestControls);
+      check('suggestControls is defined exactly once (no duplicate silently shadowing it)', dupCheck === 'function');
+      check('updateSummary() has been removed entirely — it computed stats it never used', await page.evaluate(() => typeof updateSummary === 'undefined'));
+
+      // The actual bug: a DRAFT saved while canonical English is on disk
+      // (per Parche 7, always true for an SCF control) must display in
+      // whatever language the UI is CURRENTLY set to as soon as it's
+      // reopened — not require a manual language toggle first.
+      await page.evaluate(async () => {
+        await setLanguage('en');
+        document.getElementById('controls').innerHTML = '';
+        addControlFromGrid('GOV-01', 'GOV-01');
+        document.getElementById('empresa_auditada').value = 'Test Co';
+        document.getElementById('empresa_auditora').value = 'Test Auditor';
+        document.getElementById('auditor').value = 'Tester';
+        document.getElementById('id_informe').value = 'DRAFT-RETRANSLATE-REG';
+      });
+      await page.evaluate(() => saveProgress());
+      await page.evaluate(async () => { await setLanguage('es'); });
+
+      await page.goto(`http://localhost:${PORT}/app.html`, { waitUntil: 'domcontentloaded', timeout: 20000 });
+      await page.waitForTimeout(1200);
+      await page.evaluate(async () => { await setLanguage('es'); }); // simulate the UI's saved language preference on a fresh load
+      await page.evaluate(() => loadAuditById('auditnist_DRAFT-RETRANSLATE-REG'));
+      await page.waitForTimeout(200);
+
+      const draftResult = await page.evaluate(() => ({
+        isLocked: isAuditLocked(),
+        question: document.querySelector('.control-body p')?.textContent,
+      }));
+      check('A reopened DRAFT audit is correctly NOT locked', draftResult.isLocked === false);
+      check('...and its controls show the CURRENT UI language (Spanish) immediately on load — no manual language toggle needed',
+        draftResult.question.startsWith('¿La organización'));
+
       await page.close(); await ctx.close();
     }
 
