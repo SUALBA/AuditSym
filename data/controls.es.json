@@ -1,0 +1,1754 @@
+{
+  "GOV-01": {
+    "name": "Programa de Gobernanza de Ciberseguridad y Protección de Datos",
+    "question": "¿La organización facilita la implantación de controles de gobernanza de ciberseguridad y protección de datos?"
+  },
+  "GOV-01.1": {
+    "name": "Comité Directivo y Supervisión del Programa",
+    "question": "¿La organización coordina la ciberseguridad, la protección de datos y la alineación con el negocio a través de un comité directivo o consejo asesor, compuesto por ejecutivos clave de ciberseguridad, protección de datos y negocio, que se reúne formalmente y de forma periódica?"
+  },
+  "GOV-01.2": {
+    "name": "Notificación de Estado al Órgano de Gobierno",
+    "question": "¿La organización proporciona informes y recomendaciones de supervisión de gobernanza a quienes tienen encomendada la toma de decisiones ejecutivas sobre asuntos considerados materiales para su programa de ciberseguridad y protección de datos?"
+  },
+  "GOV-02": {
+    "name": "Publicación de Documentación de Ciberseguridad y Protección de Datos",
+    "question": "¿La organización establece, mantiene y difunde políticas, estándares y procedimientos de ciberseguridad y protección de datos?"
+  },
+  "GOV-02.1": {
+    "name": "Gestión de Excepciones",
+    "question": "¿La organización prohíbe las excepciones a los estándares, salvo cuando la excepción ha sido evaluada formalmente en cuanto a su impacto en el riesgo, aprobada y registrada?"
+  },
+  "GOV-03": {
+    "name": "Revisión y Actualización Periódica del Programa de Ciberseguridad y Protección de Datos",
+    "question": "¿La organización revisa el programa de ciberseguridad y protección de datos, incluidas las políticas, estándares y procedimientos, a intervalos planificados o cuando se producen cambios significativos, para asegurar su idoneidad, adecuación y eficacia continuas?"
+  },
+  "GOV-04": {
+    "name": "Responsabilidades Asignadas de Ciberseguridad y Protección de Datos",
+    "question": "¿La organización asigna uno o más individuos cualificados con la misión y los recursos para gestionar de forma centralizada, coordinar, desarrollar, implementar y mantener un programa de ciberseguridad y protección de datos a nivel empresarial?"
+  },
+  "GOV-04.1": {
+    "name": "Estructura de Rendición de Cuentas de las Partes Interesadas",
+    "question": "¿La organización aplica una estructura de rendición de cuentas para que los equipos e individuos adecuados estén facultados, sean responsables y estén formados para mapear, medir y gestionar los riesgos relacionados con datos y tecnología?"
+  },
+  "GOV-05": {
+    "name": "Medidas de Desempeño",
+    "question": "¿La organización desarrolla, informa y monitoriza medidas de desempeño del programa de ciberseguridad y protección de datos?"
+  },
+  "GOV-05.1": {
+    "name": "Indicadores Clave de Desempeño (KPI)",
+    "question": "¿La organización desarrolla, informa y monitoriza Indicadores Clave de Desempeño (KPI) para asistir a la dirección organizacional en el monitoreo del desempeño y el análisis de tendencias del programa de ciberseguridad y protección de datos?"
+  },
+  "GOV-05.2": {
+    "name": "Indicadores Clave de Riesgo (KRI)",
+    "question": "¿La organización desarrolla, informa y monitoriza Indicadores Clave de Riesgo (KRI) para asistir a la alta dirección en el monitoreo del desempeño y el análisis de tendencias del programa de ciberseguridad y protección de datos?"
+  },
+  "GOV-07": {
+    "name": "Contactos con Grupos y Asociaciones",
+    "question": "¿La organización establece contacto con grupos y asociaciones seleccionados dentro de las comunidades de ciberseguridad y protección de datos para: (1) facilitar la educación y formación continuas en ciberseguridad y protección de datos para el personal de la organización; (2) mantener la vigencia con las prácticas, técnicas y tecnologías recomendadas de ciberseguridad y protección de datos; y (3) compartir información actual relacionada con ciberseguridad y/o privacidad de datos, incluidos amenazas, vulnerabilidades e incidentes?"
+  },
+  "GOV-08": {
+    "name": "Definición del Contexto de Negocio y la Misión",
+    "question": "¿La organización define el contexto de su modelo de negocio y documenta la misión de la organización?"
+  },
+  "GOV-09": {
+    "name": "Definición de Objetivos de Control",
+    "question": "¿La organización establece objetivos de control como base para la selección, implementación y gestión de su sistema de control interno?"
+  },
+  "GOV-15.5": {
+    "name": "Monitoreo de Controles",
+    "question": "¿La organización obliga a los propietarios de datos y/o procesos a monitorear de forma continua los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) bajo su control frente a amenazas y riesgos aplicables, así como a asegurar que los controles de ciberseguridad y protección de datos operan según lo previsto?"
+  },
+  "GOV-16": {
+    "name": "Determinación de Materialidad",
+    "question": "¿La organización define criterios de umbral de materialidad capaces de designar un incidente como material?"
+  },
+  "AST-01": {
+    "name": "Gobernanza de Activos",
+    "question": "¿La organización facilita un programa de Gestión de Activos de TI (ITAM) para implementar y gestionar controles de gestión de activos?"
+  },
+  "AST-01.1": {
+    "name": "Dependencias Activo-Servicio",
+    "question": "¿La organización identifica y evalúa la seguridad de los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) que soportan más de una función crítica del negocio?"
+  },
+  "AST-01.2": {
+    "name": "Identificación e Involucración de las Partes Interesadas",
+    "question": "¿La organización identifica e involucra a las partes interesadas pertinentes de los Activos Tecnológicos, Aplicaciones, Servicios y/o Datos (TAASD) críticos para apoyar la gestión segura continua de esos activos?"
+  },
+  "AST-02": {
+    "name": "Inventarios de Activos",
+    "question": "¿La organización realiza inventarios de los Activos Tecnológicos, Aplicaciones, Servicios y/o Datos (TAASD) que: (1) reflejan con precisión los TAASD actuales en uso; (2) identifican los productos de software autorizados, incluidos los detalles de justificación del negocio; (3) están al nivel de granularidad considerado necesario para el seguimiento y la presentación de informes; (4) incluyen la información definida por la organización considerada necesaria para lograr una rendición de cuentas efectiva de la propiedad; y (5) están disponibles para su revisión y auditoría por parte del personal designado de la organización?"
+  },
+  "AST-02.2": {
+    "name": "Detección Automatizada de Componentes No Autorizados",
+    "question": "¿La organización utiliza mecanismos automatizados para detectar y alertar sobre la detección de componentes de hardware, software y firmware no autorizados?"
+  },
+  "AST-02.3": {
+    "name": "Prevención de Duplicación de Componentes",
+    "question": "¿La organización establece y mantiene una fuente y repositorio autorizados para proporcionar una fuente de confianza y rendición de cuentas para los componentes de sistema aprobados e implementados, que evita que los activos se dupliquen en otros inventarios de activos?"
+  },
+  "AST-02.5": {
+    "name": "Control de Acceso a la Red (NAC)",
+    "question": "¿La organización utiliza mecanismos automatizados para emplear el Control de Acceso a la Red (NAC), o una tecnología similar, capaz de detectar dispositivos no autorizados y deshabilitar el acceso a la red para esos dispositivos no autorizados?"
+  },
+  "AST-02.6": {
+    "name": "Registro del Servidor de Protocolo de Configuración Dinámica de Host (DHCP)",
+    "question": "¿La organización habilita el registro del servidor de Protocolo de Configuración Dinámica de Host (DHCP) para mejorar los inventarios de activos y ayudar a detectar sistemas desconocidos?"
+  },
+  "AST-02.7": {
+    "name": "Restricciones de Licenciamiento de Software",
+    "question": "¿La organización protege los derechos de Propiedad Intelectual (PI) mediante restricciones de licenciamiento de software?"
+  },
+  "AST-02.9": {
+    "name": "Base de Datos de Gestión de Configuración (CMDB)",
+    "question": "¿La organización implementa y gestiona una Base de Datos de Gestión de Configuración (CMDB), o tecnología similar, para monitorizar y gobernar la información específica de los activos tecnológicos?"
+  },
+  "AST-03": {
+    "name": "Asignación de Propiedad de los Activos",
+    "question": "¿La organización asegura que las responsabilidades de propiedad de los activos se asignan, rastrean y gestionan a nivel de equipo, individuo u organización responsable, para establecer un entendimiento común de los requisitos de protección de los activos?"
+  },
+  "AST-03.1": {
+    "name": "Información de Rendición de Cuentas",
+    "question": "¿La organización incluye la captura del nombre, puesto y/o rol de los individuos responsables/encargados de administrar los activos como parte del proceso de inventario de activos tecnológicos?"
+  },
+  "AST-03.2": {
+    "name": "Procedencia",
+    "question": "¿La organización rastrea el origen, desarrollo, propiedad, ubicación y cambios de los Activos Tecnológicos, Aplicaciones, Servicios y/o Datos (TAASD)?"
+  },
+  "AST-04": {
+    "name": "Diagramas de Red y Diagramas de Flujo de Datos (DFD)",
+    "question": "¿La organización mantiene diagramas de arquitectura de red que: (1) contienen suficiente detalle para evaluar la seguridad de la arquitectura de la red; (2) reflejan la arquitectura actual del entorno de red; y (3) documentan todos los flujos de datos sensibles/regulados?"
+  },
+  "AST-04.1": {
+    "name": "Clasificación del Alcance de los Activos",
+    "question": "¿La organización determina la aplicabilidad de los controles de ciberseguridad y protección de datos identificando, asignando y documentando la categorización de alcance de activos adecuada para todos los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) y el personal (interno y terceros)?"
+  },
+  "AST-04.2": {
+    "name": "Representación Gráfica de los Límites de Aplicabilidad de los Controles",
+    "question": "¿La organización asegura que la aplicabilidad de los controles se determina adecuadamente para los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) y terceros mediante la representación gráfica de los límites aplicables?"
+  },
+  "AST-09": {
+    "name": "Eliminación, Destrucción o Reutilización Segura de Equipos",
+    "question": "¿La organización elimina, destruye o reutiliza de forma segura los componentes del sistema utilizando técnicas y métodos definidos por la organización para evitar que la información se recupere de estos componentes?"
+  },
+  "AST-15": {
+    "name": "Protección Lógica contra Manipulación",
+    "question": "¿La organización evalúa la integridad de los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) críticos para detectar evidencia de manipulación, donde: (1) las evaluaciones lógicas evalúan la integridad de los componentes críticos (por ejemplo, configuraciones); y (2) las evaluaciones físicas evalúan los activos en busca de evidencia de acceso y/o modificaciones no autorizadas?"
+  },
+  "AST-16": {
+    "name": "Uso de Dispositivos Propios (BYOD)",
+    "question": "¿La organización implementa y gobierna un programa de Bring Your Own Device (BYOD) para reducir el riesgo asociado con dispositivos de propiedad personal en el lugar de trabajo?"
+  },
+  "AST-18": {
+    "name": "Protección de Raíces de Confianza",
+    "question": "¿La organización aprovisiona y protege la confidencialidad, integridad y autenticidad de las claves de los proveedores de productos y los datos que pueden utilizarse como base de \"raíces de confianza\" para la verificación de integridad?"
+  },
+  "BCD-01": {
+    "name": "Sistema de Gestión de Continuidad del Negocio (BCMS)",
+    "question": "¿La organización facilita la implementación de controles de planificación de contingencia para ayudar a asegurar la resiliencia de los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) (por ejemplo, Plan de Continuidad de Operaciones (COOP) o manuales de Continuidad del Negocio y Recuperación ante Desastres (BC/DR))?"
+  },
+  "BCD-01.1": {
+    "name": "Coordinación con Planes Relacionados",
+    "question": "¿La organización coordina el desarrollo del plan de contingencia con los elementos internos y externos responsables de los planes relacionados?"
+  },
+  "BCD-01.2": {
+    "name": "Coordinación con Proveedores de Servicios Externos",
+    "question": "¿La organización coordina los planes de contingencia internos con los planes de contingencia de los proveedores de servicios externos para asegurar que se pueden satisfacer los requisitos de contingencia?"
+  },
+  "BCD-01.4": {
+    "name": "Objetivos de Tiempo de Recuperación / Punto de Recuperación (RTO / RPO)",
+    "question": "¿La organización facilita las operaciones de recuperación de acuerdo con los Objetivos de Tiempo de Recuperación (RTO) y los Objetivos de Punto de Recuperación (RPO)?"
+  },
+  "BCD-01.5": {
+    "name": "Criterios de Operaciones de Recuperación",
+    "question": "¿La organización define criterios específicos que deben cumplirse para iniciar los planes de Continuidad del Negocio / Recuperación ante Desastres (BC/DR) que facilitan las operaciones de continuidad del negocio capaces de cumplir con los Objetivos de Tiempo de Recuperación (RTO) y los Objetivos de Punto de Recuperación (RPO) aplicables?"
+  },
+  "BCD-01.6": {
+    "name": "Comunicaciones de Operaciones de Recuperación",
+    "question": "¿La organización comunica el estado de las actividades de recuperación y el progreso en la restauración de las capacidades operativas a las partes interesadas internas y externas designadas?"
+  },
+  "BCD-02": {
+    "name": "Identificación de Activos Críticos",
+    "question": "¿La organización identifica y documenta los Activos Tecnológicos, Aplicaciones, Servicios y/o Datos (TAASD) críticos que soportan misiones esenciales y funciones de negocio?"
+  },
+  "BCD-02.1": {
+    "name": "Reanudación de Todas las Misiones y Funciones de Negocio",
+    "question": "¿La organización reanuda todas las misiones y funciones de negocio dentro de los Objetivos de Tiempo de Recuperación (RTO) de la activación del plan de contingencia?"
+  },
+  "BCD-03": {
+    "name": "Formación en Contingencia",
+    "question": "¿La organización forma adecuadamente al personal de contingencia y a las partes interesadas aplicables en sus roles y responsabilidades de contingencia?"
+  },
+  "BCD-04": {
+    "name": "Pruebas y Ejercicios del Plan de Contingencia",
+    "question": "¿La organización realiza pruebas y/o ejercicios para evaluar la eficacia del plan de contingencia y su preparación para ejecutarlo?"
+  },
+  "BCD-05": {
+    "name": "Análisis de Causa Raíz (RCA) y Lecciones Aprendidas del Plan de Contingencia",
+    "question": "¿La organización realiza un Análisis de Causa Raíz (RCA) y una actividad de \"lecciones aprendidas\" cada vez que se activa el plan de contingencia?"
+  },
+  "BCD-06": {
+    "name": "Planificación de Contingencia Continua",
+    "question": "¿La organización actualiza los planes de contingencia debido a cambios que afectan: (1) Personas (por ejemplo, cambios de personal); (2) Procesos (por ejemplo, prácticas de negocio nuevas, alteradas o retiradas, incluidos servicios de terceros); (3) Tecnologías (por ejemplo, tecnologías nuevas, alteradas o retiradas); (4) Datos (por ejemplo, cambios en los flujos de datos y/o repositorios de datos); (5) Instalaciones (por ejemplo, infraestructura física nueva, alterada o retirada); y/o (6) Retroalimentación de las actividades de prueba del plan de contingencia?"
+  },
+  "BCD-11": {
+    "name": "Copias de Seguridad de Datos",
+    "question": "¿La organización crea copias de seguridad recurrentes de datos, software y/o imágenes de sistema, así como verifica la integridad de estas copias de seguridad, para asegurar la disponibilidad de los datos para satisfacer los Objetivos de Tiempo de Recuperación (RTO) y los Objetivos de Punto de Recuperación (RPO)?"
+  },
+  "BCD-11.1": {
+    "name": "Pruebas de Fiabilidad e Integridad",
+    "question": "¿La organización prueba rutinariamente las copias de seguridad verificando la fiabilidad del proceso de copia de seguridad, así como la integridad y disponibilidad de los datos?"
+  },
+  "BCD-11.4": {
+    "name": "Protección Criptográfica",
+    "question": "¿Se utilizan mecanismos criptográficos para prevenir la divulgación y/o modificación no autorizada de la información de copia de seguridad?"
+  },
+  "BCD-11.5": {
+    "name": "Prueba de Restauración mediante Muestreo",
+    "question": "¿La organización utiliza el muestreo de las copias de seguridad disponibles para probar las capacidades de recuperación como parte de las pruebas del plan de continuidad del negocio?"
+  },
+  "BCD-11.6": {
+    "name": "Transferencia al Sitio de Almacenamiento Alternativo",
+    "question": "¿La organización transfiere los datos de copia de seguridad al sitio de almacenamiento alternativo a una velocidad capaz de cumplir tanto los Objetivos de Tiempo de Recuperación (RTO) como los Objetivos de Punto de Recuperación (RPO)?"
+  },
+  "BCD-12": {
+    "name": "Recuperación y Reconstitución de Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS)",
+    "question": "¿La organización asegura la recuperación y reconstitución seguras de los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) a un estado conocido después de una interrupción, compromiso o fallo?"
+  },
+  "BCD-13": {
+    "name": "Protección del Hardware de Copia de Seguridad y Restauración",
+    "question": "¿La organización protege el hardware y software de copia de seguridad y restauración?"
+  },
+  "BCD-13.1": {
+    "name": "Verificación de Integridad de la Restauración",
+    "question": "¿La organización verifica la integridad de las copias de seguridad y otros activos de restauración antes de utilizarlos para la restauración?"
+  },
+  "BCD-14": {
+    "name": "Entorno de Recuperación Aislado",
+    "question": "¿La organización utiliza un entorno aislado y no productivo para realizar operaciones de copia de seguridad y recuperación de datos mediante capacidades offline, en la nube o fuera de las instalaciones?"
+  },
+  "CAP-01": {
+    "name": "Gestión de Capacidad y Desempeño",
+    "question": "¿La organización facilita la implementación de controles de gestión de capacidad para asegurar un desempeño óptimo del sistema que satisfaga los requisitos de capacidad esperados y anticipados?"
+  },
+  "CAP-02": {
+    "name": "Prioridad de Recursos",
+    "question": "¿La organización controla la utilización de recursos de los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) susceptibles a ataques de Denegación de Servicio (DoS) para limitar y priorizar el uso de recursos?"
+  },
+  "CAP-03": {
+    "name": "Planificación de Capacidad",
+    "question": "¿La organización realiza planificación de capacidad para que exista la capacidad necesaria para el procesamiento de información, las telecomunicaciones y el soporte ambiental durante las operaciones de contingencia?"
+  },
+  "CAP-04": {
+    "name": "Monitoreo de Desempeño",
+    "question": "¿La organización utiliza mecanismos automatizados para monitorizar y alertar de forma centralizada sobre el estado operativo y el estado de salud de los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) críticos?"
+  },
+  "CAP-05": {
+    "name": "Expansión Elástica",
+    "question": "¿La organización escala automáticamente los recursos disponibles para los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) a medida que cambian las condiciones de demanda?"
+  },
+  "CHG-01": {
+    "name": "Programa de Gestión de Cambios",
+    "question": "¿La organización facilita la implementación de un programa de gestión de cambios?"
+  },
+  "CHG-02": {
+    "name": "Control de Cambios de Configuración",
+    "question": "¿La organización gobierna los procesos de control de cambios de configuración técnica?"
+  },
+  "CHG-02.1": {
+    "name": "Prohibición de Cambios",
+    "question": "¿La organización prohíbe los cambios no autorizados, a menos que se reciban solicitudes de cambio aprobadas por la organización?"
+  },
+  "CHG-02.2": {
+    "name": "Probar, Validar y Documentar Cambios",
+    "question": "¿La organización prueba y documenta adecuadamente los cambios propuestos en un entorno no productivo antes de que los cambios se implementen en un entorno productivo?"
+  },
+  "CHG-03": {
+    "name": "Análisis de Impacto de Seguridad para Cambios",
+    "question": "¿La organización analiza los cambios propuestos en busca de posibles impactos de seguridad, antes de la implementación del cambio?"
+  },
+  "CHG-04": {
+    "name": "Restricción de Acceso para Cambios",
+    "question": "¿La organización aplica restricciones de configuración en un esfuerzo por restringir la capacidad de los usuarios de realizar cambios no autorizados?"
+  },
+  "CHG-04.4": {
+    "name": "Permisos para Implementar Cambios",
+    "question": "¿La organización limita los privilegios operativos para implementar cambios?"
+  },
+  "CHG-05": {
+    "name": "Notificación de Cambios a las Partes Interesadas",
+    "question": "¿La organización asegura que las partes interesadas son informadas y comprenden el impacto de los cambios propuestos?"
+  },
+  "CHG-06": {
+    "name": "Verificación de la Funcionalidad de los Controles",
+    "question": "¿La organización verifica la funcionalidad de los controles de ciberseguridad y/o protección de datos tras los cambios implementados para asegurar que los controles aplicables operan según lo diseñado?"
+  },
+  "CLD-06.1": {
+    "name": "Matriz de Responsabilidad del Cliente (CRM)",
+    "question": "¿La organización documenta formalmente una Matriz de Responsabilidad del Cliente (CRM), que delimita las responsabilidades asignadas para los controles entre el Proveedor de Servicios en la Nube (CSP) y sus clientes?"
+  },
+  "CPL-01": {
+    "name": "Cumplimiento Legal, Regulatorio y Contractual",
+    "question": "¿La organización facilita la identificación e implementación de los controles legales, regulatorios y contractuales relevantes?"
+  },
+  "CPL-01.1": {
+    "name": "Supervisión del Incumplimiento",
+    "question": "¿La organización documenta y revisa las instancias de incumplimiento de las obligaciones legales, regulatorias y/o contractuales para desarrollar acciones de mitigación de riesgos adecuadas?"
+  },
+  "CPL-01.2": {
+    "name": "Alcance del Cumplimiento",
+    "question": "¿La organización documenta y valida el alcance de los controles de ciberseguridad y protección de datos que se determina que cumplen con las obligaciones de cumplimiento legal, regulatorio y/o contractual?"
+  },
+  "CPL-02": {
+    "name": "Supervisión de los Controles de Ciberseguridad y Protección de Datos",
+    "question": "¿La organización proporciona una función de supervisión de los controles de ciberseguridad y protección de datos que reporta a su liderazgo ejecutivo?"
+  },
+  "CPL-02.1": {
+    "name": "Función de Auditoría Interna",
+    "question": "¿La organización implementa una función de auditoría interna capaz de proporcionar a la alta dirección de la organización información sobre la idoneidad de sus procesos de gobierno de tecnología e información?"
+  },
+  "CPL-03": {
+    "name": "Evaluaciones de Ciberseguridad y Protección de Datos",
+    "question": "¿La organización revisa regularmente los procesos y procedimientos documentados para asegurar la conformidad con las políticas, estándares y otros requisitos aplicables de ciberseguridad y protección de datos de la organización?"
+  },
+  "CPL-03.1": {
+    "name": "Evaluadores Independientes",
+    "question": "¿La organización utiliza evaluadores independientes para evaluar los controles de ciberseguridad y protección de datos a intervalos planificados o cuando el Activo Tecnológico, Aplicación y/o Servicio (TAAS) experimenta cambios significativos?"
+  },
+  "CPL-03.2": {
+    "name": "Revisión Funcional de los Controles de Ciberseguridad y Protección de Datos",
+    "question": "¿La organización revisa regularmente los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) para comprobar la adherencia a sus políticas y estándares de ciberseguridad y protección de datos?"
+  },
+  "CFG-01": {
+    "name": "Programa de Gestión de Configuración",
+    "question": "¿La organización facilita la implementación de controles de gestión de configuración?"
+  },
+  "CFG-02": {
+    "name": "Configuraciones Base Seguras",
+    "question": "¿La organización desarrolla, documenta y mantiene configuraciones base seguras para los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) que sean consistentes con los estándares de endurecimiento de sistemas aceptados por la industria?"
+  },
+  "CFG-02.1": {
+    "name": "Revisiones y Actualizaciones",
+    "question": "¿La organización revisa y actualiza las configuraciones base: (1) al menos anualmente; (2) cuando sea necesario; o (3) como parte de las instalaciones y actualizaciones de los componentes del sistema?"
+  },
+  "CFG-02.2": {
+    "name": "Gestión Centralizada Automatizada y Verificación",
+    "question": "¿La organización utiliza mecanismos automatizados para gobernar y reportar sobre las configuraciones base de los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) mediante Diagnóstico y Mitigación Continuos (CDM), o tecnologías similares?"
+  },
+  "CFG-02.5": {
+    "name": "Configuración de Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) para Áreas de Alto Riesgo",
+    "question": "¿La organización configura los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) utilizados en áreas de alto riesgo con configuraciones base más restrictivas?"
+  },
+  "CFG-02.8": {
+    "name": "Responder a Cambios No Autorizados",
+    "question": "¿La organización responde a los cambios no autorizados en la configuración como incidentes de seguridad?"
+  },
+  "CFG-02.9": {
+    "name": "Adaptación de la Línea Base",
+    "question": "¿La organización permite que los controles de línea base se especialicen o personalicen aplicando un conjunto definido de acciones de adaptación específicas para: (1) misiones / funciones de negocio; (2) entorno operativo; (3) amenazas o vulnerabilidades específicas; u (4) otras condiciones o situaciones que podrían afectar el éxito de la misión / negocio?"
+  },
+  "CFG-03": {
+    "name": "Funcionalidad Mínima",
+    "question": "¿La organización configura los sistemas para proporcionar solo las capacidades esenciales, prohibiendo o restringiendo específicamente el uso de puertos, protocolos y/o servicios?"
+  },
+  "CFG-03.2": {
+    "name": "Prevención de la Ejecución de Software No Autorizado",
+    "question": "¿La organización configura los sistemas para prevenir la ejecución de programas de software no autorizados?"
+  },
+  "CFG-03.3": {
+    "name": "Permitir / Denegar Aplicaciones Explícitamente",
+    "question": "¿La organización permite explícitamente (lista de permitidos / lista blanca) y/o bloquea (lista de denegados / lista negra) las aplicaciones autorizadas para ejecutarse en los sistemas?"
+  },
+  "CFG-04.2": {
+    "name": "Navegadores de Internet y Clientes de Correo No Soportados",
+    "question": "¿La organización permite que solo los navegadores de Internet y clientes de correo aprobados se ejecuten en los sistemas?"
+  },
+  "CFG-05": {
+    "name": "Software Instalado por el Usuario",
+    "question": "¿La organización restringe la capacidad de los usuarios no privilegiados de instalar software no autorizado?"
+  },
+  "CFG-05.1": {
+    "name": "Alertas de Instalación No Autorizada",
+    "question": "¿La organización configura los sistemas para generar una alerta cuando se detecta la instalación no autorizada de software?"
+  },
+  "CFG-05.2": {
+    "name": "Restringir Roles Permitidos para Instalar Software",
+    "question": "¿La organización configura los sistemas para prevenir la instalación de software, a menos que la acción sea realizada por un usuario o servicio privilegiado?"
+  },
+  "CFG-06.1": {
+    "name": "Aseguramiento y Aplicación de la Integridad (IAE)",
+    "question": "¿La organización utiliza mecanismos automatizados para identificar desviaciones no autorizadas de una línea base aprobada e implementar acciones de resiliencia automatizadas para remediar el cambio no autorizado?"
+  },
+  "MON-01": {
+    "name": "Monitoreo Continuo",
+    "question": "¿La organización facilita la implementación de controles de monitoreo a nivel empresarial?"
+  },
+  "MON-01.1": {
+    "name": "Sistemas de Detección y Prevención de Intrusiones (IDS e IPS)",
+    "question": "¿La organización implementa tecnologías de Sistemas de Detección / Prevención de Intrusiones (IDS / IPS) en sistemas críticos, segmentos clave de red y puntos de estrangulamiento de la red?"
+  },
+  "MON-01.2": {
+    "name": "Herramientas Automatizadas para Análisis en Tiempo Real",
+    "question": "¿La organización utiliza un Gestor de Eventos de Incidentes de Seguridad (SIEM), o una herramienta automatizada similar, para soportar el análisis casi en tiempo real y la escalada de incidentes?"
+  },
+  "MON-01.3": {
+    "name": "Tráfico de Comunicaciones Entrante y Saliente",
+    "question": "¿La organización monitoriza continuamente el tráfico de comunicaciones entrante y saliente en busca de actividades o condiciones inusuales o no autorizadas?"
+  },
+  "MON-01.4": {
+    "name": "Alertas Generadas por el Sistema",
+    "question": "¿La organización genera, monitoriza, correlaciona y responde a las alertas de actividades físicas, de ciberseguridad, de protección de datos y de la cadena de suministro para lograr una conciencia situacional integrada?"
+  },
+  "MON-01.7": {
+    "name": "Monitoreo de Integridad de Archivos (FIM)",
+    "question": "¿La organización utiliza un Monitor de Integridad de Archivos (FIM), o tecnología similar de detección de cambios, en Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) críticos para generar alertas de modificaciones no autorizadas?"
+  },
+  "MON-01.8": {
+    "name": "Monitoreo de Eventos de Seguridad",
+    "question": "¿La organización revisa los registros de eventos de forma continua y escala los incidentes de acuerdo con los plazos y procedimientos establecidos?"
+  },
+  "MON-01.12": {
+    "name": "Alertas Automatizadas",
+    "question": "¿La organización alerta automáticamente al personal de respuesta a incidentes sobre actividades inapropiadas o anómalas que tengan posibles implicaciones de incidentes de seguridad?"
+  },
+  "MON-01.13": {
+    "name": "Ajuste de Umbrales de Alerta",
+    "question": "¿La organización \"ajusta\" las tecnologías de monitoreo de eventos mediante el análisis de patrones de tráfico/eventos de comunicaciones y el desarrollo de perfiles que representan patrones de tráfico y/o eventos comunes?"
+  },
+  "MON-01.15": {
+    "name": "Supervisión de Usuarios Privilegiados",
+    "question": "¿La organización implementa un monitoreo de actividad mejorado para los usuarios privilegiados?"
+  },
+  "MON-01.16": {
+    "name": "Analizar y Priorizar los Requisitos de Monitoreo",
+    "question": "¿La organización evalúa sus necesidades de monitoreo y prioriza el monitoreo de los activos, en función de la criticidad de los activos y la sensibilidad de los datos que almacena, transmite y procesa?"
+  },
+  "MON-02": {
+    "name": "Recopilación Centralizada de Registros de Eventos de Seguridad",
+    "question": "¿La organización utiliza un Gestor de Eventos de Incidentes de Seguridad (SIEM) o una herramienta automatizada similar, para soportar la recopilación centralizada de registros de eventos relacionados con la seguridad?"
+  },
+  "MON-02.1": {
+    "name": "Correlacionar la Información de Monitoreo",
+    "question": "¿La organización utiliza mecanismos automatizados para correlacionar información tanto técnica como no técnica de toda la empresa mediante un Gestor de Eventos de Incidentes de Seguridad (SIEM) o una herramienta automatizada similar, para mejorar la conciencia situacional a nivel de toda la organización?"
+  },
+  "MON-02.2": {
+    "name": "Revisión y Análisis Centralizados",
+    "question": "¿La organización utiliza mecanismos automatizados para recopilar, revisar y analizar centralmente los registros de auditoría de múltiples fuentes?"
+  },
+  "MON-02.3": {
+    "name": "Integración del Escaneo y Otra Información de Monitoreo",
+    "question": "¿La organización utiliza mecanismos automatizados para integrar el análisis de los registros de auditoría con el análisis de escáneres de vulnerabilidades, el desempeño de la red, el monitoreo de sistemas y otras fuentes para mejorar aún más la capacidad de identificar actividades inapropiadas o inusuales?"
+  },
+  "MON-02.7": {
+    "name": "Pista de Auditoría a Nivel de Sistema / Correlacionada en el Tiempo",
+    "question": "¿La organización utiliza mecanismos automatizados para compilar los registros de auditoría en una pista de auditoría a nivel de toda la organización que esté correlacionada en el tiempo?"
+  },
+  "MON-03": {
+    "name": "Contenido de los Registros de Eventos",
+    "question": "¿La organización configura los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) para producir registros de eventos que contengan información suficiente para, como mínimo: (1) establecer qué tipo de evento ocurrió; (2) cuándo (fecha y hora) ocurrió el evento; (3) dónde ocurrió el evento; (4) la fuente del evento; (5) el resultado (éxito o fallo) del evento; y (6) la identidad de cualquier usuario/sujeto asociado con el evento?"
+  },
+  "MON-03.1": {
+    "name": "Información de Auditoría Sensible",
+    "question": "¿La organización protege los datos sensibles/regulados contenidos en los archivos de registro?"
+  },
+  "MON-03.3": {
+    "name": "Registro de Funciones Privilegiadas",
+    "question": "¿La organización registra y revisa las acciones de los usuarios y/o servicios con privilegios elevados?"
+  },
+  "MON-04": {
+    "name": "Capacidad de Almacenamiento de Registros de Eventos",
+    "question": "¿La organización asigna y gestiona proactivamente suficiente capacidad de almacenamiento de registros de eventos para reducir la probabilidad de que dicha capacidad se vea superada?"
+  },
+  "MON-07.1": {
+    "name": "Sincronización con una Fuente de Tiempo Autorizada",
+    "question": "¿La organización sincroniza los relojes internos del sistema con una fuente de tiempo autorizada?"
+  },
+  "MON-10": {
+    "name": "Retención de Registros de Eventos",
+    "question": "¿La organización retiene los registros de eventos durante un período de tiempo consistente con los requisitos de retención de registros para proporcionar soporte a las investigaciones posteriores de incidentes de seguridad y para cumplir con los requisitos de retención legales, regulatorios y contractuales?"
+  },
+  "MON-11.3": {
+    "name": "Monitoreo de Indicadores de Compromiso (IOC)",
+    "question": "¿La organización utiliza mecanismos automatizados para identificar y alertar sobre Indicadores de Compromiso (IoC)?"
+  },
+  "MON-16": {
+    "name": "Comportamiento Anómalo",
+    "question": "¿La organización utiliza soluciones de Análisis de Comportamiento de Usuarios y Entidades (UEBA) y/o Monitoreo de Actividad de Usuarios (UAM) para detectar y responder a comportamientos anómalos que podrían indicar el compromiso de una cuenta u otras actividades maliciosas?"
+  },
+  "MON-16.1": {
+    "name": "Amenazas Internas",
+    "question": "¿La organización monitoriza la actividad del personal interno en busca de posibles incidentes de seguridad?"
+  },
+  "MON-16.2": {
+    "name": "Amenazas de Terceros",
+    "question": "¿La organización monitoriza la actividad del personal de terceros en busca de posibles incidentes de seguridad?"
+  },
+  "MON-16.3": {
+    "name": "Actividades No Autorizadas",
+    "question": "¿La organización monitoriza actividades, cuentas, conexiones, dispositivos y software no autorizados?"
+  },
+  "MON-16.4": {
+    "name": "Registro de Creación y Modificación de Cuentas",
+    "question": "¿La organización utiliza mecanismos automatizados para generar registros de eventos de cambios de permisos en cuentas y/o grupos privilegiados?"
+  },
+  "CRY-01": {
+    "name": "Uso de Controles Criptográficos",
+    "question": "¿La organización facilita la implementación de controles de protección criptográfica utilizando estándares públicos conocidos y tecnologías criptográficas de confianza?"
+  },
+  "CRY-01.1": {
+    "name": "Protección Física Alternativa",
+    "question": "¿Se utilizan mecanismos criptográficos para prevenir la divulgación no autorizada de información como alternativa a las salvaguardas físicas?"
+  },
+  "CRY-03": {
+    "name": "Confidencialidad en la Transmisión",
+    "question": "¿Se utilizan mecanismos criptográficos para proteger la confidencialidad de los datos que se transmiten?"
+  },
+  "CRY-04": {
+    "name": "Integridad en la Transmisión",
+    "question": "¿Se utilizan mecanismos criptográficos para proteger la integridad de los datos que se transmiten?"
+  },
+  "CRY-05": {
+    "name": "Cifrado de Datos en Reposo",
+    "question": "¿Se utilizan mecanismos criptográficos para prevenir la divulgación no autorizada de datos en reposo?"
+  },
+  "CRY-05.1": {
+    "name": "Medios de Almacenamiento",
+    "question": "¿Se utilizan mecanismos criptográficos para proteger la confidencialidad e integridad de los datos sensibles/regulados que residen en los medios de almacenamiento?"
+  },
+  "CRY-06": {
+    "name": "Acceso Administrativo No Consola",
+    "question": "¿Se utilizan mecanismos criptográficos para proteger la confidencialidad e integridad del acceso administrativo no consola?"
+  },
+  "DCH-01": {
+    "name": "Protección de Datos",
+    "question": "¿La organización facilita la implementación de controles de protección de datos?"
+  },
+  "DCH-01.1": {
+    "name": "Administración de Datos",
+    "question": "¿La organización asegura que la administración de datos (data stewardship) está asignada, documentada y comunicada?"
+  },
+  "DCH-01.2": {
+    "name": "Protección de Datos Sensibles / Regulados",
+    "question": "¿La organización protege los datos sensibles/regulados dondequiera que se procesen y/o almacenen?"
+  },
+  "DCH-01.3": {
+    "name": "Registros de Medios Sensibles / Regulados",
+    "question": "¿La organización asegura que los registros de medios para datos sensibles/regulados contienen suficiente información para determinar el impacto potencial en caso de un incidente de pérdida de datos?"
+  },
+  "DCH-01.4": {
+    "name": "Definición de Autorizaciones de Acceso para Datos Sensibles / Regulados",
+    "question": "¿La organización define explícitamente las autorizaciones para individuos y/o roles específicos para el acceso lógico y/o físico a datos sensibles/regulados?"
+  },
+  "DCH-02": {
+    "name": "Clasificación de Datos y Activos",
+    "question": "¿La organización asegura que los datos y activos se categorizan de acuerdo con los requisitos legales, regulatorios y contractuales aplicables?"
+  },
+  "DCH-02.1": {
+    "name": "Nivel de Clasificación Más Alto",
+    "question": "¿La organización asegura que los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) se clasifican según el nivel más alto de sensibilidad de los datos que se almacenan, transmiten y/o procesan?"
+  },
+  "DCH-03": {
+    "name": "Acceso a Medios",
+    "question": "¿La organización controla y restringe el acceso a medios digitales y no digitales a individuos autorizados?"
+  },
+  "DCH-03.1": {
+    "name": "Divulgación de Información",
+    "question": "¿La organización restringe la divulgación de datos sensibles/regulados a partes autorizadas con necesidad de conocer?"
+  },
+  "DCH-05.5": {
+    "name": "Visualización de Atributos para Dispositivos de Salida",
+    "question": "¿La organización muestra los atributos de ciberseguridad y protección de datos en formato legible por humanos en cada objeto que el sistema transmite a los dispositivos de salida para identificar instrucciones especiales de diseminación, manejo o distribución utilizando convenciones de nomenclatura legibles por humanos estándar?"
+  },
+  "DCH-06": {
+    "name": "Almacenamiento de Medios",
+    "question": "¿La organización: (1) controla físicamente y almacena de forma segura los medios digitales y no digitales dentro de áreas controladas utilizando medidas de seguridad definidas por la organización; y (2) protege los medios del sistema hasta que se destruyen o sanitizan utilizando equipos, técnicas y procedimientos aprobados?"
+  },
+  "DCH-06.2": {
+    "name": "Inventarios de Datos Sensibles",
+    "question": "¿La organización mantiene registros de inventario de todos los medios sensibles y realiza inventarios de medios sensibles al menos anualmente?"
+  },
+  "DCH-06.3": {
+    "name": "Escaneos Periódicos de Datos Sensibles / Regulados",
+    "question": "¿La organización escanea periódicamente fuentes de datos no estructurados en busca de datos sensibles/regulados o datos que requieren medidas de protección especiales por obligaciones legales, regulatorias o contractuales?"
+  },
+  "DCH-08": {
+    "name": "Eliminación de Medios Físicos",
+    "question": "¿La organización elimina de forma segura los medios cuando ya no son necesarios, utilizando procedimientos formales?"
+  },
+  "DCH-09": {
+    "name": "Sanitización de Medios del Sistema",
+    "question": "¿La organización sanitiza los medios del sistema con la fuerza e integridad proporcionadas a la clasificación o sensibilidad de la información antes de la eliminación, liberación fuera del control de la organización o liberación para su reutilización?"
+  },
+  "DCH-09.1": {
+    "name": "Documentación de Sanitización de Medios del Sistema",
+    "question": "¿La organización supervisa, rastrea, documenta y verifica las acciones de sanitización y eliminación de medios del sistema?"
+  },
+  "DCH-09.3": {
+    "name": "Sanitización de Datos Personales (PD)",
+    "question": "¿La organización facilita la sanitización de los Datos Personales (PD)?"
+  },
+  "DCH-09.4": {
+    "name": "Sanitización en el Primer Uso",
+    "question": "¿La organización aplica técnicas de sanitización no destructivas a los dispositivos de almacenamiento portátiles antes del primer uso?"
+  },
+  "DCH-13.1": {
+    "name": "Límites del Uso Autorizado",
+    "question": "¿La organización prohíbe a las partes externas, incluidos los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS), almacenar, procesar y transmitir datos a menos que los individuos autorizados primero: (1) verifiquen la implementación de los controles de seguridad requeridos; o (2) mantengan un acuerdo de procesamiento con la entidad que aloja los TAAS externos?"
+  },
+  "DCH-14": {
+    "name": "Compartición de Información",
+    "question": "¿La organización utiliza un proceso para asistir a los usuarios en la toma de decisiones sobre la compartición de información para asegurar que los datos están adecuadamente protegidos?"
+  },
+  "DCH-14.2": {
+    "name": "Autorizaciones de Transferencia",
+    "question": "¿La organización verifica que los individuos o los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) que transfieren datos entre TAAS interconectados tienen las autorizaciones requeridas (por ejemplo, permisos de escritura o privilegios) antes de transferir dichos datos?"
+  },
+  "DCH-14.3": {
+    "name": "Mapeo de Acceso a Datos",
+    "question": "¿La organización aprovecha las Listas de Control de Acceso (ACL) específicas de datos o los Acuerdos de Seguridad de Interconexión (ISA) para generar un mapa lógico de las partes con quienes se comparten datos sensibles/regulados?"
+  },
+  "DCH-18": {
+    "name": "Retención de Medios y Datos",
+    "question": "¿La organización retiene los medios y datos de acuerdo con las obligaciones legales, regulatorias y contractuales aplicables?"
+  },
+  "DCH-19": {
+    "name": "Ubicación Geográfica de los Datos",
+    "question": "¿La organización inventaría, documenta y mantiene los flujos de datos para los datos que residen (permanente o temporalmente) dentro de las aplicaciones distribuidas geográficamente de un servicio (físicas y virtuales), infraestructura, componentes de sistemas y/o compartidos con otros terceros?"
+  },
+  "DCH-21": {
+    "name": "Eliminación de Información",
+    "question": "¿La organización elimina, destruye o borra de forma segura la información?"
+  },
+  "DCH-22": {
+    "name": "Operaciones de Calidad de Datos",
+    "question": "¿La organización verifica la existencia de datos Redundantes, Obsoletos/Desactualizados, Tóxicos o Triviales (ROTT) para asegurar la precisión, relevancia, actualidad, impacto, integridad y desidentificación de la información a lo largo del ciclo de vida de la información?"
+  },
+  "END-01": {
+    "name": "Gestión de Dispositivos de Punto Final (EDM)",
+    "question": "¿La organización facilita la implementación de controles de Gestión de Dispositivos de Punto Final (EDM)?"
+  },
+  "END-02": {
+    "name": "Medidas de Protección de Puntos Finales",
+    "question": "¿La organización protege la confidencialidad, integridad, disponibilidad y seguridad de los dispositivos de punto final?"
+  },
+  "END-03": {
+    "name": "Prohibir la Instalación sin Estatus Privilegiado",
+    "question": "¿La organización utiliza mecanismos automatizados para prohibir las instalaciones de software sin un estatus privilegiado asignado explícitamente?"
+  },
+  "END-03.1": {
+    "name": "Alertas de Instalación de Software",
+    "question": "¿La organización genera una alerta cuando se detecta software nuevo?"
+  },
+  "END-04": {
+    "name": "Protección contra Código Malicioso (Antimalware)",
+    "question": "¿La organización utiliza tecnologías antimalware para detectar y erradicar código malicioso?"
+  },
+  "END-04.1": {
+    "name": "Actualizaciones Automáticas de Firmas Antimalware",
+    "question": "¿La organización actualiza automáticamente las tecnologías antimalware, incluidas las definiciones de firmas?"
+  },
+  "END-04.3": {
+    "name": "Gestión Centralizada de Tecnologías Antimalware",
+    "question": "¿La organización gestiona centralizadamente las tecnologías antimalware?"
+  },
+  "END-04.4": {
+    "name": "Detección Heurística / No Basada en Firmas",
+    "question": "¿La organización utiliza capacidades de detección antimalware heurísticas / no basadas en firmas?"
+  },
+  "END-04.7": {
+    "name": "Protección Siempre Activa",
+    "question": "¿La organización asegura que las tecnologías antimalware se ejecutan continuamente en tiempo real y no pueden ser deshabilitadas o alteradas por usuarios no privilegiados, a menos que la dirección lo autorice específicamente caso por caso durante un período de tiempo limitado?"
+  },
+  "END-05": {
+    "name": "Cortafuegos de Software",
+    "question": "¿La organización utiliza software de cortafuegos basado en host, o una tecnología similar, en todos los dispositivos de punto final, cuando sea técnicamente viable?"
+  },
+  "END-06": {
+    "name": "Monitoreo de Integridad de Archivos (FIM) en Puntos Finales",
+    "question": "¿La organización utiliza un Monitor de Integridad de Archivos (FIM), o tecnologías similares, para detectar y reportar cambios no autorizados en archivos seleccionados y configuraciones?"
+  },
+  "END-06.2": {
+    "name": "Detección y Respuesta en Puntos Finales (EDR)",
+    "question": "¿La organización detecta y responde a cambios de configuración no autorizados como incidentes de ciberseguridad?"
+  },
+  "END-07": {
+    "name": "Sistemas de Detección y Prevención de Intrusiones en Host (HIDS / HIPS)",
+    "question": "¿La organización utiliza Sistemas de Detección / Prevención de Intrusiones basados en Host (HIDS / HIPS), o tecnologías similares, para monitorizar y proteger contra actividad anómala en el host, incluido el movimiento lateral a través de la red?"
+  },
+  "END-08": {
+    "name": "Protección contra Phishing y Spam",
+    "question": "¿La organización utiliza tecnologías de protección contra phishing y spam para detectar y tomar medidas sobre mensajes no solicitados transportados por correo electrónico?"
+  },
+  "HRS-01": {
+    "name": "Gestión de Seguridad de Recursos Humanos",
+    "question": "¿La organización facilita la implementación de controles de seguridad del personal?"
+  },
+  "HRS-02": {
+    "name": "Categorización de Puestos",
+    "question": "¿La organización gestiona el riesgo de seguridad del personal asignando una designación de riesgo a todos los puestos y estableciendo criterios de selección para los individuos que ocupan esos puestos?"
+  },
+  "HRS-03": {
+    "name": "Roles y Responsabilidades Definidos",
+    "question": "¿La organización define roles y responsabilidades de ciberseguridad para todo el personal?"
+  },
+  "HRS-03.1": {
+    "name": "Concienciación del Usuario",
+    "question": "¿La organización se comunica con los usuarios sobre sus roles y responsabilidades para mantener un entorno de trabajo seguro y protegido?"
+  },
+  "HRS-03.2": {
+    "name": "Requisitos de Competencia para Puestos Relacionados con la Seguridad",
+    "question": "¿La organización asegura que todos los puestos relacionados con la seguridad están ocupados por individuos cualificados que tienen el conjunto de habilidades necesario?"
+  },
+  "HRS-04": {
+    "name": "Selección de Personal",
+    "question": "¿La organización gestiona el riesgo de seguridad del personal mediante la selección de individuos antes de autorizar el acceso?"
+  },
+  "HRS-04.1": {
+    "name": "Roles con Medidas de Protección Especiales",
+    "question": "¿La organización asegura que los individuos que acceden a un sistema que almacena, transmite o procesa información que requiere protección especial satisfacen los criterios de selección de personal definidos por la organización?"
+  },
+  "HRS-04.2": {
+    "name": "Adoctrinamiento Formal",
+    "question": "¿La organización educa formalmente a los usuarios autorizados sobre las prácticas adecuadas de manejo de datos para todos los tipos relevantes de datos a los que tienen acceso?"
+  },
+  "HRS-05": {
+    "name": "Términos de Empleo",
+    "question": "¿La organización requiere que todos los empleados y contratistas apliquen los principios de ciberseguridad y protección de datos en su trabajo diario?"
+  },
+  "HRS-05.1": {
+    "name": "Reglas de Comportamiento",
+    "question": "¿La organización define reglas de comportamiento aceptables e inaceptables para el uso de tecnologías, incluidas las consecuencias del comportamiento inaceptable?"
+  },
+  "HRS-05.2": {
+    "name": "Restricciones de Redes Sociales y Socialización en Red",
+    "question": "¿La organización define reglas de comportamiento que contienen restricciones explícitas sobre el uso de redes sociales y sitios de redes sociales, la publicación de información en sitios web comerciales y el intercambio de información de cuentas?"
+  },
+  "HRS-05.3": {
+    "name": "Restricciones de Uso de Tecnología",
+    "question": "¿La organización establece restricciones de uso y guías de implementación para las tecnologías de comunicaciones en función del potencial de causar daño a los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS), si se utilizan maliciosamente?"
+  },
+  "HRS-05.4": {
+    "name": "Uso de Tecnologías Críticas",
+    "question": "¿La organización gobierna las políticas de uso de tecnologías críticas?"
+  },
+  "HRS-05.5": {
+    "name": "Uso de Dispositivos Móviles",
+    "question": "¿La organización gestiona los riesgos de negocio asociados con permitir el acceso de dispositivos móviles a los recursos organizacionales?"
+  },
+  "HRS-05.7": {
+    "name": "Familiarización y Reconocimiento de Políticas",
+    "question": "¿La organización asegura que el personal recibe familiarización recurrente con sus políticas de ciberseguridad y protección de datos y proporciona reconocimiento?"
+  },
+  "HRS-07": {
+    "name": "Sanciones al Personal",
+    "question": "¿La organización sanciona al personal que no cumple con las políticas, estándares y procedimientos de seguridad establecidos?"
+  },
+  "HRS-11": {
+    "name": "Separación de Deberes (SoD)",
+    "question": "¿La organización implementa y mantiene la Separación de Deberes (SoD) para prevenir posibles actividades inapropiadas sin colusión?"
+  },
+  "HRS-12": {
+    "name": "Roles Incompatibles",
+    "question": "¿La organización evita roles específicos de desarrollo incompatibles mediante la limitación y revisión de los privilegios de los desarrolladores para cambiar componentes de hardware, software y firmware dentro de un entorno de producción/operativo?"
+  },
+  "HRS-13": {
+    "name": "Identificación de Habilidades Críticas y Brechas",
+    "question": "¿La organización evalúa las habilidades críticas de ciberseguridad y protección de datos necesarias para apoyar su misión e identifica las brechas existentes?"
+  },
+  "HRS-13.1": {
+    "name": "Remediar las Deficiencias de Habilidades Identificadas",
+    "question": "¿La organización remedia las deficiencias de habilidades críticas necesarias para apoyar su misión y funciones de negocio?"
+  },
+  "HRS-13.2": {
+    "name": "Identificación del Personal Vital de Ciberseguridad y Privacidad de Datos",
+    "question": "¿La organización identifica al personal vital de ciberseguridad y privacidad de datos?"
+  },
+  "HRS-13.3": {
+    "name": "Establecer Redundancia para el Personal Vital de Ciberseguridad y Privacidad de Datos",
+    "question": "¿La organización establece redundancia para el personal vital de ciberseguridad y privacidad de datos?"
+  },
+  "HRS-13.4": {
+    "name": "Realizar Planificación de Sucesión",
+    "question": "¿La organización realiza planificación de sucesión para roles vitales de ciberseguridad y privacidad de datos?"
+  },
+  "IAC-01": {
+    "name": "Gestión de Identidades y Accesos (IAM)",
+    "question": "¿La organización facilita la implementación de controles de identificación y gestión de accesos?"
+  },
+  "IAC-01.2": {
+    "name": "Autenticar, Autorizar y Auditar (AAA)",
+    "question": "¿La organización gobierna estrictamente el uso de soluciones de Autenticar, Autorizar y Auditar (AAA), tanto en las instalaciones como las alojadas por un Proveedor de Servicios Externo (ESP)?"
+  },
+  "IAC-02": {
+    "name": "Identificación y Autenticación para Usuarios Organizacionales",
+    "question": "¿La organización identifica de forma única y autentica, autoriza y audita (AAA) centralizadamente a los usuarios organizacionales y los procesos que actúan en nombre de los usuarios organizacionales?"
+  },
+  "IAC-02.2": {
+    "name": "Autenticación Resistente a Repetición",
+    "question": "¿La organización utiliza mecanismos automatizados para emplear autenticación resistente a la repetición?"
+  },
+  "IAC-03": {
+    "name": "Identificación y Autenticación para Usuarios No Organizacionales",
+    "question": "¿La organización identifica de forma única y autentica, autoriza y audita (AAA) centralizadamente a los usuarios de terceros y los procesos que prestan servicios a la organización?"
+  },
+  "IAC-03.5": {
+    "name": "Aceptación de Autenticadores Externos",
+    "question": "¿La organización restringe el uso de autenticadores externos a aquellos que cumplen con el Instituto Nacional de Estándares y Tecnología (NIST) y mantiene una lista de autenticadores externos aceptados?"
+  },
+  "IAC-04": {
+    "name": "Identificación y Autenticación para Dispositivos",
+    "question": "¿La organización identifica de forma única y autentica, autoriza y audita (AAA) centralizadamente los dispositivos antes de establecer una conexión utilizando autenticación bidireccional que sea criptográficamente basada y resistente a la repetición?"
+  },
+  "IAC-05": {
+    "name": "Identificación y Autenticación para Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) de Terceros",
+    "question": "¿La organización identifica y autentica los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) de terceros?"
+  },
+  "IAC-06": {
+    "name": "Autenticación Multifactor (MFA)",
+    "question": "¿La organización utiliza mecanismos automatizados para aplicar la Autenticación Multifactor (MFA) para: (1) acceso remoto a la red; (2) Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) de terceros; y/o (3) acceso no consola a TAAS críticos que almacenan, transmiten y/o procesan datos sensibles/regulados?"
+  },
+  "IAC-06.1": {
+    "name": "Acceso a la Red para Cuentas Privilegiadas",
+    "question": "¿La organización utiliza Autenticación Multifactor (MFA) para autenticar el acceso a la red para cuentas privilegiadas?"
+  },
+  "IAC-07": {
+    "name": "Aprovisionamiento y Desaprovisionamiento de Usuarios",
+    "question": "¿La organización utiliza un proceso formal de registro y baja de usuarios que gobierna la asignación de derechos de acceso?"
+  },
+  "IAC-07.1": {
+    "name": "Cambio de Roles y Deberes",
+    "question": "¿La organización revoca los derechos de acceso de los usuarios tras cambios en los roles y deberes del personal, si ya no son necesarios o permitidos?"
+  },
+  "IAC-08": {
+    "name": "Control de Acceso Basado en Roles (RBAC)",
+    "question": "¿La organización aplica el Control de Acceso Basado en Roles (RBAC) para los Activos Tecnológicos, Aplicaciones, Servicios y/o Datos (TAASD) para restringir el acceso a individuos asignados a roles específicos con necesidades de negocio legítimas?"
+  },
+  "IAC-09": {
+    "name": "Gestión de Identificadores (Nombres de Usuario)",
+    "question": "¿La organización gobierna los estándares de nomenclatura para nombres de usuario y Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS)?"
+  },
+  "IAC-10": {
+    "name": "Gestión de Autenticadores",
+    "question": "¿La organización: (1) gestiona de forma segura los autenticadores para usuarios y dispositivos; y (2) asegura que la fuerza de la autenticación es apropiada para la clasificación de los datos a los que se accede?"
+  },
+  "IAC-10.1": {
+    "name": "Autenticación Basada en Contraseña",
+    "question": "¿La organización aplica consideraciones de complejidad, longitud y vida útil para asegurar criterios sólidos para la autenticación basada en contraseña?"
+  },
+  "IAC-10.8": {
+    "name": "Autenticadores Predeterminados",
+    "question": "¿La organización asegura que los autenticadores predeterminados se cambian como parte de la creación de la cuenta o la instalación del sistema?"
+  },
+  "IAC-13.1": {
+    "name": "Autenticación Transparente de Inicio de Sesión Único (SSO)",
+    "question": "¿La organización proporciona una capacidad de Inicio de Sesión Único (SSO) para sus Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS)?"
+  },
+  "IAC-13.2": {
+    "name": "Gestión Federada de Credenciales",
+    "question": "¿La organización federa credenciales para permitir la autenticación entre organizaciones de individuos y dispositivos?"
+  },
+  "IAC-15.1": {
+    "name": "Gestión Automatizada de Cuentas de Sistema (Servicios de Directorio)",
+    "question": "¿La organización utiliza mecanismos automatizados para soportar la gestión de cuentas de sistema?"
+  },
+  "IAC-15.3": {
+    "name": "Deshabilitar Cuentas Inactivas",
+    "question": "¿La organización utiliza mecanismos automatizados para deshabilitar las cuentas inactivas después de un período de tiempo definido por la organización?"
+  },
+  "IAC-16": {
+    "name": "Gestión de Cuentas Privilegiadas (PAM)",
+    "question": "¿La organización restringe y controla los derechos de acceso privilegiado para usuarios y Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS)?"
+  },
+  "IAC-16.1": {
+    "name": "Inventarios de Cuentas Privilegiadas",
+    "question": "¿La organización inventaría todas las cuentas privilegiadas y valida que cada persona con privilegios elevados está autorizada por el nivel adecuado de la dirección organizacional?"
+  },
+  "IAC-20.4": {
+    "name": "Máquinas Administrativas Dedicadas",
+    "question": "¿La organización restringe la ejecución de tareas administrativas o tareas que requieren acceso elevado a una máquina dedicada?"
+  },
+  "IAC-21": {
+    "name": "Mínimo Privilegio",
+    "question": "¿La organización utiliza el concepto de mínimo privilegio, permitiendo solo el acceso autorizado a los procesos necesarios para realizar las tareas asignadas de acuerdo con las funciones de negocio organizacionales?"
+  },
+  "IAC-21.2": {
+    "name": "Acceso No Privilegiado para Funciones No de Seguridad",
+    "question": "¿La organización prohíbe a los usuarios privilegiados usar cuentas privilegiadas mientras realizan funciones no de seguridad?"
+  },
+  "IAC-22": {
+    "name": "Bloqueo de Cuenta",
+    "question": "¿La organización aplica un límite para los intentos de inicio de sesión inválidos consecutivos por parte de un usuario durante un período de tiempo definido por la organización y bloquea automáticamente la cuenta cuando se supera el número máximo de intentos fallidos?"
+  },
+  "IAC-24": {
+    "name": "Bloqueo de Sesión",
+    "question": "¿La organización inicia un bloqueo de sesión después de un período de inactividad definido por la organización, o al recibir una solicitud de un usuario, y mantiene el bloqueo de sesión hasta que el usuario restablece el acceso utilizando los métodos de identificación y autenticación establecidos?"
+  },
+  "IAC-28": {
+    "name": "Verificación de Identidad (Identity Proofing)",
+    "question": "¿La organización verifica la identidad de un usuario antes de emitir autenticadores o modificar los permisos de acceso?"
+  },
+  "IRO-01": {
+    "name": "Operaciones de Respuesta a Incidentes",
+    "question": "¿La organización implementa y gobierna procesos y documentación para facilitar una capacidad de respuesta a nivel de toda la organización para incidentes relacionados con ciberseguridad y protección de datos?"
+  },
+  "IRO-02": {
+    "name": "Manejo de Incidentes",
+    "question": "¿La organización cubre: (1) Preparación; (2) Detección automatizada de eventos o ingesta manual de informes de incidentes; (3) Análisis; (4) Contención; (5) Erradicación; y (6) Recuperación?"
+  },
+  "IRO-02.4": {
+    "name": "Clasificación y Priorización de Incidentes",
+    "question": "¿La organización identifica clases de incidentes y acciones a tomar para asegurar la continuación de las misiones y funciones de negocio organizacionales?"
+  },
+  "IRO-02.5": {
+    "name": "Correlación con Organizaciones Externas",
+    "question": "¿La organización se coordina con terceros aprobados para lograr una perspectiva entre organizaciones sobre la conciencia de incidentes y respuestas a incidentes más efectivas?"
+  },
+  "IRO-03": {
+    "name": "Indicadores de Compromiso (IOC)",
+    "question": "¿La organización define Indicadores de Compromiso (IOC) específicos para identificar los signos de posibles eventos de ciberseguridad?"
+  },
+  "IRO-04": {
+    "name": "Plan de Respuesta a Incidentes (IRP)",
+    "question": "¿La organización mantiene y pone a disposición un Plan de Respuesta a Incidentes (IRP) actual y viable para todas las partes interesadas?"
+  },
+  "IRO-04.2": {
+    "name": "Actualización del IRP",
+    "question": "¿La organización revisa y modifica regularmente las prácticas de respuesta a incidentes para incorporar las lecciones aprendidas, los cambios en los procesos de negocio y los desarrollos de la industria, según sea necesario?"
+  },
+  "IRO-06": {
+    "name": "Pruebas de Respuesta a Incidentes",
+    "question": "¿La organización prueba formalmente las capacidades de respuesta a incidentes mediante ejercicios realistas para determinar la efectividad operativa de esas capacidades?"
+  },
+  "IRO-06.1": {
+    "name": "Coordinación con Planes Relacionados",
+    "question": "¿La organización coordina las pruebas de respuesta a incidentes con los elementos organizacionales responsables de los planes relacionados?"
+  },
+  "IRO-07": {
+    "name": "Equipo Integrado de Respuesta a Incidentes de Seguridad (ISIRT)",
+    "question": "¿La organización establece un equipo integrado de representantes de ciberseguridad, TI y funciones de negocio capaz de abordar las operaciones de respuesta a incidentes de ciberseguridad y protección de datos?"
+  },
+  "IRO-08": {
+    "name": "Cadena de Custodia y Forense",
+    "question": "¿La organización realiza análisis forenses digitales y mantiene la integridad de la cadena de custodia, de acuerdo con las leyes, regulaciones y prácticas seguras reconocidas por la industria aplicables?"
+  },
+  "IRO-09": {
+    "name": "Conciencia Situacional para Incidentes",
+    "question": "¿La organización documenta, monitoriza e informa el estado de los incidentes de ciberseguridad y protección de datos a las partes interesadas internas durante todo el proceso hasta la resolución del incidente?"
+  },
+  "IRO-10": {
+    "name": "Notificación de Incidentes a las Partes Interesadas",
+    "question": "¿La organización informa oportunamente de los incidentes a: (1) partes interesadas internas; (2) clientes y terceros afectados; y (3) autoridades regulatorias?"
+  },
+  "IRO-10.2": {
+    "name": "Notificación de Incidentes Cibernéticos para Datos Sensibles / Regulados",
+    "question": "¿La organización notifica los incidentes de datos sensibles/regulados de manera oportuna?"
+  },
+  "IRO-10.3": {
+    "name": "Vulnerabilidades Relacionadas con Incidentes",
+    "question": "¿La organización informa de las vulnerabilidades del sistema asociadas con los incidentes de ciberseguridad y protección de datos reportados al personal o roles definidos por la organización?"
+  },
+  "IRO-10.4": {
+    "name": "Coordinación de la Cadena de Suministro",
+    "question": "¿La organización proporciona información sobre incidentes de ciberseguridad y protección de datos al proveedor de los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) y a otras organizaciones involucradas en la cadena de suministro de los TAAS relacionados con el incidente?"
+  },
+  "IRO-13": {
+    "name": "Análisis de Causa Raíz (RCA) y Lecciones Aprendidas",
+    "question": "¿La organización incorpora las lecciones aprendidas del análisis y resolución de incidentes de ciberseguridad y protección de datos para reducir la probabilidad o el impacto de incidentes futuros?"
+  },
+  "IRO-15": {
+    "name": "Cámaras de Detonación (Sandboxes)",
+    "question": "¿La organización utiliza una capacidad de cámara de detonación para detectar y/o bloquear archivos y archivos adjuntos de correo electrónico potencialmente maliciosos?"
+  },
+  "IRO-16": {
+    "name": "Relaciones Públicas y Reparación de Reputación",
+    "question": "¿La organización gestiona proactivamente las relaciones públicas asociadas con incidentes y emplea medidas adecuadas para prevenir más daños reputacionales y desarrollar planes para reparar cualquier daño a su reputación?"
+  },
+  "IAO-01": {
+    "name": "Operaciones de Aseguramiento de la Información (IA)",
+    "question": "¿La organización facilita la implementación de controles de evaluación y autorización de ciberseguridad y protección de datos?"
+  },
+  "IAO-02": {
+    "name": "Evaluaciones",
+    "question": "¿La organización evalúa formalmente los controles de ciberseguridad y protección de datos en los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) mediante actividades del Programa de Aseguramiento de la Información (IAP) para determinar en qué medida los controles se implementan correctamente, operan según lo previsto y producen el resultado deseado con respecto al cumplimiento de los requisitos esperados?"
+  },
+  "IAO-02.4": {
+    "name": "Informe de Evaluación de Seguridad (SAR)",
+    "question": "¿La organización produce un Informe de Evaluación de Seguridad (SAR) al concluir una evaluación de seguridad para certificar los resultados de la evaluación y asistir con cualquier acción de remediación?"
+  },
+  "IAO-03.2": {
+    "name": "Seguridad Adecuada para Datos Sensibles / Regulados en Apoyo a Contratos",
+    "question": "¿La organización protege los datos sensibles/regulados que se recopilan, desarrollan, reciben, transmiten, utilizan o almacenan en apoyo del cumplimiento de un contrato?"
+  },
+  "IAO-04": {
+    "name": "Análisis de Amenazas y Remediación de Defectos Durante el Desarrollo",
+    "question": "¿La organización requiere que los desarrolladores e integradores de sistemas creen y ejecuten un plan de Pruebas y Evaluación de Seguridad (ST&E) para identificar y remediar defectos durante el desarrollo?"
+  },
+  "IAO-05": {
+    "name": "Plan de Acción y Hitos (POA&M)",
+    "question": "¿La organización genera un Plan de Acción y Hitos (POA&M), o un registro de riesgos similar, para documentar las acciones correctivas planificadas para corregir las debilidades o deficiencias observadas durante la evaluación de los controles de seguridad y para reducir o eliminar las vulnerabilidades conocidas?"
+  },
+  "MNT-01": {
+    "name": "Operaciones de Mantenimiento",
+    "question": "¿La organización desarrolla, difunde, revisa y actualiza los procedimientos para facilitar la implementación de controles de mantenimiento en toda la empresa?"
+  },
+  "MNT-02": {
+    "name": "Mantenimiento Controlado",
+    "question": "¿La organización realiza actividades de mantenimiento controlado a lo largo del ciclo de vida del Activo Tecnológico, Aplicación y/o Servicio (TAAS)?"
+  },
+  "MNT-03": {
+    "name": "Mantenimiento Oportuno",
+    "question": "¿La organización obtiene soporte de mantenimiento y/o piezas de repuesto para los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) dentro de un Objetivo de Tiempo de Recuperación (RTO) definido?"
+  },
+  "MNT-03.1": {
+    "name": "Mantenimiento Preventivo",
+    "question": "¿La organización realiza mantenimiento preventivo en los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) críticos?"
+  },
+  "MNT-04": {
+    "name": "Herramientas de Mantenimiento",
+    "question": "¿La organización controla y monitoriza el uso de las herramientas de mantenimiento del sistema?"
+  },
+  "MNT-04.4": {
+    "name": "Restringir el Uso de Herramientas",
+    "question": "¿La organización utiliza mecanismos automatizados para restringir el uso de las herramientas de mantenimiento al personal y/o roles de mantenimiento autorizados?"
+  },
+  "MNT-05": {
+    "name": "Mantenimiento Remoto",
+    "question": "¿La organización autoriza, monitoriza y controla las actividades de mantenimiento y diagnóstico remotas y no locales?"
+  },
+  "MNT-05.3": {
+    "name": "Protección Criptográfica del Mantenimiento Remoto",
+    "question": "¿Se utilizan mecanismos criptográficos para proteger la integridad y confidencialidad de las comunicaciones de mantenimiento y diagnóstico remotas y no locales?"
+  },
+  "MDM-01": {
+    "name": "Gestión Centralizada de Dispositivos Móviles",
+    "question": "¿La organización implementa y gobierna los controles de Gestión de Dispositivos Móviles (MDM)?"
+  },
+  "MDM-05": {
+    "name": "Purga Remota",
+    "question": "¿La organización purga remotamente información seleccionada de los dispositivos móviles?"
+  },
+  "MDM-10": {
+    "name": "Perfiles Separados de Dispositivos Móviles",
+    "question": "¿La organización aplica un espacio de trabajo de dispositivo separado en los dispositivos móviles aplicables para separar las aplicaciones y datos relacionados con el trabajo y los personales?"
+  },
+  "NET-01": {
+    "name": "Controles de Seguridad de Red (NSC)",
+    "question": "¿La organización desarrolla, gobierna y actualiza procedimientos para facilitar la implementación de Controles de Seguridad de Red (NSC)?"
+  },
+  "NET-01.1": {
+    "name": "Arquitectura de Confianza Cero (ZTA)",
+    "question": "¿La organización trata a todos los usuarios y dispositivos como amenazas potenciales y previene el acceso a datos y recursos hasta que los usuarios pueden ser autenticados adecuadamente y su acceso autorizado?"
+  },
+  "NET-02": {
+    "name": "Defensas de Red en Capas",
+    "question": "¿La organización implementa funciones de seguridad como una estructura en capas que minimiza las interacciones entre capas del diseño y evita cualquier dependencia por parte de las capas inferiores de la funcionalidad o corrección de las capas superiores?"
+  },
+  "NET-03": {
+    "name": "Protección de Fronteras",
+    "question": "¿La organización monitoriza y controla las comunicaciones en la frontera de red externa y en las fronteras internas clave dentro de la red?"
+  },
+  "NET-04": {
+    "name": "Aplicación del Flujo de Datos – Listas de Control de Acceso (ACL)",
+    "question": "¿La organización implementa y gobierna Listas de Control de Acceso (ACL) para proporcionar una aplicación del flujo de datos que restrinja explícitamente el tráfico de red solo a lo autorizado?"
+  },
+  "NET-04.1": {
+    "name": "Denegar Tráfico por Defecto y Permitir Tráfico por Excepción",
+    "question": "¿La organización configura las configuraciones de cortafuegos y enrutadores para denegar el tráfico de red por defecto y permitir el tráfico de red por excepción (por ejemplo, denegar todo, permitir por excepción)?"
+  },
+  "NET-08": {
+    "name": "Sistemas de Detección / Prevención de Intrusiones de Red (NIDS / NIPS)",
+    "question": "¿La organización emplea Sistemas de Detección / Prevención de Intrusiones de Red (NIDS/NIPS) para detectar y/o prevenir intrusiones en la red?"
+  },
+  "NET-08.3": {
+    "name": "Contención de Host",
+    "question": "¿La organización utiliza mecanismos automatizados para aplicar protecciones de contención de host que revocan o ponen en cuarentena el acceso de un host a la red?"
+  },
+  "NET-10": {
+    "name": "Resolución de Nombres de Dominio (DNS)",
+    "question": "¿La organización asegura que la resolución del Servicio de Nombres de Dominio (DNS) está diseñada, implementada y gestionada para proteger la seguridad de la resolución de nombres / direcciones?"
+  },
+  "NET-10.3": {
+    "name": "Marco de Política del Remitente (SPF)",
+    "question": "¿La organización valida la legitimidad de las comunicaciones por correo electrónico mediante la configuración de un registro SPF (Sender Policy Framework) en el DNS para especificar las direcciones IP y/o nombres de host autorizados a enviar correo desde el dominio especificado?"
+  },
+  "NET-14": {
+    "name": "Acceso Remoto",
+    "question": "¿La organización define, controla y revisa los métodos de acceso remoto seguros aprobados por la organización?"
+  },
+  "NET-14.1": {
+    "name": "Monitoreo y Control Automatizados",
+    "question": "¿La organización utiliza mecanismos automatizados para monitorizar y controlar las sesiones de acceso remoto?"
+  },
+  "NET-14.2": {
+    "name": "Protección de la Confidencialidad / Integridad mediante Cifrado",
+    "question": "¿Se utilizan mecanismos criptográficos para proteger la confidencialidad e integridad de las sesiones de acceso remoto (por ejemplo, VPN)?"
+  },
+  "NET-14.3": {
+    "name": "Puntos de Control de Acceso Gestionados",
+    "question": "¿La organización enruta todos los accesos remotos a través de puntos de control de acceso a la red gestionados (por ejemplo, concentrador VPN)?"
+  },
+  "NET-14.7": {
+    "name": "Validación de Seguridad de Puntos Finales",
+    "question": "¿La organización valida la postura de seguridad de los dispositivos de punto final (por ejemplo, versiones de software, niveles de parche, etc.) antes de permitir que los dispositivos se conecten a los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) organizacionales?"
+  },
+  "NET-17": {
+    "name": "Prevención de Pérdida de Datos (DLP)",
+    "question": "¿La organización utiliza mecanismos automatizados para implementar la Prevención de Pérdida de Datos (DLP) para proteger la información sensible mientras se almacena, transmite y procesa?"
+  },
+  "NET-18": {
+    "name": "Filtrado de DNS y Contenido",
+    "question": "¿La organización fuerza el tráfico de red con destino a Internet a través de un dispositivo proxy (por ejemplo, Punto de Aplicación de Políticas (PEP)) para el filtrado de contenido URL y el filtrado DNS para limitar la capacidad de un usuario de conectarse a sitios de Internet peligrosos o prohibidos?"
+  },
+  "NET-18.1": {
+    "name": "Enrutar el Tráfico Interno a Servidores Proxy",
+    "question": "¿La organización enruta el tráfico de comunicaciones internas hacia redes externas a través de servidores proxy aprobados por la organización en interfaces gestionadas?"
+  },
+  "NET-20.4": {
+    "name": "Autenticación, Informes y Conformidad de Mensajes Basados en Dominio (DMARC)",
+    "question": "¿La organización implementa protecciones de verificación de firma de dominio que autentican el correo electrónico entrante de acuerdo con la Autenticación, Informes y Conformidad de Mensajes Basados en Dominio (DMARC)?"
+  },
+  "PES-01": {
+    "name": "Protecciones Físicas y Ambientales",
+    "question": "¿La organización facilita la operación de controles de protección física y ambiental?"
+  },
+  "PES-02": {
+    "name": "Autorizaciones de Acceso Físico",
+    "question": "¿La organización mantiene una lista actualizada del personal con acceso autorizado a las instalaciones organizacionales (excepto aquellas áreas dentro de la instalación designadas oficialmente como de acceso público)?"
+  },
+  "PES-02.1": {
+    "name": "Acceso Físico Basado en Roles",
+    "question": "¿La organización autoriza el acceso físico a las instalaciones en función del puesto o rol del individuo?"
+  },
+  "PES-03": {
+    "name": "Control de Acceso Físico",
+    "question": "¿La organización aplica las autorizaciones de acceso físico para todos los puntos de acceso físico (incluidos los puntos de entrada/salida designados) a las instalaciones (excluyendo aquellas áreas dentro de la instalación designadas oficialmente como de acceso público)?"
+  },
+  "PES-03.1": {
+    "name": "Puntos de Entrada y Salida Controlados",
+    "question": "¿La organización limita y monitoriza el acceso físico a través de puntos de entrada y salida controlados?"
+  },
+  "PES-03.3": {
+    "name": "Registros de Acceso Físico",
+    "question": "¿La organización genera una entrada de registro por cada intento de acceso a través de puntos de entrada y salida controlados?"
+  },
+  "PES-03.4": {
+    "name": "Acceso a Sistemas Críticos",
+    "question": "¿La organización aplica el acceso físico a sistemas críticos o datos sensibles/regulados, además de los controles de acceso físico para la instalación?"
+  },
+  "PES-05": {
+    "name": "Monitoreo del Acceso Físico",
+    "question": "¿La organización monitoriza, detecta y responde a incidentes de seguridad física?"
+  },
+  "PES-07": {
+    "name": "Servicios Públicos de Soporte",
+    "question": "¿La organización protege el equipo de energía y el cableado de energía del sistema contra daños y destrucción?"
+  },
+  "PES-07.1": {
+    "name": "Controles Automáticos de Voltaje",
+    "question": "¿La organización utiliza controles automáticos de voltaje para los componentes críticos del sistema?"
+  },
+  "PES-07.2": {
+    "name": "Corte de Emergencia",
+    "question": "¿La organización corta la energía en situaciones de emergencia mediante: (1) la colocación de interruptores o dispositivos de corte de emergencia cerca de los sistemas o componentes del sistema para facilitar un acceso seguro y fácil para el personal; y (2) la protección de la capacidad de corte de energía de emergencia contra la activación no autorizada?"
+  },
+  "PES-07.3": {
+    "name": "Energía de Emergencia",
+    "question": "¿La organización suministra energía alternativa, capaz de mantener la capacidad operativa mínimamente requerida, en caso de una pérdida prolongada de la fuente de energía primaria?"
+  },
+  "PES-07.4": {
+    "name": "Iluminación de Emergencia",
+    "question": "¿La organización utiliza y mantiene iluminación de emergencia automática que se activa en caso de corte o interrupción de la energía y que cubre las salidas de emergencia y las rutas de evacuación dentro de la instalación?"
+  },
+  "PES-07.5": {
+    "name": "Protección contra Daños por Agua",
+    "question": "¿La organización protege los sistemas contra daños resultantes de fugas de agua mediante el suministro de válvulas de corte maestras que son accesibles, funcionan correctamente y son conocidas por el personal clave?"
+  },
+  "PES-07.6": {
+    "name": "Soporte de Automatización para la Protección contra Daños por Agua",
+    "question": "¿La organización detecta la presencia de agua en las proximidades de sistemas críticos y alerta al personal de mantenimiento de instalaciones y de TI?"
+  },
+  "PES-08": {
+    "name": "Protección contra Incendios",
+    "question": "¿La organización utiliza y mantiene dispositivos/sistemas de supresión y detección de incendios para el sistema que están respaldados por una fuente de energía independiente?"
+  },
+  "PES-08.1": {
+    "name": "Dispositivos de Detección de Incendios",
+    "question": "¿La organización utiliza y mantiene dispositivos/sistemas de detección de incendios que se activan automáticamente y notifican al personal organizacional y a los servicios de emergencia en caso de incendio?"
+  },
+  "PES-08.2": {
+    "name": "Dispositivos de Supresión de Incendios",
+    "question": "¿La organización utiliza dispositivos/sistemas de supresión de incendios que proporcionan notificación automática de cualquier activación al personal organizacional y a los servicios de emergencia?"
+  },
+  "PES-08.3": {
+    "name": "Supresión Automática de Incendios",
+    "question": "¿La organización emplea una capacidad de supresión automática de incendios para sistemas críticos cuando la instalación no está atendida de forma continua?"
+  },
+  "PES-09": {
+    "name": "Controles de Temperatura y Humedad",
+    "question": "¿La organización mantiene y monitoriza los niveles de temperatura y humedad dentro de la instalación?"
+  },
+  "PES-09.1": {
+    "name": "Monitoreo con Alarmas / Notificaciones",
+    "question": "¿La organización activa una alarma o notificación de cambios de temperatura y humedad que puedan ser potencialmente dañinos para el personal o el equipo?"
+  },
+  "PRI-01": {
+    "name": "Programa de Privacidad de Datos",
+    "question": "¿La organización facilita la implementación y operación de controles de protección de datos a lo largo del ciclo de vida de los datos para asegurar que todas las formas de Datos Personales (PD) se procesan de manera legal, justa y transparente?"
+  },
+  "PRI-05": {
+    "name": "Retención y Eliminación de Datos Personales (PD)",
+    "question": "¿La organización: (1) retiene los Datos Personales (PD), incluidos los metadatos, durante un período de tiempo definido por la organización para cumplir el propósito(s) identificado(s) en el aviso o según lo requerido por ley; (2) elimina, destruye, borra y/o anonimiza los PD, independientemente del método de almacenamiento; y (3) utiliza técnicas o métodos definidos por la organización para asegurar la eliminación o destrucción segura de los PD (incluidos originales, copias y registros archivados)?"
+  },
+  "PRI-05.5": {
+    "name": "Inventario de Datos Personales (PD)",
+    "question": "¿La organización establece y mantiene un inventario actualizado de todos los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) que recopilan, reciben, procesan, almacenan, transmiten, comparten, actualizan y/o eliminan Datos Personales (PD)?"
+  },
+  "PRI-07.1": {
+    "name": "Requisitos de Privacidad de Datos para Contratistas y Proveedores de Servicios",
+    "question": "¿La organización incluye requisitos de privacidad de datos en los contratos y otros documentos relacionados con la adquisición que establecen roles y responsabilidades de privacidad de datos para contratistas y proveedores de servicios?"
+  },
+  "PRM-01": {
+    "name": "Gestión del Portafolio de Ciberseguridad y Protección de Datos",
+    "question": "¿La organización facilita la implementación de controles de planificación de recursos relacionados con la ciberseguridad y la protección de datos que definen un plan viable para lograr los objetivos de ciberseguridad y protección de datos?"
+  },
+  "PRM-01.1": {
+    "name": "Plan Estratégico y Objetivos",
+    "question": "¿La organización establece un plan de negocio estratégico específico de ciberseguridad y protección de datos y un conjunto de objetivos para lograr ese plan?"
+  },
+  "PRM-01.2": {
+    "name": "Niveles de Madurez de Capacidad Objetivo",
+    "question": "¿La organización define e identifica los niveles de madurez de capacidad objetivo?"
+  },
+  "PRM-02": {
+    "name": "Gestión de Recursos de Ciberseguridad y Protección de Datos",
+    "question": "¿La organización aborda todas las solicitudes de planificación de capital e inversión, incluidos los recursos necesarios para implementar los programas de ciberseguridad y protección de datos, y documenta todas las excepciones a este requisito?"
+  },
+  "PRM-03": {
+    "name": "Asignación de Recursos",
+    "question": "¿La organización identifica y asigna recursos para los requisitos de gestión, operativos, técnicos y de protección de datos dentro de la planificación de procesos de negocio para proyectos / iniciativas?"
+  },
+  "PRM-04": {
+    "name": "Ciberseguridad y Protección de Datos en la Gestión de Proyectos",
+    "question": "¿La organización evalúa los controles de ciberseguridad y protección de datos en el desarrollo de proyectos de sistemas para determinar en qué medida los controles se implementan correctamente, operan según lo previsto y producen el resultado deseado con respecto al cumplimiento de los requisitos?"
+  },
+  "PRM-05": {
+    "name": "Definición de Requisitos de Ciberseguridad y Protección de Datos",
+    "question": "¿La organización identifica los componentes y funciones críticos del sistema mediante la realización de un análisis de criticidad para los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) críticos en puntos de decisión predefinidos en el Ciclo de Vida de Desarrollo Seguro (SDLC)?"
+  },
+  "PRM-06": {
+    "name": "Definición de Procesos de Negocio",
+    "question": "¿La organización define procesos de negocio con consideración de ciberseguridad y protección de datos que determina: (1) el riesgo resultante para las operaciones, activos, individuos y otras organizaciones; y (2) las necesidades de protección de la información derivadas de los procesos de negocio definidos y revisa los procesos según sea necesario, hasta obtener un conjunto alcanzable de necesidades de protección?"
+  },
+  "PRM-07": {
+    "name": "Gestión del Ciclo de Vida de Desarrollo Seguro (SDLC)",
+    "question": "¿La organización asegura que los cambios en los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) dentro del Ciclo de Vida de Desarrollo Seguro (SDLC) se controlan mediante procedimientos formales de control de cambios?"
+  },
+  "PRM-08": {
+    "name": "Gestionar el Conocimiento Organizacional",
+    "question": "¿La organización gestiona el conocimiento organizacional del personal de ciberseguridad y protección de datos?"
+  },
+  "RSK-01": {
+    "name": "Programa de Gestión de Riesgos",
+    "question": "¿La organización facilita la implementación de controles de gestión de riesgos estratégicos, operativos y tácticos?"
+  },
+  "RSK-01.1": {
+    "name": "Enmarcado del Riesgo",
+    "question": "¿La organización identifica: (1) los supuestos que afectan las evaluaciones de riesgo, la respuesta al riesgo y el monitoreo del riesgo; (2) las restricciones que afectan las evaluaciones de riesgo, la respuesta al riesgo y el monitoreo del riesgo; (3) la tolerancia al riesgo organizacional; y (4) las prioridades, beneficios y compensaciones considerados por la organización para gestionar el riesgo?"
+  },
+  "RSK-01.3": {
+    "name": "Tolerancia al Riesgo",
+    "question": "¿La organización define la tolerancia al riesgo organizacional, el rango especificado de resultados aceptables?"
+  },
+  "RSK-01.4": {
+    "name": "Umbral de Riesgo",
+    "question": "¿La organización define el umbral de riesgo organizacional, el nivel de exposición al riesgo por encima del cual se abordan los riesgos y por debajo del cual los riesgos pueden aceptarse?"
+  },
+  "RSK-01.5": {
+    "name": "Apetito de Riesgo",
+    "question": "¿La organización define el apetito de riesgo organizacional, el grado de incertidumbre que la organización está dispuesta a aceptar en anticipación de una recompensa?"
+  },
+  "RSK-02": {
+    "name": "Categorización de Seguridad Basada en el Riesgo",
+    "question": "¿La organización categoriza los Activos Tecnológicos, Aplicaciones, Servicios y/o Datos (TAASD) de acuerdo con las leyes, regulaciones y obligaciones contractuales aplicables que: (1) documentan los resultados de la categorización de seguridad (incluida la justificación de apoyo) en el plan de seguridad para los sistemas; y (2) aseguran que la decisión de categorización de seguridad es revisada y aprobada por el propietario del activo?"
+  },
+  "RSK-02.1": {
+    "name": "Priorización del Nivel de Impacto",
+    "question": "¿La organización prioriza el nivel de impacto para los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) para prevenir posibles interrupciones?"
+  },
+  "RSK-03": {
+    "name": "Identificación de Riesgos",
+    "question": "¿La organización identifica y documenta los riesgos, tanto internos como externos?"
+  },
+  "RSK-03.1": {
+    "name": "Catálogo de Riesgos",
+    "question": "¿La organización desarrolla y mantiene actualizado un catálogo de riesgos aplicables asociados con sus operaciones de negocio y tecnologías en uso?"
+  },
+  "RSK-04": {
+    "name": "Evaluación de Riesgos",
+    "question": "¿La organización realiza evaluaciones recurrentes de riesgo que incluyen la probabilidad y magnitud del daño, por acceso, uso, divulgación, interrupción, modificación o destrucción no autorizados de sus Activos Tecnológicos, Aplicaciones, Servicios y/o Datos (TAASD)?"
+  },
+  "RSK-04.1": {
+    "name": "Registro de Riesgos",
+    "question": "¿La organización mantiene un registro de riesgos que facilita el monitoreo y la presentación de informes de riesgos?"
+  },
+  "RSK-05": {
+    "name": "Clasificación de Riesgos",
+    "question": "¿La organización identifica y asigna una clasificación de riesgo a las vulnerabilidades de seguridad recién descubiertas que se basa en prácticas reconocidas por la industria?"
+  },
+  "RSK-06": {
+    "name": "Remediación de Riesgos",
+    "question": "¿La organización remedia los riesgos a un nivel aceptable?"
+  },
+  "RSK-06.1": {
+    "name": "Respuesta al Riesgo",
+    "question": "¿La organización responde a los hallazgos de las evaluaciones de ciberseguridad y protección de datos, incidentes y auditorías para asegurar que se ha realizado la remediación adecuada?"
+  },
+  "RSK-06.2": {
+    "name": "Contramedidas Compensatorias",
+    "question": "¿La organización identifica e implementa contramedidas compensatorias para reducir el riesgo y la exposición a las amenazas?"
+  },
+  "RSK-07": {
+    "name": "Actualización de la Evaluación de Riesgos",
+    "question": "¿La organización actualiza rutinariamente las evaluaciones de riesgo y reacciona en consecuencia al identificar nuevas vulnerabilidades de seguridad, incluido el uso de fuentes externas para información sobre vulnerabilidades de seguridad?"
+  },
+  "RSK-08": {
+    "name": "Análisis de Impacto en el Negocio (BIA)",
+    "question": "¿La organización realiza un Análisis de Impacto en el Negocio (BIA) para identificar y evaluar los riesgos de ciberseguridad y protección de datos?"
+  },
+  "RSK-09": {
+    "name": "Plan de Gestión de Riesgos de la Cadena de Suministro (SCRM)",
+    "question": "¿La organización desarrolla un plan para la Gestión de Riesgos de la Cadena de Suministro (SCRM) asociado con el desarrollo, adquisición, mantenimiento y eliminación de los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS), incluida la documentación de las acciones de mitigación seleccionadas y el monitoreo del desempeño frente a esos planes?"
+  },
+  "RSK-09.1": {
+    "name": "Evaluación de Riesgos de la Cadena de Suministro",
+    "question": "¿La organización evalúa periódicamente los riesgos de la cadena de suministro asociados con los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS)?"
+  },
+  "RSK-10": {
+    "name": "Evaluación de Impacto en la Protección de Datos (DPIA)",
+    "question": "¿La organización realiza una Evaluación de Impacto en la Protección de Datos (DPIA) sobre los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) que almacenan, procesan y/o transmiten Datos Personales (PD) para identificar y remediar los riesgos razonablemente esperados?"
+  },
+  "RSK-12": {
+    "name": "Cultura de Riesgo",
+    "question": "¿La organización asegura que los equipos están comprometidos con una cultura que considera y comunica el riesgo relacionado con la tecnología?"
+  },
+  "SEA-01": {
+    "name": "Principios de Ingeniería Segura",
+    "question": "¿La organización facilita la implementación de prácticas de ciberseguridad y protección de datos reconocidas por la industria en la especificación, diseño, desarrollo, implementación y modificación de los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS)?"
+  },
+  "SEA-01.1": {
+    "name": "Gestión Centralizada de los Controles de Ciberseguridad y Protección de Datos",
+    "question": "¿La organización gestiona centralizadamente la gestión e implementación a nivel de toda la organización de los controles de ciberseguridad y protección de datos y los procesos relacionados?"
+  },
+  "SEA-01.2": {
+    "name": "Logro de los Requisitos de Resiliencia",
+    "question": "¿La organización logra los requisitos de resiliencia en situaciones normales y adversas?"
+  },
+  "SEA-02": {
+    "name": "Alineación con la Arquitectura Empresarial",
+    "question": "¿La organización desarrolla una arquitectura empresarial, alineada con las prácticas líderes reconocidas por la industria, con consideración de los principios de ciberseguridad y protección de datos que aborda el riesgo para las operaciones, activos, individuos y otras organizaciones?"
+  },
+  "SEA-02.1": {
+    "name": "Terminología Estandarizada",
+    "question": "¿La organización estandariza la terminología de tecnología y procesos para reducir la confusión entre grupos y departamentos?"
+  },
+  "SEA-03": {
+    "name": "Arquitectura de Defensa en Profundidad (DiD)",
+    "question": "¿La organización implementa funciones de seguridad como una estructura en capas que minimiza las interacciones entre capas del diseño y evita cualquier dependencia por parte de las capas inferiores de la funcionalidad o corrección de las capas superiores?"
+  },
+  "SEA-03.1": {
+    "name": "Particionamiento de Sistemas",
+    "question": "¿La organización particiona los sistemas para que las particiones residan en dominios o entornos físicos separados?"
+  },
+  "SEA-07": {
+    "name": "Análisis de Fallos Predecibles",
+    "question": "¿La organización determina el Tiempo Medio hasta el Fallo (MTTF) para los componentes del sistema en entornos de operación específicos?"
+  },
+  "SEA-07.1": {
+    "name": "Gestión del Ciclo de Vida de la Tecnología",
+    "question": "¿La organización gestiona los ciclos de vida útiles de los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS)?"
+  },
+  "OPS-01": {
+    "name": "Seguridad de las Operaciones",
+    "question": "¿La organización facilita la implementación de controles de seguridad operacional?"
+  },
+  "OPS-01.1": {
+    "name": "Procedimientos Operativos Estandarizados (SOP)",
+    "question": "¿La organización identifica y documenta Procedimientos Operativos Estandarizados (SOP), o documentación similar, para permitir la ejecución adecuada de las tareas diarias / asignadas?"
+  },
+  "OPS-03": {
+    "name": "Entrega de Servicios\n(Soporte de Procesos de Negocio)",
+    "question": "¿La organización define procesos de negocio de soporte e implementa la gobernanza y gestión de servicios adecuadas para asegurar la planificación, entrega y soporte adecuados de sus capacidades tecnológicas que soportan funciones de negocio, fuerza laboral y/o clientes, basándose en estándares reconocidos por la industria para lograr los objetivos específicos del área de proceso?"
+  },
+  "SAT-01": {
+    "name": "Fuerza Laboral con Mentalidad de Ciberseguridad y Protección de Datos",
+    "question": "¿La organización facilita la implementación de controles de desarrollo y concienciación de la fuerza laboral de seguridad?"
+  },
+  "SAT-02": {
+    "name": "Formación en Concienciación de Ciberseguridad y Protección de Datos",
+    "question": "¿La organización proporciona a todos los empleados y contratistas una educación y formación de concienciación adecuadas y relevantes para su función laboral?"
+  },
+  "SAT-02.2": {
+    "name": "Ingeniería Social y Minería Social",
+    "question": "¿La organización incluye formación de concienciación sobre el reconocimiento y la notificación de instancias potenciales y reales de ingeniería social y minería social?"
+  },
+  "SAT-03": {
+    "name": "Formación en Ciberseguridad y Protección de Datos Basada en Roles",
+    "question": "¿La organización proporciona formación relacionada con ciberseguridad y protección de datos basada en roles: (1) antes de autorizar el acceso al sistema o realizar las tareas asignadas; (2) cuando lo requieren los cambios en el sistema; y (3) anualmente a partir de entonces?"
+  },
+  "SAT-03.1": {
+    "name": "Ejercicios Prácticos",
+    "question": "¿La organización incluye ejercicios prácticos en la formación de ciberseguridad y protección de datos que refuerzan los objetivos de la formación?"
+  },
+  "SAT-03.2": {
+    "name": "Comunicaciones Sospechosas y Comportamiento Anómalo del Sistema",
+    "question": "¿La organización proporciona formación al personal sobre los indicadores de malware definidos por la organización para reconocer comunicaciones sospechosas y comportamiento anómalo?"
+  },
+  "SAT-03.3": {
+    "name": "Almacenamiento, Manejo y Procesamiento de Datos Sensibles / Regulados",
+    "question": "¿La organización asegura que cada usuario que accede a un sistema que procesa, almacena o transmite datos sensibles/regulados está formalmente formado en los requisitos de manejo de datos?"
+  },
+  "SAT-03.5": {
+    "name": "Usuarios Privilegiados",
+    "question": "¿La organización proporciona formación específica para usuarios privilegiados para asegurar que los usuarios privilegiados entienden sus roles y responsabilidades únicos?"
+  },
+  "SAT-03.6": {
+    "name": "Entorno de Amenazas Cibernéticas",
+    "question": "¿La organización proporciona formación de concienciación en ciberseguridad y protección de datos basada en roles que está actualizada y es relevante para las amenazas cibernéticas que los usuarios podrían encontrar en las operaciones comerciales diarias?"
+  },
+  "SAT-03.7": {
+    "name": "Educación Profesional Continua (CPE) - Personal de Ciberseguridad y Protección de Datos",
+    "question": "¿La organización asegura que el personal de ciberseguridad y protección de datos recibe formación de Educación Profesional Continua (CPE) para mantener la vigencia y competencia con las prácticas seguras reconocidas por la industria que son pertinentes para sus roles y responsabilidades asignados?"
+  },
+  "SAT-03.8": {
+    "name": "Educación Profesional Continua (CPE) - Personal de DevOps",
+    "question": "¿La organización asegura que el personal de desarrollo y operaciones de aplicaciones (DevOps) recibe formación de Educación Profesional Continua (CPE) sobre Prácticas de Desarrollo Seguro de Software (SSDP) para abordar adecuadamente las amenazas en evolución?"
+  },
+  "SAT-03.9": {
+    "name": "Formación en Contrainteligencia",
+    "question": "¿La organización proporciona formación especializada en concienciación de contrainteligencia que permite al personal recopilar, interpretar y actuar sobre una variedad de fuentes de datos que pueden señalar la presencia de un actor hostil?"
+  },
+  "TDA-01": {
+    "name": "Desarrollo y Adquisición de Tecnología",
+    "question": "¿La organización facilita la implementación de estrategias de desarrollo y adquisición adaptadas, herramientas contractuales y métodos de adquisición para satisfacer necesidades de negocio únicas?"
+  },
+  "TDA-01.1": {
+    "name": "Gestión de Productos",
+    "question": "¿La organización diseña e implementa procesos de gestión de productos para gobernar proactivamente el diseño, desarrollo y producción de los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) a lo largo del Ciclo de Vida de Desarrollo de Sistemas (SDLC) para: (1) mejorar la funcionalidad; (2) mejorar las capacidades de seguridad y resiliencia; (3) corregir deficiencias de seguridad; y (4) cumplir con las obligaciones legales, regulatorias y/o contractuales aplicables?"
+  },
+  "TDA-01.2": {
+    "name": "Mecanismos de Integridad para Actualizaciones de Software / Firmware",
+    "question": "¿La organización utiliza mecanismos de validación de integridad para las actualizaciones de seguridad?"
+  },
+  "TDA-02": {
+    "name": "Requisitos de Seguridad del Producto Mínimo Viable (MVP)",
+    "question": "¿La organización diseña, desarrolla y produce los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) de tal manera que las especificaciones técnicas y funcionales basadas en el riesgo aseguran que los criterios del Producto Mínimo Viable (MVP) establecen un nivel adecuado de seguridad y resiliencia basado en los riesgos y amenazas aplicables?"
+  },
+  "TDA-02.1": {
+    "name": "Puertos, Protocolos y Servicios en Uso",
+    "question": "¿La organización requiere que los desarrolladores de los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) identifiquen temprano en el Ciclo de Vida de Desarrollo Seguro (SDLC) las funciones, puertos, protocolos y servicios previstos para su uso?"
+  },
+  "TDA-02.3": {
+    "name": "Métodos, Técnicas y Procesos de Desarrollo",
+    "question": "¿La organización requiere que los desarrolladores de software aseguren que sus procesos de desarrollo de software emplean prácticas seguras reconocidas por la industria para la programación segura, métodos de ingeniería, procesos de control de calidad y técnicas de validación para minimizar el software defectuoso y/o malformado?"
+  },
+  "TDA-02.5": {
+    "name": "Identificación y Justificación de Puertos, Protocolos y Servicios",
+    "question": "¿La organización requiere que los propietarios de procesos identifiquen, documenten y justifiquen la necesidad de negocio de los puertos, protocolos y otros servicios necesarios para operar sus soluciones tecnológicas?"
+  },
+  "TDA-02.6": {
+    "name": "Puertos, Protocolos y Servicios Inseguros",
+    "question": "¿La organización mitiga el riesgo asociado con el uso de puertos, protocolos y servicios inseguros necesarios para operar soluciones tecnológicas?"
+  },
+  "TDA-04.2": {
+    "name": "Lista de Materiales de Software (SBOM)",
+    "question": "¿La organización genera, u obtiene, una Lista de Materiales de Software (SBOM) para los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) que enumera los paquetes de software en uso, incluidas las versiones y las licencias aplicables?"
+  },
+  "TDA-05": {
+    "name": "Arquitectura y Diseño del Desarrollador",
+    "question": "¿La organización requiere que los desarrolladores de los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) produzcan una especificación de diseño y una arquitectura de seguridad que: (1) sea consistente con y apoye su arquitectura de seguridad, la cual se establece dentro y es una parte integrada de su arquitectura empresarial; (2) describa de manera precisa y completa la funcionalidad de seguridad requerida y la asignación de los controles de seguridad entre los componentes físicos y lógicos; y (3) exprese cómo las funciones, mecanismos y servicios de seguridad individuales trabajan juntos para proporcionar las capacidades de seguridad requeridas y un enfoque unificado de protección?"
+  },
+  "TDA-06": {
+    "name": "Prácticas de Desarrollo Seguro de Software (SSDP)",
+    "question": "¿La organización desarrolla aplicaciones basadas en Prácticas de Desarrollo Seguro de Software (SSDP)?"
+  },
+  "TDA-06.1": {
+    "name": "Análisis de Criticidad",
+    "question": "¿La organización requiere que el desarrollador del Activo Tecnológico, Aplicación y/o Servicio (TAAS) realice un análisis de criticidad en puntos de decisión definidos por la organización en el Ciclo de Vida de Desarrollo Seguro (SDLC)?"
+  },
+  "TDA-06.2": {
+    "name": "Modelado de Amenazas",
+    "question": "¿La organización realiza modelado de amenazas y otras técnicas de diseño seguro, para asegurar que las amenazas al software y las soluciones se identifican y se tienen en cuenta?"
+  },
+  "TDA-06.3": {
+    "name": "Modelo de Madurez de Aseguramiento de Software (SAMM)",
+    "question": "¿La organización utiliza un Modelo de Madurez de Aseguramiento de Software (SAMM) para gobernar un ciclo de vida de desarrollo seguro para el desarrollo de los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS)?"
+  },
+  "TDA-06.5": {
+    "name": "Revisión del Diseño de Software",
+    "question": "¿La organización tiene una revisión independiente del diseño del software para confirmar que se cumplen todos los requisitos de ciberseguridad y protección de datos y que los riesgos identificados se abordan satisfactoriamente?"
+  },
+  "TDA-07": {
+    "name": "Entornos de Desarrollo Seguro",
+    "question": "¿La organización mantiene una red de desarrollo segmentada para asegurar un entorno de desarrollo seguro?"
+  },
+  "TDA-08": {
+    "name": "Separación de Entornos de Desarrollo, Pruebas y Operaciones",
+    "question": "¿La organización gestiona entornos separados de desarrollo, pruebas y operaciones para reducir los riesgos de acceso o cambios no autorizados al entorno operativo y para asegurar que no haya impacto en los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) de producción?"
+  },
+  "TDA-09": {
+    "name": "Pruebas de Ciberseguridad y Protección de Datos a lo Largo del Desarrollo",
+    "question": "¿La organización requiere que los desarrolladores/integradores de sistemas consulten con el personal de ciberseguridad y protección de datos para: (1) crear e implementar un plan de Pruebas y Evaluación de Seguridad (ST&E), o una capacidad similar; (2) implementar un proceso verificable de remediación de defectos para corregir las debilidades y deficiencias identificadas durante el proceso de pruebas y evaluación de seguridad; y (3) documentar los resultados de los procesos de pruebas/evaluación de seguridad y remediación de defectos?"
+  },
+  "TDA-09.1": {
+    "name": "Plan de Monitoreo Continuo",
+    "question": "¿La organización requiere que los desarrolladores de los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) produzcan un plan para el monitoreo continuo de la efectividad de los controles de ciberseguridad y protección de datos?"
+  },
+  "TDA-09.2": {
+    "name": "Análisis Estático de Código",
+    "question": "¿La organización requiere que los desarrolladores de los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) empleen herramientas de análisis estático de código para identificar y remediar defectos comunes y documentar los resultados del análisis?"
+  },
+  "TDA-09.3": {
+    "name": "Análisis Dinámico de Código",
+    "question": "¿La organización requiere que los desarrolladores de los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) empleen herramientas de análisis dinámico de código para identificar y remediar defectos comunes y documentar los resultados del análisis?"
+  },
+  "TDA-09.5": {
+    "name": "Pruebas de Penetración de Aplicaciones",
+    "question": "¿La organización realiza pruebas de penetración a nivel de aplicación de los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) personalizados?"
+  },
+  "TDA-09.6": {
+    "name": "Configuraciones Seguras por Defecto",
+    "question": "¿La organización implementa configuraciones seguras por defecto para reducir la probabilidad de que los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) se desplieguen con configuraciones de seguridad débiles que pondrían a los TAAS en un mayor riesgo de compromiso?"
+  },
+  "TDA-11": {
+    "name": "Manipulación y Falsificación de Productos (PTC)",
+    "question": "¿La organización mantiene la conciencia de la autenticidad de los componentes mediante el desarrollo e implementación de prácticas de Manipulación y Falsificación de Productos (PTC) que incluyen los medios para detectar y prevenir componentes falsificados?"
+  },
+  "TDA-12": {
+    "name": "Desarrollo Personalizado de Componentes Críticos",
+    "question": "¿La organización desarrolla personalizadamente componentes críticos del sistema, cuando las soluciones comerciales listas para usar (COTS) no están disponibles?"
+  },
+  "TDA-14": {
+    "name": "Gestión de Configuración del Desarrollador",
+    "question": "¿La organización requiere que los desarrolladores e integradores de sistemas realicen la gestión de configuración durante el diseño, desarrollo, implementación y operación del sistema?"
+  },
+  "TDA-14.1": {
+    "name": "Verificación de Integridad de Software / Firmware",
+    "question": "¿La organización requiere que los desarrolladores de los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) habiliten la verificación de integridad de los componentes de software y firmware?"
+  },
+  "TDA-14.2": {
+    "name": "Verificación de Integridad de Hardware",
+    "question": "¿La organización requiere que los desarrolladores de los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) habiliten la verificación de integridad de los componentes de hardware?"
+  },
+  "TDA-15": {
+    "name": "Análisis de Amenazas y Remediación de Defectos del Desarrollador",
+    "question": "¿La organización requiere que los desarrolladores e integradores de sistemas creen un plan de Pruebas y Evaluación de Seguridad (ST&E) e implementen el plan bajo la supervisión de una parte independiente?"
+  },
+  "TDA-16": {
+    "name": "Formación Proporcionada por el Desarrollador",
+    "question": "¿La organización requiere que los desarrolladores de los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) proporcionen formación sobre el uso y operación correctos del Activo Tecnológico, Aplicación y/o Servicio (TAAS)?"
+  },
+  "TDA-17": {
+    "name": "Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) No Soportados",
+    "question": "¿La organización previene los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) no soportados mediante: (1) la eliminación y/o reemplazo de los TAAS cuando el soporte para los componentes ya no está disponible por parte del desarrollador, proveedor o fabricante; y (2) la exigencia de justificación y aprobación documentada para el uso continuado de TAAS no soportados necesarios para satisfacer necesidades de misión/negocio?"
+  },
+  "TPM-01": {
+    "name": "Gestión de Terceros",
+    "question": "¿La organización facilita la implementación de controles de gestión de terceros?"
+  },
+  "TPM-01.1": {
+    "name": "Inventarios de Terceros",
+    "question": "¿La organización mantiene una lista actual, precisa y completa de los Proveedores de Servicios Externos (ESP) que pueden impactar potencialmente la Confidencialidad, Integridad, Disponibilidad y/o Seguridad (CIAS) de sus Activos Tecnológicos, Aplicaciones, Servicios y/o Datos (TAASD)?"
+  },
+  "TPM-02": {
+    "name": "Evaluaciones de Criticidad de Terceros",
+    "question": "¿La organización identifica, prioriza y evalúa a los proveedores y socios de los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) críticos utilizando un proceso de evaluación de riesgos de la cadena de suministro en relación con su importancia para apoyar la prestación de servicios de alto valor?"
+  },
+  "TPM-03": {
+    "name": "Gestión de Riesgos de la Cadena de Suministro (SCRM)",
+    "question": "¿La organización: (1) evalúa los riesgos y amenazas de seguridad asociados con las cadenas de suministro de los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS); y (2) toma las acciones de remediación adecuadas para minimizar la exposición de la organización a esos riesgos y amenazas, según sea necesario?"
+  },
+  "TPM-03.2": {
+    "name": "Limitar el Daño Potencial",
+    "question": "¿La organización utiliza salvaguardas de seguridad para limitar el daño de adversarios potenciales que identifican y atacan su cadena de suministro?"
+  },
+  "TPM-03.3": {
+    "name": "Procesos para Abordar Debilidades o Deficiencias",
+    "question": "¿La organización aborda las debilidades o deficiencias identificadas en la seguridad de la cadena de suministro?"
+  },
+  "TPM-04": {
+    "name": "Servicios de Terceros",
+    "question": "¿La organización mitiga los riesgos asociados con el acceso de terceros a sus Activos Tecnológicos, Aplicaciones, Servicios y/o Datos (TAASD)?"
+  },
+  "TPM-04.1": {
+    "name": "Evaluaciones y Aprobaciones de Riesgos de Terceros",
+    "question": "¿La organización realiza una evaluación de riesgos antes de la adquisición o subcontratación de Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) relacionados con la tecnología?"
+  },
+  "TPM-04.2": {
+    "name": "Requisitos de Conectividad Externa - Identificación de Puertos, Protocolos y Servicios",
+    "question": "¿La organización requiere que los Proveedores de Servicios Externos (ESP) identifiquen y documenten la necesidad de negocio de los puertos, protocolos y otros servicios que requieren para operar sus Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS)?"
+  },
+  "TPM-04.3": {
+    "name": "Conflictos de Intereses",
+    "question": "¿La organización asegura que los intereses de los proveedores de servicios externos son consistentes con y reflejan los intereses organizacionales?"
+  },
+  "TPM-04.4": {
+    "name": "Ubicaciones de Procesamiento, Almacenamiento y Servicio de Terceros",
+    "question": "¿La organización restringe la ubicación del procesamiento/almacenamiento de información en función de los requisitos de negocio?"
+  },
+  "TPM-05": {
+    "name": "Requisitos Contractuales de Terceros",
+    "question": "¿La organización exige requisitos contractuales para los requisitos de ciberseguridad y protección de datos con terceros, reflejando sus necesidades de proteger sus Activos Tecnológicos, Aplicaciones, Servicios y/o Datos (TAASD)?"
+  },
+  "TPM-05.2": {
+    "name": "Requisitos de Flujo Descendente en Contratos",
+    "question": "¿La organización asegura que los requisitos de ciberseguridad y protección de datos se incluyen en los contratos que fluyen hacia abajo a los subcontratistas y proveedores aplicables?"
+  },
+  "TPM-05.3": {
+    "name": "Prácticas de Autenticación de Terceros",
+    "question": "¿La organización asegura que los Proveedores de Servicios Externos (ESP) utilizan factores de autenticación únicos para cada uno de sus clientes?"
+  },
+  "TPM-05.4": {
+    "name": "Matriz Responsable, Aprobador, de Soporte, Consultado e Informado (RASCI)",
+    "question": "¿La organización documenta y mantiene una matriz Responsable, Aprobador, de Soporte, Consultado e Informado (RASCI), o documentación similar, para delimitar la asignación de los controles de ciberseguridad y protección de datos entre las partes interesadas internas y los Proveedores de Servicios Externos (ESP)?"
+  },
+  "TPM-05.5": {
+    "name": "Revisión del Alcance de Terceros",
+    "question": "¿La organización realiza una validación recurrente de la matriz Responsable, Aprobador, de Soporte, Consultado e Informado (RASCI), o documentación similar, para asegurar que las asignaciones de los controles de ciberseguridad y protección de datos reflejan con precisión las prácticas de negocio, obligaciones de cumplimiento, tecnologías y partes interesadas actuales?"
+  },
+  "TPM-05.6": {
+    "name": "Declaración de Primera Parte (1PD)",
+    "question": "¿La organización obtiene una Declaración de Primera Parte (1PD) de los Proveedores de Servicios Externos (ESP) aplicables que proporciona garantía de cumplimiento con las obligaciones legales, regulatorias y contractuales especificadas para los controles de ciberseguridad y protección de datos, incluidos los requisitos de flujo descendente a los subcontratistas?"
+  },
+  "TPM-05.7": {
+    "name": "Cláusulas de Rescisión",
+    "question": "¿La organización incluye \"cláusulas de rescisión\" dentro de los contratos por incumplimiento de los criterios contractuales para los controles de ciberseguridad y/o protección de datos?"
+  },
+  "TPM-06": {
+    "name": "Seguridad del Personal de Terceros",
+    "question": "¿La organización controla los requisitos de seguridad del personal, incluidos los roles y responsabilidades de seguridad para los proveedores externos?"
+  },
+  "TPM-08": {
+    "name": "Revisión de los Servicios de Terceros",
+    "question": "¿La organización monitoriza, revisa y audita regularmente a los Proveedores de Servicios Externos (ESP) para comprobar el cumplimiento de los requisitos contractuales establecidos para los controles de ciberseguridad y protección de datos?"
+  },
+  "TPM-09": {
+    "name": "Remediación de Deficiencias de Terceros",
+    "question": "¿La organización aborda las debilidades o deficiencias en los elementos de la cadena de suministro identificadas durante las evaluaciones independientes u organizacionales de dichos elementos?"
+  },
+  "TPM-10": {
+    "name": "Gestión de Cambios en los Servicios de Terceros",
+    "question": "¿La organización controla los cambios en los servicios por parte de los proveedores, teniendo en cuenta la criticidad de los Activos Tecnológicos, Aplicaciones, Servicios y/o Datos (TAASD) de negocio que están en el alcance del tercero?"
+  },
+  "TPM-11": {
+    "name": "Capacidades de Respuesta a Incidentes y Recuperación de Terceros",
+    "question": "¿La organización asegura que la planificación y las pruebas de respuesta/recuperación se realizan con los proveedores/suministradores críticos?"
+  },
+  "THR-01": {
+    "name": "Programa de Inteligencia de Amenazas",
+    "question": "¿La organización implementa un programa de inteligencia de amenazas que incluye una capacidad de intercambio de información entre organizaciones que puede influir en el desarrollo de las arquitecturas de sistema y seguridad, la selección de soluciones de seguridad, el monitoreo, la caza de amenazas, la respuesta y las actividades de recuperación?"
+  },
+  "THR-02": {
+    "name": "Indicadores de Exposición (IOE)",
+    "question": "¿La organización desarrolla Indicadores de Exposición (IOE) para comprender los vectores de ataque potenciales que los atacantes podrían utilizar para atacar a la organización?"
+  },
+  "THR-03": {
+    "name": "Fuentes de Inteligencia de Amenazas",
+    "question": "¿La organización mantiene la conciencia situacional de las vulnerabilidades y amenazas en evolución aprovechando el conocimiento de las tácticas, técnicas y procedimientos de los atacantes para facilitar la implementación de controles preventivos y compensatorios?"
+  },
+  "THR-04": {
+    "name": "Programa de Amenazas Internas",
+    "question": "¿La organización implementa un programa de amenazas internas que incluye un equipo interdisciplinario de manejo de incidentes de amenazas internas?"
+  },
+  "THR-05": {
+    "name": "Concienciación sobre Amenazas Internas",
+    "question": "¿La organización utiliza formación de concienciación de seguridad sobre el reconocimiento y la notificación de posibles indicadores de amenazas internas?"
+  },
+  "THR-06": {
+    "name": "Programa de Divulgación de Vulnerabilidades (VDP)",
+    "question": "¿La organización establece un Programa de Divulgación de Vulnerabilidades (VDP) para asistir con el desarrollo y mantenimiento seguros de los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS) que recibe información no solicitada del público sobre vulnerabilidades en los TAAS organizacionales?"
+  },
+  "THR-07": {
+    "name": "Caza de Amenazas",
+    "question": "¿La organización realiza caza de amenazas cibernéticas que utiliza Indicadores de Compromiso (IoC) para detectar, rastrear y interrumpir amenazas que evaden los controles de seguridad existentes?"
+  },
+  "THR-09": {
+    "name": "Catálogo de Amenazas",
+    "question": "¿La organización desarrolla y mantiene actualizado un catálogo de amenazas internas y externas aplicables a la organización, tanto naturales como provocadas por el hombre?"
+  },
+  "THR-10": {
+    "name": "Análisis de Amenazas",
+    "question": "¿La organización identifica, evalúa, prioriza y documenta el impacto(s) potencial(es) y la probabilidad(es) de las amenazas internas y externas aplicables?"
+  },
+  "VPM-01": {
+    "name": "Programa de Gestión de Vulnerabilidades y Parches (VPMP)",
+    "question": "¿La organización facilita la implementación y el monitoreo de los controles de gestión de vulnerabilidades?"
+  },
+  "VPM-01.1": {
+    "name": "Alcance de la Superficie de Ataque",
+    "question": "¿La organización define y gestiona el alcance para sus actividades de gestión de la superficie de ataque?"
+  },
+  "VPM-02": {
+    "name": "Proceso de Remediación de Vulnerabilidades",
+    "question": "¿La organización asegura que las vulnerabilidades se identifican, rastrean y remedian adecuadamente?"
+  },
+  "VPM-03": {
+    "name": "Clasificación de Vulnerabilidades",
+    "question": "¿La organización identifica y asigna una clasificación de riesgo a las vulnerabilidades de seguridad recién descubiertas utilizando fuentes externas de confianza para información sobre vulnerabilidades de seguridad?"
+  },
+  "VPM-04": {
+    "name": "Actividades Continuas de Remediación de Vulnerabilidades",
+    "question": "¿La organización aborda las nuevas amenazas y vulnerabilidades de forma continua y asegura que los activos están protegidos contra ataques conocidos?"
+  },
+  "VPM-04.1": {
+    "name": "Versiones Estables",
+    "question": "¿La organización instala la última versión estable de cualquier software y/o actualizaciones relacionadas con la seguridad en todos los sistemas aplicables?"
+  },
+  "VPM-04.2": {
+    "name": "Remediación de Defectos con Datos Personales (PD)",
+    "question": "¿La organización identifica y corrige los defectos relacionados con la recopilación, uso, procesamiento o diseminación de Datos Personales (PD)?"
+  },
+  "VPM-05": {
+    "name": "Parcheo de Software y Firmware",
+    "question": "¿La organización realiza el parcheo de software para todos los sistemas, aplicaciones y firmware desplegados?"
+  },
+  "VPM-05.1": {
+    "name": "Gestión Centralizada de los Procesos de Remediación de Defectos",
+    "question": "¿La organización gestiona centralizadamente el proceso de remediación de defectos?"
+  },
+  "VPM-05.2": {
+    "name": "Estado Automatizado de la Remediación",
+    "question": "¿La organización utiliza mecanismos automatizados para determinar el estado de los componentes del sistema con respecto a la remediación de defectos?"
+  },
+  "VPM-05.4": {
+    "name": "Actualizaciones Automatizadas de Software y Firmware",
+    "question": "¿La organización utiliza mecanismos automatizados para instalar las últimas versiones estables de las actualizaciones de software y firmware relevantes para la seguridad?"
+  },
+  "VPM-06": {
+    "name": "Escaneo de Vulnerabilidades",
+    "question": "¿La organización detecta vulnerabilidades y errores de configuración mediante el escaneo rutinario de vulnerabilidades de sistemas y aplicaciones?"
+  },
+  "VPM-06.6": {
+    "name": "Escaneos de Evaluación de Vulnerabilidades Externas",
+    "question": "¿La organización realiza escaneos trimestrales de vulnerabilidades externas (desde fuera de su red mirando hacia dentro) a través de un proveedor de servicios de vulnerabilidades de confianza, que incluyen reescaneos hasta obtener resultados aprobatorios o hasta que todas las vulnerabilidades \"altas\" se resuelven, según lo definido por el Sistema de Puntuación de Vulnerabilidades Comunes (CVSS)?"
+  },
+  "VPM-06.7": {
+    "name": "Escaneos de Evaluación de Vulnerabilidades Internas",
+    "question": "¿La organización realiza escaneos trimestrales de vulnerabilidades internas, que incluyen todos los segmentos de su red interna, así como reescaneos hasta obtener resultados aprobatorios o hasta que todas las vulnerabilidades \"altas\" se resuelven, según lo definido por el Sistema de Puntuación de Vulnerabilidades Comunes (CVSS)?"
+  },
+  "VPM-07": {
+    "name": "Pruebas de Penetración",
+    "question": "¿La organización realiza pruebas de penetración en los Activos Tecnológicos, Aplicaciones y/o Servicios (TAAS)?"
+  },
+  "WEB-03": {
+    "name": "Cortafuegos de Aplicaciones Web (WAF)",
+    "question": "¿La organización despliega Cortafuegos de Aplicaciones Web (WAF) para proporcionar protección de defensa en profundidad contra amenazas específicas de aplicaciones?"
+  },
+  "WEB-07": {
+    "name": "Estándar de Seguridad Web",
+    "question": "¿La organización asegura que el Estándar de Verificación de Seguridad de Aplicaciones del Open Web Application Security Project (OWASP) se incorpora en su proceso de Ciclo de Vida de Desarrollo de Sistemas Seguros (SSDLC)?"
+  },
+  "WEB-08": {
+    "name": "Marco de Aplicaciones Web",
+    "question": "¿La organización asegura que se utiliza un marco de aplicaciones web robusto para ayudar en el desarrollo de aplicaciones web seguras, incluidos servicios web, recursos web y API web?"
+  }
+}
