@@ -312,20 +312,20 @@ tailwind.config = {
     <!-- Legend -->
     <div class="mt-4 pt-3 border-t border-slate-700/50 grid grid-cols-2 md:grid-cols-4 gap-3 text-[10px]">
       <div class="flex items-center gap-2">
-        <span class="text-slate-400">📊 Score:</span>
-        <span class="text-slate-300">Impact ÷ Effort (higher = prioritize first)</span>
+        <span class="text-slate-400">📊 <span data-i18n="legend_score_label">Score:</span></span>
+        <span class="text-slate-300" data-i18n="legend_score_desc">Impact ÷ Effort (higher = prioritize first)</span>
       </div>
       <div class="flex items-center gap-2">
-        <span class="text-slate-400">⏱️ Time:</span>
-        <span class="text-slate-300">Critical=15d · High=30d · Medium=60d · Low=90d</span>
+        <span class="text-slate-400">⏱️ <span data-i18n="legend_time_label">Time:</span></span>
+        <span class="text-slate-300" data-i18n="legend_time_desc">Critical=15d · High=30d · Medium=60d · Low=90d</span>
       </div>
       <div class="flex items-center gap-2">
-        <span class="text-slate-400">💰 Cost:</span>
-        <span class="text-slate-300">Low=$ · Medium=$$ · High=$$$</span>
+        <span class="text-slate-400">💰 <span data-i18n="legend_cost_label">Cost:</span></span>
+        <span class="text-slate-300" data-i18n="legend_cost_desc">Low=$ · Medium=$$ · High=$$$</span>
       </div>
       <div class="flex items-center gap-2">
-        <span class="text-slate-400">🎯 Strategy:</span>
-        <span class="text-slate-300">Solve Quick Wins first → build momentum</span>
+        <span class="text-slate-400">🎯 <span data-i18n="legend_strategy_label">Strategy:</span></span>
+        <span class="text-slate-300" data-i18n="legend_strategy_desc">Solve Quick Wins first → build momentum</span>
       </div>
     </div>
   </div>
@@ -413,23 +413,23 @@ tailwind.config = {
         </button>
       </div>
       <div class="flex items-center gap-2 flex-wrap">
-        <input id="filter-search" type="text" oninput="renderFindings()" placeholder="🔍 Search..." 
+        <input id="filter-search" type="text" oninput="renderFindings()" placeholder="🔍 Search..." data-i18n-placeholder="search_placeholder"
           class="px-3 py-1.5 bg-slate-900 border border-slate-600 rounded text-xs w-48 focus:border-indigo-400 outline-none">
         <select id="filter-severity" onchange="renderFindings()" class="px-2 py-1.5 bg-slate-900 border border-slate-600 rounded text-xs">
           <option value="" data-i18n="all_severities">All Severities</option>
-          <option value="critical"> Critical</option>
-          <option value="high">🟠 High</option>
-          <option value="medium">🟡 Medium</option>
-          <option value="low">🟢 Low</option>
+          <option value="critical" data-i18n="chart_sev_critical">Critical</option>
+          <option value="high" data-i18n="chart_sev_high">High</option>
+          <option value="medium" data-i18n="chart_sev_medium">Medium</option>
+          <option value="low" data-i18n="chart_sev_low">Low</option>
         </select>
         <select id="filter-status" onchange="renderFindings()" class="px-2 py-1.5 bg-slate-900 border border-slate-600 rounded text-xs">
           <option value="" data-i18n="all_statuses">All Statuses</option>
-          <option value="open">Open</option>
-          <option value="assigned">Assigned</option>
-          <option value="in_progress">In Progress</option>
-          <option value="pending_validation">Pending Validation</option>
-          <option value="closed">Closed</option>
-          <option value="risk_accepted">Risk Accepted</option>
+          <option value="open" data-i18n="status_open">Open</option>
+          <option value="assigned" data-i18n="status_assigned">Assigned</option>
+          <option value="in_progress" data-i18n="status_in_progress">In Progress</option>
+          <option value="pending_validation" data-i18n="status_pending_validation">Pending Validation</option>
+          <option value="closed" data-i18n="status_closed">Closed</option>
+          <option value="risk_accepted" data-i18n="status_risk_accepted">Risk Accepted</option>
         </select>
         <!-- M3: plan-specific filters, distinct from the legacy status
              filter above — overdue/due_soon/blocked/unassigned are DERIVED
@@ -595,6 +595,49 @@ function escapeHTML(str) {
 
 // GLOBAL STATE
 // ══════════════════════════════════════════════════════════════════════════
+// Multilingual control library, Hub side: findings arrive from the audit
+// engine's handoff with controlName/controlCode always canonical English
+// (per the engine's own Parche 7 — collectAuditData() never persists
+// whatever language the auditor's UI happened to show). This is a
+// SEPARATE overlay from that canonical data, never merged into it, so a
+// control name displayed here can be localized to whatever language the
+// Hub's own UI is currently showing — unlike the engine's issued PDF,
+// the Hub is a live working tool for Management, not a frozen emitted
+// document, so it localizes to the CURRENT viewer's language the same
+// way the rest of its own UI (buttons, labels) already does.
+let controlsI18nHub = {}; // { es: { 'GOV-01': { name, question }, ... } }
+
+async function loadControlsI18nForHub(lang) {
+  if (lang === 'en') return true; // English IS the canonical source; nothing to load.
+  if (controlsI18nHub[lang]) return true; // already loaded/cached
+  try {
+    const response = await fetch(`../data/i18n/controls.${lang}.json`);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    controlsI18nHub[lang] = await response.json();
+    return true;
+  } catch (e) {
+    // Silent beyond a console warning: a missing translation file is not
+    // blocking — getLocalizedControlName() below falls back to the
+    // finding's own canonical controlName for every control, so nothing
+    // ever renders blank, just untranslated.
+    console.warn(`No control-library translation available for "${lang}":`, e.message);
+    controlsI18nHub[lang] = null;
+    return false;
+  }
+}
+
+// Resolves a finding's control name for DISPLAY only, in the Hub's
+// current language — never mutates the finding itself, and never
+// affects search/filter matching (getFilteredFindings() below still
+// matches against the canonical f.controlName/f.condition, so switching
+// language never changes which findings a saved search returns).
+function getLocalizedControlName(f) {
+  if (!f) return '';
+  if (state.lang === 'en' || !f.scfId) return f.controlName || '';
+  const translated = controlsI18nHub[state.lang]?.[f.scfId]?.name;
+  return translated || f.controlName || '';
+}
+
 let state = {
   auditData: null,
   findings: [],
@@ -621,7 +664,15 @@ let state = {
   // saved alongside history and reconciliation, never a bare {} at
   // module-load time so nextActionId() etc. always have something to
   // increment even before any audit is opened.
-  remediationRegister: defaultRemediationRegister()
+  remediationRegister: defaultRemediationRegister(),
+  // Data-loss protection: true whenever the user has typed something that
+  // hasn't reached saveActiveAuditToStorage() yet — the one gap the
+  // per-field onchange saves throughout this file don't cover, since
+  // onchange only fires on blur, not on every keystroke. Set by the
+  // global input listener below, cleared by saveActiveAuditToStorage()
+  // itself. Read by the beforeunload handler to warn before an
+  // in-progress edit is lost.
+  isDirty: false
 };
 
 let chartSeverity, chartStatus, chartAging, chartTrend;
@@ -718,6 +769,7 @@ const I18N = {
     pdf_excluded_findings_note: '{n} hallazgo(s) excluido(s) por discrepancia aceptada por el auditor: {ids}',
     pdf_status_disputed_badge: 'Discrepante', pdf_status_open_default: 'Abierto',
 remediation_plan_title:'Plan de Remediación',
+autosaved_toast:'Guardado automáticamente',
 source_audit_evidence_title:'Evidencia de Auditoría de Origen',
 auditor_recommendation_label:'Recomendación del Auditor', recommendation_not_provided:'No se incluyó recomendación en la auditoría de origen', remediation_guidance_label:'Orientación de Remediación',
 finding_details_label:'Detalle del Hallazgo', finding_condition_label:'Condición', finding_criteria_label:'Criterio', finding_cause_label:'Causa', finding_consequence_label:'Consecuencia',
@@ -745,6 +797,10 @@ plan_priority_low:'Baja',
 plan_priority_medium:'Media',
 plan_priority_high:'Alta',
 plan_priority_critical:'Crítica',
+chart_sev_critical:'Crítico', chart_sev_high:'Alto', chart_sev_medium:'Medio', chart_sev_low:'Bajo',
+chart_status_open:'Abierto', chart_status_assigned:'Asignado', chart_status_progress:'En curso', chart_status_pending:'Pendiente', chart_status_closed:'Cerrado', chart_status_accepted:'Aceptado',
+unassigned_label:'Sin asignar', click_to_generate:'Clic para generar', chart_compliance_rate_label:'Tasa de Cumplimiento %', chart_critical_findings_label:'Hallazgos Críticos', by_actor_label:'por', search_placeholder:'🔍 Buscar...', banner_not_issued:'No emitido', banner_status_draft:'BORRADOR', banner_status_in_progress:'EN PROGRESO',
+severity:'Severidad', legend_score_label:'Score:', legend_score_desc:'Impacto ÷ Esfuerzo (mayor = priorizar primero)', legend_time_label:'Tiempo:', legend_time_desc:'Crítico=15d · Alto=30d · Medio=60d · Bajo=90d', legend_cost_label:'Coste:', legend_cost_desc:'Bajo=$ · Medio=$$ · Alto=$$$', legend_strategy_label:'Estrategia:', legend_strategy_desc:'Resolver Quick Wins primero → generar impulso', history_field_status:'estado', history_field_treatment:'tratamiento', history_field_targetDate:'fecha objetivo', history_field_timeframe:'plazo', history_field_validationStatus:'validación', history_field_evidence:'evidencia', history_field_actionItem:'acción', history_field_milestone:'hito', history_field_dependency:'dependencia', history_field_blocker:'bloqueo', history_field_changeRequest:'solicitud de cambio', history_field_riskAcceptance:'aceptación de riesgo', history_field_implementationEvidence:'evidencia de implementación', history_field_remediationRecommendation:'orientación de remediación', history_field_auditorAdjudication:'adjudicación del auditor', banner_status_issued:'✅ EMITIDO · BLOQUEADO',
 plan_estimated_effort_label:'Esfuerzo Estimado',
 plan_estimated_cost_label:'Coste Estimado',
 plan_resources_label:'Recursos Necesarios',
@@ -1056,6 +1112,7 @@ plan_error_missing_resolution:'Debes describir cómo se resolvió.',
     pdf_excluded_findings_note: '{n} finding(s) excluded by an auditor-accepted dispute: {ids}',
     pdf_status_disputed_badge: 'Disputed', pdf_status_open_default: 'Open',
 remediation_plan_title:'Remediation Plan',
+autosaved_toast:'Auto-saved',
 source_audit_evidence_title:'Source Audit Evidence',
 auditor_recommendation_label:'Auditor Recommendation', recommendation_not_provided:'Not provided in source audit', remediation_guidance_label:'Remediation Guidance',
 finding_details_label:'Finding Detail', finding_condition_label:'Condition', finding_criteria_label:'Criteria', finding_cause_label:'Cause', finding_consequence_label:'Consequence',
@@ -1083,6 +1140,10 @@ plan_priority_low:'Low',
 plan_priority_medium:'Medium',
 plan_priority_high:'High',
 plan_priority_critical:'Critical',
+chart_sev_critical:'Critical', chart_sev_high:'High', chart_sev_medium:'Medium', chart_sev_low:'Low',
+chart_status_open:'Open', chart_status_assigned:'Assigned', chart_status_progress:'Progress', chart_status_pending:'Pending', chart_status_closed:'Closed', chart_status_accepted:'Accepted',
+unassigned_label:'Unassigned', click_to_generate:'Click to generate', chart_compliance_rate_label:'Compliance Rate %', chart_critical_findings_label:'Critical Findings', by_actor_label:'by', search_placeholder:'🔍 Search...', banner_not_issued:'Not issued', banner_status_draft:'DRAFT', banner_status_in_progress:'IN PROGRESS',
+severity:'Severity', legend_score_label:'Score:', legend_score_desc:'Impact ÷ Effort (higher = prioritize first)', legend_time_label:'Time:', legend_time_desc:'Critical=15d · High=30d · Medium=60d · Low=90d', legend_cost_label:'Cost:', legend_cost_desc:'Low=$ · Medium=$$ · High=$$$', legend_strategy_label:'Strategy:', legend_strategy_desc:'Solve Quick Wins first → build momentum', history_field_status:'status', history_field_treatment:'treatment', history_field_targetDate:'target date', history_field_timeframe:'timeframe', history_field_validationStatus:'validation', history_field_evidence:'evidence', history_field_actionItem:'action item', history_field_milestone:'milestone', history_field_dependency:'dependency', history_field_blocker:'blocker', history_field_changeRequest:'change request', history_field_riskAcceptance:'risk acceptance', history_field_implementationEvidence:'implementation evidence', history_field_remediationRecommendation:'remediation guidance', history_field_auditorAdjudication:'auditor adjudication', banner_status_issued:'✅ ISSUED · LOCKED',
 plan_estimated_effort_label:'Estimated Effort',
 plan_estimated_cost_label:'Estimated Cost',
 plan_resources_label:'Required Resources',
@@ -1426,6 +1487,7 @@ plan_error_missing_resolution:'You must describe how it was resolved.',
                 pdf_status_disputed_badge:'Contesté',
                 pdf_status_open_default:'Ouvert',
 remediation_plan_title:'Plan de Remédiation',
+autosaved_toast:'Enregistré automatiquement',
 source_audit_evidence_title:'Preuve d\'Audit d\'Origine',
 auditor_recommendation_label:'Recommandation de l\'Auditeur', recommendation_not_provided:'Non fournie dans l\'audit d\'origine', remediation_guidance_label:'Orientation de Remédiation',
 finding_details_label:'Détail du Constat', finding_condition_label:'Condition', finding_criteria_label:'Critère', finding_cause_label:'Cause', finding_consequence_label:'Conséquence',
@@ -1453,6 +1515,10 @@ plan_priority_low:'Faible',
 plan_priority_medium:'Moyenne',
 plan_priority_high:'Élevée',
 plan_priority_critical:'Critique',
+chart_sev_critical:'Critique', chart_sev_high:'Élevé', chart_sev_medium:'Moyen', chart_sev_low:'Faible',
+chart_status_open:'Ouvert', chart_status_assigned:'Assigné', chart_status_progress:'En cours', chart_status_pending:'En attente', chart_status_closed:'Fermé', chart_status_accepted:'Accepté',
+unassigned_label:'Non assigné', click_to_generate:'Cliquer pour générer', chart_compliance_rate_label:'Taux de Conformité %', chart_critical_findings_label:'Constats Critiques', by_actor_label:'par', search_placeholder:'🔍 Rechercher...', banner_not_issued:'Non émis', banner_status_draft:'BROUILLON', banner_status_in_progress:'EN COURS',
+severity:'Gravité', legend_score_label:'Score :', legend_score_desc:'Impact ÷ Effort (plus élevé = priorité)', legend_time_label:'Délai :', legend_time_desc:'Critique=15j · Élevé=30j · Moyen=60j · Faible=90j', legend_cost_label:'Coût :', legend_cost_desc:'Faible=$ · Moyen=$$ · Élevé=$$$', legend_strategy_label:'Stratégie :', legend_strategy_desc:'Résoudre les Quick Wins en premier → créer une dynamique', history_field_status:'statut', history_field_treatment:'traitement', history_field_targetDate:'date cible', history_field_timeframe:'délai', history_field_validationStatus:'validation', history_field_evidence:'preuve', history_field_actionItem:'action', history_field_milestone:'jalon', history_field_dependency:'dépendance', history_field_blocker:'blocage', history_field_changeRequest:'demande de changement', history_field_riskAcceptance:'acceptation du risque', history_field_implementationEvidence:'preuve de mise en œuvre', history_field_remediationRecommendation:'orientation de remédiation', history_field_auditorAdjudication:'décision de l\'auditeur', banner_status_issued:'✅ ÉMIS · VERROUILLÉ',
 plan_estimated_effort_label:'Effort Estimé',
 plan_estimated_cost_label:'Coût Estimé',
 plan_resources_label:'Ressources Nécessaires',
@@ -1809,6 +1875,7 @@ plan_error_missing_resolution:'Vous devez décrire comment cela a été résolu.
                 pdf_status_disputed_badge:'Angefochten',
                 pdf_status_open_default:'Offen',
 remediation_plan_title:'Sanierungsplan',
+autosaved_toast:'Automatisch gespeichert',
 source_audit_evidence_title:'Ursprüngliche Auditnachweise',
 auditor_recommendation_label:'Empfehlung des Auditors', recommendation_not_provided:'Im Ursprungsaudit nicht angegeben', remediation_guidance_label:'Sanierungsempfehlung',
 finding_details_label:'Feststellungsdetail', finding_condition_label:'Zustand', finding_criteria_label:'Kriterium', finding_cause_label:'Ursache', finding_consequence_label:'Konsequenz',
@@ -1836,6 +1903,10 @@ plan_priority_low:'Niedrig',
 plan_priority_medium:'Mittel',
 plan_priority_high:'Hoch',
 plan_priority_critical:'Kritisch',
+chart_sev_critical:'Kritisch', chart_sev_high:'Hoch', chart_sev_medium:'Mittel', chart_sev_low:'Niedrig',
+chart_status_open:'Offen', chart_status_assigned:'Zugewiesen', chart_status_progress:'In Bearbeitung', chart_status_pending:'Ausstehend', chart_status_closed:'Geschlossen', chart_status_accepted:'Akzeptiert',
+unassigned_label:'Nicht zugewiesen', click_to_generate:'Klicken zum Generieren', chart_compliance_rate_label:'Konformitätsrate %', chart_critical_findings_label:'Kritische Feststellungen', by_actor_label:'von', search_placeholder:'🔍 Suchen...', banner_not_issued:'Nicht ausgestellt', banner_status_draft:'ENTWURF', banner_status_in_progress:'IN BEARBEITUNG',
+severity:'Schweregrad', legend_score_label:'Score:', legend_score_desc:'Auswirkung ÷ Aufwand (höher = zuerst priorisieren)', legend_time_label:'Zeit:', legend_time_desc:'Kritisch=15T · Hoch=30T · Mittel=60T · Niedrig=90T', legend_cost_label:'Kosten:', legend_cost_desc:'Niedrig=$ · Mittel=$$ · Hoch=$$$', legend_strategy_label:'Strategie:', legend_strategy_desc:'Quick Wins zuerst lösen → Schwung aufbauen', history_field_status:'Status', history_field_treatment:'Behandlung', history_field_targetDate:'Zieldatum', history_field_timeframe:'Zeitrahmen', history_field_validationStatus:'Validierung', history_field_evidence:'Nachweis', history_field_actionItem:'Maßnahme', history_field_milestone:'Meilenstein', history_field_dependency:'Abhängigkeit', history_field_blocker:'Blockade', history_field_changeRequest:'Änderungsantrag', history_field_riskAcceptance:'Risikoakzeptanz', history_field_implementationEvidence:'Umsetzungsnachweis', history_field_remediationRecommendation:'Sanierungsempfehlung', history_field_auditorAdjudication:'Entscheidung des Auditors', banner_status_issued:'✅ AUSGESTELLT · GESPERRT',
 plan_estimated_effort_label:'Geschätzter Aufwand',
 plan_estimated_cost_label:'Geschätzte Kosten',
 plan_resources_label:'Benötigte Ressourcen',
@@ -2192,6 +2263,7 @@ plan_error_missing_resolution:'Sie müssen beschreiben, wie dies gelöst wurde.'
                 pdf_status_disputed_badge:'Contestado',
                 pdf_status_open_default:'Aberto',
 remediation_plan_title:'Plano de Remediação',
+autosaved_toast:'Salvo automaticamente',
 source_audit_evidence_title:'Evidência de Auditoria de Origem',
 auditor_recommendation_label:'Recomendação do Auditor', recommendation_not_provided:'Não fornecida na auditoria de origem', remediation_guidance_label:'Orientação de Remediação',
 finding_details_label:'Detalhe do Achado', finding_condition_label:'Condição', finding_criteria_label:'Critério', finding_cause_label:'Causa', finding_consequence_label:'Consequência',
@@ -2219,6 +2291,10 @@ plan_priority_low:'Baixa',
 plan_priority_medium:'Média',
 plan_priority_high:'Alta',
 plan_priority_critical:'Crítica',
+chart_sev_critical:'Crítico', chart_sev_high:'Alto', chart_sev_medium:'Médio', chart_sev_low:'Baixo',
+chart_status_open:'Aberto', chart_status_assigned:'Atribuído', chart_status_progress:'Em andamento', chart_status_pending:'Pendente', chart_status_closed:'Fechado', chart_status_accepted:'Aceito',
+unassigned_label:'Não atribuído', click_to_generate:'Clique para gerar', chart_compliance_rate_label:'Taxa de Conformidade %', chart_critical_findings_label:'Achados Críticos', by_actor_label:'por', search_placeholder:'🔍 Buscar...', banner_not_issued:'Não emitido', banner_status_draft:'RASCUNHO', banner_status_in_progress:'EM ANDAMENTO',
+severity:'Severidade', legend_score_label:'Score:', legend_score_desc:'Impacto ÷ Esforço (maior = priorizar primeiro)', legend_time_label:'Tempo:', legend_time_desc:'Crítico=15d · Alto=30d · Médio=60d · Baixo=90d', legend_cost_label:'Custo:', legend_cost_desc:'Baixo=$ · Médio=$$ · Alto=$$$', legend_strategy_label:'Estratégia:', legend_strategy_desc:'Resolver Quick Wins primeiro → gerar impulso', history_field_status:'status', history_field_treatment:'tratamento', history_field_targetDate:'data alvo', history_field_timeframe:'prazo', history_field_validationStatus:'validação', history_field_evidence:'evidência', history_field_actionItem:'ação', history_field_milestone:'marco', history_field_dependency:'dependência', history_field_blocker:'bloqueio', history_field_changeRequest:'solicitação de mudança', history_field_riskAcceptance:'aceitação de risco', history_field_implementationEvidence:'evidência de implementação', history_field_remediationRecommendation:'orientação de remediação', history_field_auditorAdjudication:'julgamento do auditor', banner_status_issued:'✅ EMITIDO · BLOQUEADO',
 plan_estimated_effort_label:'Esforço Estimado',
 plan_estimated_cost_label:'Custo Estimado',
 plan_resources_label:'Recursos Necessários',
@@ -2575,6 +2651,7 @@ plan_error_missing_resolution:'Você deve descrever como isso foi resolvido.',
                 pdf_status_disputed_badge:'معترض عليه',
                 pdf_status_open_default:'مفتوح',
 remediation_plan_title:'خطة المعالجة',
+autosaved_toast:'تم الحفظ تلقائيًا',
 source_audit_evidence_title:'دليل التدقيق الأصلي',
 auditor_recommendation_label:'توصية المدقق', recommendation_not_provided:'لم تُقدَّم في التدقيق الأصلي', remediation_guidance_label:'إرشادات المعالجة',
 finding_details_label:'تفاصيل الملاحظة', finding_condition_label:'الحالة', finding_criteria_label:'المعيار', finding_cause_label:'السبب', finding_consequence_label:'الأثر',
@@ -2602,6 +2679,10 @@ plan_priority_low:'منخفضة',
 plan_priority_medium:'متوسطة',
 plan_priority_high:'عالية',
 plan_priority_critical:'حرجة',
+chart_sev_critical:'حرج', chart_sev_high:'مرتفع', chart_sev_medium:'متوسط', chart_sev_low:'منخفض',
+chart_status_open:'مفتوح', chart_status_assigned:'مُسند', chart_status_progress:'قيد التنفيذ', chart_status_pending:'قيد الانتظار', chart_status_closed:'مغلق', chart_status_accepted:'مقبول',
+unassigned_label:'غير مُسند', click_to_generate:'انقر للإنشاء', chart_compliance_rate_label:'معدل الامتثال %', chart_critical_findings_label:'النتائج الحرجة', by_actor_label:'بواسطة', search_placeholder:'🔍 بحث...', banner_not_issued:'لم يُصدر', banner_status_draft:'مسودة', banner_status_in_progress:'قيد التنفيذ',
+severity:'الخطورة', legend_score_label:'النتيجة:', legend_score_desc:'التأثير ÷ الجهد (الأعلى = يُعطى الأولوية أولاً)', legend_time_label:'الوقت:', legend_time_desc:'حرج=15 يوم · مرتفع=30 يوم · متوسط=60 يوم · منخفض=90 يوم', legend_cost_label:'التكلفة:', legend_cost_desc:'منخفضة=$ · متوسطة=$$ · مرتفعة=$$$', legend_strategy_label:'الاستراتيجية:', legend_strategy_desc:'حل الانتصارات السريعة أولاً ← بناء الزخم', history_field_status:'الحالة', history_field_treatment:'المعالجة', history_field_targetDate:'التاريخ المستهدف', history_field_timeframe:'الإطار الزمني', history_field_validationStatus:'التحقق', history_field_evidence:'الدليل', history_field_actionItem:'إجراء', history_field_milestone:'معلم', history_field_dependency:'اعتمادية', history_field_blocker:'عائق', history_field_changeRequest:'طلب تغيير', history_field_riskAcceptance:'قبول المخاطر', history_field_implementationEvidence:'دليل التنفيذ', history_field_remediationRecommendation:'إرشادات المعالجة', history_field_auditorAdjudication:'قرار المدقق', banner_status_issued:'✅ صادر · مقفل',
 plan_estimated_effort_label:'الجهد المقدر',
 plan_estimated_cost_label:'التكلفة المقدرة',
 plan_resources_label:'الموارد المطلوبة',
@@ -2958,6 +3039,7 @@ plan_error_missing_resolution:'يجب وصف كيفية حل هذا.',
                 pdf_status_disputed_badge:'有争议',
                 pdf_status_open_default:'开放',
 remediation_plan_title:'整改计划',
+autosaved_toast:'已自动保存',
 source_audit_evidence_title:'来源审计证据',
 auditor_recommendation_label:'审计员建议', recommendation_not_provided:'原始审计中未提供', remediation_guidance_label:'整改指导',
 finding_details_label:'发现问题详情', finding_condition_label:'现状', finding_criteria_label:'标准', finding_cause_label:'原因', finding_consequence_label:'影响',
@@ -2985,6 +3067,10 @@ plan_priority_low:'低',
 plan_priority_medium:'中',
 plan_priority_high:'高',
 plan_priority_critical:'严重',
+chart_sev_critical:'严重', chart_sev_high:'高', chart_sev_medium:'中', chart_sev_low:'低',
+chart_status_open:'未处理', chart_status_assigned:'已分配', chart_status_progress:'进行中', chart_status_pending:'待处理', chart_status_closed:'已关闭', chart_status_accepted:'已接受',
+unassigned_label:'未分配', click_to_generate:'点击生成', chart_compliance_rate_label:'合规率 %', chart_critical_findings_label:'严重问题', by_actor_label:'由', search_placeholder:'🔍 搜索...', banner_not_issued:'未签发', banner_status_draft:'草稿', banner_status_in_progress:'进行中',
+severity:'严重性', legend_score_label:'评分：', legend_score_desc:'影响 ÷ 工作量（越高越优先）', legend_time_label:'时间：', legend_time_desc:'严重=15天 · 高=30天 · 中=60天 · 低=90天', legend_cost_label:'成本：', legend_cost_desc:'低=$ · 中=$$ · 高=$$$', legend_strategy_label:'策略：', legend_strategy_desc:'先解决速赢项目 → 建立势头', history_field_status:'状态', history_field_treatment:'处理方式', history_field_targetDate:'目标日期', history_field_timeframe:'时限', history_field_validationStatus:'验证', history_field_evidence:'证据', history_field_actionItem:'行动项', history_field_milestone:'里程碑', history_field_dependency:'依赖项', history_field_blocker:'阻碍', history_field_changeRequest:'变更请求', history_field_riskAcceptance:'风险接受', history_field_implementationEvidence:'实施证据', history_field_remediationRecommendation:'整改指导', history_field_auditorAdjudication:'审计员裁定', banner_status_issued:'✅ 已签发 · 已锁定',
 plan_estimated_effort_label:'预计工作量',
 plan_estimated_cost_label:'预计成本',
 plan_resources_label:'所需资源',
@@ -3241,11 +3327,15 @@ function t(key) {
       || key;
 }
 
-function setLanguage(lang) {
+async function setLanguage(lang) {
   state.lang = lang;
   localStorage.setItem('hub_lang', lang);
   document.documentElement.lang = lang;
   document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+  // Multilingual control library, Hub side: load (or reuse from cache)
+  // the translation overlay for this language before re-rendering
+  // anything that displays a control name.
+  await loadControlsI18nForHub(lang);
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.getAttribute('data-i18n');
     if (I18N[lang] && I18N[lang][key]) el.textContent = I18N[lang][key];
@@ -3260,6 +3350,17 @@ function setLanguage(lang) {
   if (state.selectedId) renderDetail(state.selectedId);
   renderPriorityMatrix();
   renderHistoricalEvolution();
+  // Multilingual fix: the severity/status distribution charts (Chart.js
+  // bar/doughnut) build their own label arrays at render time from
+  // chart_sev_*/chart_status_* — they were never re-rendered on a
+  // language switch, so they stayed in whatever language was active when
+  // the dashboard first loaded.
+  renderCharts();
+  // Multilingual fix: the top banner's "Not issued"/"DRAFT"/"IN
+  // PROGRESS"/"ISSUED · LOCKED" labels were hardcoded English strings —
+  // now resolved via t(), but renderBanner() itself was never called
+  // from here, so they never refreshed on a language switch either.
+  if (state.auditData) renderBanner();
 }
 
 // Wrapper for the language <select>'s onchange only — see the matching
@@ -5251,6 +5352,12 @@ function saveActiveAuditToStorage() {
   upsertIndexEntry(buildIndexEntry(state.activeAuditId, state.auditData, state.findings));
   // M3: this audit's own remediation-plan identifier counters.
   saveRemediationRegister(state.activeAuditId, state.remediationRegister);
+  // Data-loss protection: this is the ONE place every save path in the
+  // whole file funnels through (saveState() below is just an alias every
+  // existing call site uses), so resetting the dirty flag here — rather
+  // than at each of the 30+ individual onchange handlers — automatically
+  // covers all of them without having to touch every call site.
+  state.isDirty = false;
 }
 // Old name kept as an alias so every existing call site throughout the
 // file keeps working without having to hunt down and rename each one —
@@ -5659,13 +5766,13 @@ function renderBanner() {
   document.getElementById('banner-framework').textContent = state.auditData.framework;
   document.getElementById('banner-published').textContent = state.auditData.publishedAt 
     ? new Date(state.auditData.publishedAt).toLocaleDateString() 
-    : 'Not issued';
+    : t('banner_not_issued');
   const statusEl = document.getElementById('banner-status');
   const engStatus = state.auditData.engagement?.status || 'draft';
   const statusMap = {
-    draft: { label: 'DRAFT', cls: 'bg-slate-700 text-slate-300' },
-    in_progress: { label: 'IN PROGRESS', cls: 'bg-blue-900/50 text-blue-300 border border-blue-700' },
-    issued: { label: '✅ ISSUED · LOCKED', cls: 'bg-green-900/50 text-green-300 border border-green-700' }
+    draft: { label: t('banner_status_draft'), cls: 'bg-slate-700 text-slate-300' },
+    in_progress: { label: t('banner_status_in_progress'), cls: 'bg-blue-900/50 text-blue-300 border border-blue-700' },
+    issued: { label: t('banner_status_issued'), cls: 'bg-green-900/50 text-green-300 border border-green-700' }
   };
   const s = statusMap[engStatus] || statusMap.draft;
   statusEl.textContent = s.label;
@@ -5746,7 +5853,7 @@ function renderMatrixCards(findings, color) {
         <div class="flex items-start justify-between mb-1">
           <div class="flex-1 min-w-0">
             <p class="text-xs font-bold text-slate-100 truncate">${escapeHTML(f.controlCode || f.id)}</p>
-            <p class="text-[11px] text-slate-300 truncate">${escapeHTML(f.controlName || '')}</p>
+            <p class="text-[11px] text-slate-300 truncate">${escapeHTML(getLocalizedControlName(f))}</p>
           </div>
           <span class="score-badge text-[10px] font-bold text-white px-2 py-0.5 rounded ml-2 flex-shrink-0">
             🎯 ${f.score}/10
@@ -5823,7 +5930,7 @@ function renderHistoricalEvolution() {
       labels: history.map(c => `${c.year} · ${c.auditId}`),
       datasets: [
         {
-          label: 'Compliance Rate %',
+          label: t('chart_compliance_rate_label'),
           data: history.map(c => c.complianceRate),
           borderColor: '#6366f1',
           backgroundColor: 'rgba(99, 102, 241, 0.1)',
@@ -5833,7 +5940,7 @@ function renderHistoricalEvolution() {
           pointRadius: 5
         },
         {
-          label: 'Critical Findings',
+          label: t('chart_critical_findings_label'),
           data: history.map(c => c.criticalCount),
           borderColor: '#ef4444',
           backgroundColor: 'rgba(239, 68, 68, 0.1)',
@@ -5897,7 +6004,7 @@ function renderCharts() {
   chartSeverity = new Chart(document.getElementById('chartSeverity'), {
     type: 'doughnut',
     data: {
-      labels: ['Critical', 'High', 'Medium', 'Low'],
+      labels: [t('chart_sev_critical'), t('chart_sev_high'), t('chart_sev_medium'), t('chart_sev_low')],
       datasets: [{ data: [sev.critical, sev.high, sev.medium, sev.low], 
         backgroundColor: ['#dc2626', '#ea580c', '#eab308', '#16a34a'], borderWidth: 0 }]
     },
@@ -5911,7 +6018,7 @@ function renderCharts() {
   chartStatus = new Chart(document.getElementById('chartStatus'), {
     type: 'bar',
     data: {
-      labels: ['Open', 'Assigned', 'Progress', 'Pending', 'Closed', 'Accepted'],
+      labels: [t('chart_status_open'), t('chart_status_assigned'), t('chart_status_progress'), t('chart_status_pending'), t('chart_status_closed'), t('chart_status_accepted')],
       datasets: [{ data: [st.open, st.assigned, st.in_progress, st.pending_validation, st.closed, st.risk_accepted],
         backgroundColor: ['#64748b', '#3b82f6', '#6366f1', '#f59e0b', '#10b981', '#eab308'], borderRadius: 4 }]
     },
@@ -6043,17 +6150,17 @@ function renderTable(findings) {
             <span class="w-1 h-8 rounded-full ${sev === 'critical' ? 'bg-red-500' : sev === 'high' ? 'bg-orange-500' : sev === 'medium' ? 'bg-yellow-500' : 'bg-green-500'}"></span>
             <div>
               <p class="text-xs font-bold text-slate-100">${escapeHTML(f.controlCode || f.id)}</p>
-              <p class="text-[10px] text-slate-400 truncate max-w-[200px]">${escapeHTML(f.controlName || '')}</p>
+              <p class="text-[10px] text-slate-400 truncate max-w-[200px]">${escapeHTML(getLocalizedControlName(f))}</p>
             </div>
           </div>
         </td>
-        <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold border ${sevBadge(sev)}">${sev.toUpperCase()}</span></td>
+        <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold border ${sevBadge(sev)}">${t('chart_sev_' + sev).toUpperCase()}</span></td>
         <td class="p-3 text-xs text-slate-300 max-w-[200px] truncate">${escapeHTML(f.reason || '—')}</td>
-        <td class="p-3 text-xs text-slate-300">${f.owner ? escapeHTML(f.owner) : '<span class="text-slate-500 italic">Unassigned</span>'}</td>
+        <td class="p-3 text-xs text-slate-300">${f.owner ? escapeHTML(f.owner) : '<span class="text-slate-500 italic">' + t('unassigned_label') + '</span>'}</td>
         <td class="p-3 text-xs text-slate-300">${escapeHTML(f.timeframe || '—')}</td>
         <td class="p-3">
           <span class="px-2 py-0.5 rounded text-[10px] font-bold ${statusBadge(f.status)}">${(f.status || 'open').replace('_',' ').toUpperCase()}</span>
-          ${overdue ? '<span class="ml-1 text-[9px] text-red-400 font-bold pulse-overdue">⚠ OVERDUE</span>' : ''}
+          ${overdue ? '<span class="ml-1 text-[9px] text-red-400 font-bold pulse-overdue">⚠ ' + t('overdue_label') + '</span>' : ''}
           ${f.managementResponse?.validationStatus === 'disputed' ? `<span class="ml-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-orange-500/20 text-orange-300 border border-orange-500/50">⚠️ ${t('validation_disputed')}</span>` : ''}
           ${f.managementResponse?.validationStatus === 'closed_disputed' ? `<span class="ml-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-600/40 text-slate-300 border border-slate-500/50">🗂️ ${t('validation_closed_disputed')}</span>` : ''}
         </td>
@@ -6084,12 +6191,12 @@ function renderTable(findings) {
 
 function renderKanban(findings) {
   const columns = [
-    { key: 'open', label: 'Open', color: 'border-slate-500', bg: 'bg-slate-500/10' },
-    { key: 'assigned', label: 'Assigned', color: 'border-blue-500', bg: 'bg-blue-500/10' },
-    { key: 'in_progress', label: 'In Progress', color: 'border-indigo-500', bg: 'bg-indigo-500/10' },
-    { key: 'pending_validation', label: 'Pending', color: 'border-yellow-500', bg: 'bg-yellow-500/10' },
-    { key: 'closed', label: 'Closed', color: 'border-green-500', bg: 'bg-green-500/10' },
-    { key: 'risk_accepted', label: 'Accepted', color: 'border-amber-500', bg: 'bg-amber-500/10' }
+    { key: 'open', label: t('chart_status_open'), color: 'border-slate-500', bg: 'bg-slate-500/10' },
+    { key: 'assigned', label: t('chart_status_assigned'), color: 'border-blue-500', bg: 'bg-blue-500/10' },
+    { key: 'in_progress', label: t('chart_status_progress'), color: 'border-indigo-500', bg: 'bg-indigo-500/10' },
+    { key: 'pending_validation', label: t('chart_status_pending'), color: 'border-yellow-500', bg: 'bg-yellow-500/10' },
+    { key: 'closed', label: t('chart_status_closed'), color: 'border-green-500', bg: 'bg-green-500/10' },
+    { key: 'risk_accepted', label: t('chart_status_accepted'), color: 'border-amber-500', bg: 'bg-amber-500/10' }
   ];
 
   const cols = columns.map(col => {
@@ -6109,12 +6216,12 @@ function renderKanban(findings) {
             <span class="text-[10px] font-mono font-bold text-slate-100">${escapeHTML(f.controlCode || f.id)}</span>
             <span class="w-2 h-2 rounded-full ${sevColor[sev] || 'bg-slate-500'}"></span>
           </div>
-          <p class="text-[11px] text-slate-300 line-clamp-2 mb-2">${escapeHTML(f.controlName || '')}</p>
+          <p class="text-[11px] text-slate-300 line-clamp-2 mb-2">${escapeHTML(getLocalizedControlName(f))}</p>
           <div class="flex items-center justify-between text-[9px] text-slate-500">
             <span>${escapeHTML(f.owner || '—')}</span>
             <span class="font-bold ${scoreColor}"> ${score}/10</span>
           </div>
-          ${overdue ? '<div class="text-[9px] text-red-400 font-bold mt-1 pulse-overdue"> OVERDUE</div>' : `<div class="text-[9px] text-slate-500 mt-1">${daysOpen(f)}d</div>`}
+          ${overdue ? '<div class="text-[9px] text-red-400 font-bold mt-1 pulse-overdue"> ' + t('overdue_label') + '</div>' : `<div class="text-[9px] text-slate-500 mt-1">${daysOpen(f)}d</div>`}
         </div>
       `;
     }).join('');
@@ -6246,22 +6353,22 @@ function renderDetail(id) {
     <div class="fade-in">
       <div class="border-l-4 ${sevBorder[sev] || 'border-slate-500'} pl-3 mb-4">
         <p class="text-[10px] text-slate-400 uppercase tracking-wider">${escapeHTML(f.controlCode || f.id)}</p>
-        <h3 class="text-sm font-bold text-slate-100 mt-0.5">${escapeHTML(f.controlName || f.title || 'Finding')}</h3>
-        ${overdue ? '<p class="text-[10px] text-red-400 font-bold mt-1 pulse-overdue"> OVERDUE · ' + daysOpen(f) + ' ' + t('days_open') + '</p>' : ''}
+        <h3 class="text-sm font-bold text-slate-100 mt-0.5">${escapeHTML(getLocalizedControlName(f) || f.title || 'Finding')}</h3>
+        ${overdue ? '<p class="text-[10px] text-red-400 font-bold mt-1 pulse-overdue"> ' + t('overdue_label') + ' · ' + daysOpen(f) + ' ' + t('days_open') + '</p>' : ''}
       </div>
 
       <div class="grid grid-cols-2 gap-2 mb-4 text-xs">
         <div class="bg-slate-900/50 rounded p-2">
           <p class="text-[9px] text-slate-500 uppercase">${t('severity')}</p>
-          <p class="font-bold text-slate-200">${sev.toUpperCase()}</p>
+          <p class="font-bold text-slate-200">${t('chart_sev_' + sev).toUpperCase()}</p>
         </div>
         <div class="bg-slate-900/50 rounded p-2">
           <p class="text-[9px] text-slate-500 uppercase">${t('status')}</p>
-          <p class="font-bold text-slate-200">${(f.status || 'open').replace('_',' ')}</p>
+          <p class="font-bold text-slate-200">${t('status_' + (f.status || 'open'))}</p>
         </div>
         <div class="bg-slate-900/50 rounded p-2">
           <p class="text-[9px] text-slate-500 uppercase">${t('effort')}</p>
-          <p class="font-bold text-slate-200">${effortIcon} ${f.effort || '—'}</p>
+          <p class="font-bold text-slate-200">${effortIcon} ${f.effort ? t('effort_' + f.effort) : '—'}</p>
         </div>
         <div class="bg-slate-900/50 rounded p-2">
           <p class="text-[9px] text-slate-500 uppercase">${t('score')}</p>
@@ -6291,7 +6398,7 @@ function renderDetail(id) {
           <p class="text-[10px] text-slate-400 uppercase tracking-wider">${t('remediation_guidance_label')}</p>
           <button onclick="generateAIRecommendation('${escapeHTML(f.id)}')" class="text-[10px] text-indigo-400 hover:text-indigo-300">✨ ${t('generate_recommendation')}</button>
         </div>
-        <p class="text-xs text-slate-300 bg-slate-900/50 rounded p-2 leading-relaxed min-h-[40px]">${f.remediationRecommendation ? escapeHTML(f.remediationRecommendation) : '<span class="text-slate-500 italic">Click to generate</span>'}</p>
+        <p class="text-xs text-slate-300 bg-slate-900/50 rounded p-2 leading-relaxed min-h-[40px]">${f.remediationRecommendation ? escapeHTML(f.remediationRecommendation) : '<span class="text-slate-500 italic">' + t('click_to_generate') + '</span>'}</p>
       </div>`}
 
       <div class="mb-4">
@@ -7113,7 +7220,7 @@ function renderTimeline(history) {
         ${i < sorted.length - 1 ? '<div class="timeline-line"></div>' : ''}
         <div class="timeline-dot ${color}"></div>
         <div class="text-[10px]">
-          <p class="text-slate-200"><span class="font-bold">${icon} ${escapeHTML(h.field || 'change')}</span> <span class="text-slate-400">by ${h.actorName ? escapeHTML(h.actorName) + (h.actorRole ? ' (' + escapeHTML(h.actorRole) + ')' : '') : escapeHTML(h.actor || 'system')}</span></p>
+          <p class="text-slate-200"><span class="font-bold">${icon} ${escapeHTML(t('history_field_' + (h.field || 'change')) !== 'history_field_' + (h.field || 'change') ? t('history_field_' + (h.field || 'change')) : (h.field || 'change'))}</span> <span class="text-slate-400">${t('by_actor_label')} ${h.actorName ? escapeHTML(h.actorName) + (h.actorRole ? ' (' + escapeHTML(h.actorRole) + ')' : '') : escapeHTML(h.actor || 'system')}</span></p>
           <p class="text-slate-400 text-[9px]">${escapeHTML(note)}</p>
           <p class="text-slate-500 text-[9px] mt-0.5">${date}</p>
         </div>
@@ -8483,7 +8590,7 @@ function generateHubPDF() {
 
       // Control names routinely exceed the column width — wrap to up to 2
       // lines instead of hard-truncating with no indication text was cut.
-      const controlLines = doc.splitTextToSize(pdfSafe(f.controlName || ''), cols[2].w - 4).slice(0, 2);
+      const controlLines = doc.splitTextToSize(pdfSafe(getLocalizedControlName(f)), cols[2].w - 4).slice(0, 2);
       const headerRowH = controlLines.length > 1 ? 30 : 20;
       const cardH = PAD + headerRowH + detailBlockH + planBlockH + PAD;
 
@@ -8508,7 +8615,7 @@ function generateHubPDF() {
       doc.setTextColor(...sevColor);
       doc.setFont('Roboto', 'bold');
       doc.setFontSize(7);
-      txt(sev.toUpperCase(), cols[1].x, cy + 8);
+      txt(t('chart_sev_' + sev).toUpperCase(), cols[1].x, cy + 8);
       doc.setTextColor(...C.textDark);
       doc.setFont('Roboto', 'normal');
       doc.setFontSize(8);
@@ -8622,14 +8729,64 @@ function generateHubPDF() {
 }
 
 // ══════════════════════════════════════════════════════════════════════════
+// DATA-LOSS PROTECTION — mirrors the audit engine's own auto-save +
+// beforeunload pattern, which the Hub previously had neither of.
+// ══════════════════════════════════════════════════════════════════════════
+// Non-blocking, self-dismissing notification — same visual pattern as the
+// engine's own toast, so background saves never interrupt the user the
+// way a native alert() would.
+function showAutoSaveToast() {
+  let toast = document.getElementById('autosave-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'autosave-toast';
+    toast.style.cssText = 'position:fixed;bottom:20px;right:20px;background:#1e293b;color:#4ade80;border:1px solid #334155;padding:10px 16px;border-radius:8px;font-size:13px;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,.3);opacity:0;transition:opacity .3s;pointer-events:none;';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = '✅ ' + t('autosaved_toast');
+  clearTimeout(toast._hideTimer);
+  toast.style.opacity = '1';
+  toast._hideTimer = setTimeout(() => { toast.style.opacity = '0'; }, 2500);
+}
+
+// Most fields already save immediately on their own onchange handler —
+// the gap this covers is the field currently being typed into, which
+// hasn't lost focus (and so hasn't fired onchange) yet. Delegated on
+// document so it needs no changes to the ~30 individual input/textarea
+// elements renderDetail() and the various modals already render.
+document.addEventListener('input', (e) => {
+  if (e.target.matches('input, textarea, select')) state.isDirty = true;
+});
+
+// Background auto-save every 2 minutes, matching the engine's own
+// interval — never blocks, never validates, just persists whatever is
+// currently in state (which per-field onchange handlers already keep
+// current for anything that isn't mid-edit right now).
+setInterval(() => {
+  if (state.isDirty && state.activeAuditId) {
+    saveActiveAuditToStorage();
+    showAutoSaveToast();
+  }
+}, 120000);
+
+// Last-resort native warning if the tab is closed with a keystroke not
+// yet captured by onchange or the auto-save timer above.
+window.addEventListener('beforeunload', (e) => {
+  if (state.isDirty) {
+    e.preventDefault();
+    e.returnValue = '';
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════════════════════════════════════
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   // Real cross-page sync: the shared key (the most recent choice made on
   // ANY of the three AuditSym pages) wins at load time — see the matching
   // comment in landingPAge.html.
   const savedLang = localStorage.getItem('auditsym_shared_lang') || localStorage.getItem('hub_lang') || 'en';
-  setLanguage(savedLang);
+  await setLanguage(savedLang);
   renderRoleToggle();
   loadState();
 });
