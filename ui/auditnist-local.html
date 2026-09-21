@@ -6,6 +6,7 @@
 <title>🔐 AuditSym + IA</title>
 
 <script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <script>
 tailwind.config = {
 darkMode: 'class',
@@ -19,6 +20,188 @@ cyberevil: '#ef4444', cyberwarn: '#facc15', cyberok: '#22c55e'
 }
 }
 </script>
+<!-- ✨ Tipografía Inter (la usan Linear, Vercel, Notion) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ── Tipografía y ajustes ópticos ─────────────────────────────────────── */
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  letter-spacing: -0.011em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Números tabulares — las métricas del dashboard no "saltan" al cambiar */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
+
+/* ── Icono de calendario visible Y funcional ─────────────────────────── */
+/* El SVG cian es solo visual. El picker nativo del navegador se vuelve
+   completamente transparente pero ocupa TODO el input, así que al hacer
+   clic en cualquier parte (incluyendo el icono cian) se abre el calendario. */
+input[type="date"],
+input[type="datetime-local"] {
+  color-scheme: dark;
+  /* Icono SVG cian — visible a la derecha */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2338bdf8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'%3E%3C/rect%3E%3Cline x1='16' y1='2' x2='16' y2='6'%3E%3C/line%3E%3Cline x1='8' y1='2' x2='8' y2='6'%3E%3C/line%3E%3Cline x1='3' y1='10' x2='21' y2='10'%3E%3C/line%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.6rem center;
+  background-size: 16px;
+  padding-right: 2.2rem !important;
+  cursor: pointer; /* ← Indica que es interactivo */
+  position: relative;
+}
+
+/* Picker nativo: completamente transparente pero ocupa TODO el input.
+   Así al hacer clic en cualquier parte del campo (incluyendo el icono
+   cian) se abre el calendario del navegador. */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  margin: 0;
+  padding: 0;
+}
+
+/* Firefox */
+input[type="date"]::-moz-calendar-picker-indicator {
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+}
+/* ── Scrollbar personalizado ──────────────────────────────────────────── */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.3); }
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #334155, #1e293b);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #475569, #334155);
+  background-clip: padding-box;
+}
+* { scrollbar-width: thin; scrollbar-color: #334155 rgba(15, 23, 42, 0.3); }
+
+/* ── Focus rings accesibles ───────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* ── Progress bar con gradiente animado ───────────────────────────────── */
+.progress-shimmer {
+  background: linear-gradient(90deg, #22c55e 0%, #38bdf8 50%, #22c55e 100%);
+  background-size: 200% 100%;
+  animation: shimmer 3s ease infinite;
+}
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── Backdrop blur en modales ─────────────────────────────────────────── */
+.modal-backdrop {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* ── Inputs con transición suave ──────────────────────────────────────── */
+input, select, textarea {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+input:focus, select:focus, textarea:focus {
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+}
+
+/* ── Tarjetas KPI con elevación al hover ──────────────────────────────── */
+.kpi-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+/* ── Botones con micro-animación ──────────────────────────────────────── */
+button {
+  transition: transform 0.1s ease, box-shadow 0.2s ease;
+}
+button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+/* ── Inputs de fecha "Real" con estado visual ─────────────────────────── */
+/* Cuando la fecha real se compara con la prevista, el input se colorea
+   automáticamente: rojo = retraso, verde = a tiempo o adelantado.
+   Esto convierte la matriz de fechas en un semáforo de gestión del
+   encargo, visible de un vistazo sin leer los indicadores de texto. */
+input[type="date"].date-real-late {
+  border-left: 3px solid #ef4444 !important;
+  color: #fca5a5 !important;
+  background-color: rgba(239, 68, 68, 0.08) !important;
+  box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.25);
+  animation: pulse-late 2.5s ease-in-out infinite;
+}
+input[type="date"].date-real-early {
+  border-left: 3px solid #22c55e !important;
+  color: #86efac !important;
+  background-color: rgba(34, 197, 94, 0.06) !important;
+  box-shadow: inset 0 0 0 1px rgba(34, 197, 94, 0.2);
+}
+input[type="date"].date-real-ontime {
+  border-left: 3px solid #22c55e !important;
+  color: #86efac !important;
+  background-color: rgba(34, 197, 94, 0.04) !important;
+}
+
+/* Pulse sutil solo cuando hay retraso — llama la atención sin ser molesto */
+@keyframes pulse-late {
+  0%, 100% { box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.25); }
+  50%      { box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.5), 0 0 8px rgba(239, 68, 68, 0.15); }
+}
+
+/* Badge inline de estado (se inyecta al lado del input cuando hay retraso) */
+.date-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  margin-left: 6px;
+  white-space: nowrap;
+  letter-spacing: 0.03em;
+}
+.date-status-badge.late {
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+}
+.date-status-badge.early {
+  background: rgba(34, 197, 94, 0.12);
+  color: #86efac;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+.date-status-badge.ontime {
+  background: rgba(34, 197, 94, 0.10);
+  color: #86efac;
+  border: 1px solid rgba(34, 197, 94, 0.25);
+}
+</style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -353,8 +536,7 @@ Return ONLY valid JSON with no markdown, no code fences, no text outside the JSO
 
 </script>
 </head>
-<body class="bg-cyberbg text-gray-100 font-mono min-h-screen flex flex-col">
-
+<body class="bg-cyberbg text-gray-100 font-sans min-h-screen flex flex-col">
 <!-- Header Premium con Logo -->
 <header class="container mx-auto p-4">
   <div class="bg-gradient-to-r from-slate-900/80 via-cyberpanel to-slate-900/80 border border-cyberaccent/30 rounded-xl p-4 shadow-lg shadow-cyberaccent/10">
@@ -499,46 +681,46 @@ class="absolute w-full bg-gray-800 border border-gray-600 rounded-lg mt-1 max-h-
   <!-- Fila 1: KPIs Principales (7 columnas balanceadas) -->
   <div class="grid grid-cols-7 gap-3">
     <!-- Total Evaluados -->
-    <div class="bg-gradient-to-br from-gray-800 to-gray-700/50 border border-gray-600 rounded-lg p-3 text-center hover:border-cyberaccent transition-colors">
-      <div class="text-2xl font-bold text-cyberaccent" id="dash-total-controls">0</div>
-      <div class="text-xs text-gray-400" data-i18n="dash_total">Total Evaluados</div>
-      <div class="text-[10px] text-gray-500 mt-1" id="dash-total-remaining">0 pendientes</div>
-    </div>
+  <div class="kpi-card bg-gradient-to-br from-gray-800 to-gray-700/50 border border-gray-600 rounded-lg p-3 text-center hover:border-cyberaccent">
+    <div class="text-2xl font-bold text-cyberaccent tabular-nums" id="dash-total-controls">0</div>
+    <div class="text-xs text-gray-400" data-i18n="dash_total">Total Evaluados</div>
+  <div class="text-[10px] text-gray-500 mt-1" id="dash-total-remaining">0 pendientes</div>
+  </div>
 
     <!-- Cumplidos -->
-    <div class="bg-gradient-to-br from-green-900/30 to-green-800/20 border border-green-600/50 rounded-lg p-3 text-center hover:border-green-400 transition-colors">
-      <div class="text-2xl font-bold text-cyberok" id="dash-compliant">0</div>
-      <div class="text-xs text-green-300" data-i18n="dash_compliant">Cumplidos ✅</div>
-    </div>
+  <div class="kpi-card bg-gradient-to-br from-green-900/30 to-green-800/20 border border-green-600/50 rounded-lg p-3 text-center hover:border-green-400">
+    <div class="text-2xl font-bold text-cyberok tabular-nums" id="dash-compliant">0</div>
+    <div class="text-xs text-green-300" data-i18n="dash_compliant">Cumplidos ✅</div>
+  </div>
 
     <!-- Parcial -->
-    <div class="bg-gradient-to-br from-yellow-900/30 to-yellow-800/20 border border-yellow-600/50 rounded-lg p-3 text-center hover:border-yellow-400 transition-colors">
-      <div class="text-2xl font-bold text-cyberwarn" id="dash-partial">0</div>
-      <div class="text-xs text-yellow-300" data-i18n="partial_label">Parcial ⚠️</div>
-    </div>
+  <div class="kpi-card bg-gradient-to-br from-yellow-900/30 to-yellow-800/20 border border-yellow-600/50 rounded-lg p-3 text-center hover:border-yellow-400">
+    <div class="text-2xl font-bold text-cyberwarn tabular-nums" id="dash-partial">0</div>
+    <div class="text-xs text-yellow-300" data-i18n="partial_label">Parcial ⚠️</div>
+  </div>
 
     <!-- No Cumplidos -->
-    <div class="bg-gradient-to-br from-red-900/30 to-red-800/20 border border-red-600/50 rounded-lg p-3 text-center hover:border-red-400 transition-colors">
-      <div class="text-2xl font-bold text-cyberevil" id="dash-noncompliant">0</div>
-      <div class="text-xs text-red-300" data-i18n="dash_noncompliant">No Cumplidos ❌</div>
-    </div>
+  <div class="kpi-card bg-gradient-to-br from-red-900/30 to-red-800/20 border border-red-600/50 rounded-lg p-3 text-center hover:border-red-400">
+    <div class="text-2xl font-bold text-cyberevil tabular-nums" id="dash-noncompliant">0</div>
+    <div class="text-xs text-red-300" data-i18n="dash_noncompliant">No Cumplidos ❌</div>
+  </div>
 
     <!-- No Aplicable — a deliberate scoping decision, not a finding: its own
          neutral (violet) color so it's never mistaken for a compliance gap
          or for "not yet evaluated". Excluded from the compliance rate. -->
-    <div class="bg-gradient-to-br from-violet-900/30 to-violet-800/20 border border-violet-500/50 rounded-lg p-3 text-center hover:border-violet-400 transition-colors">
-      <div class="text-2xl font-bold text-violet-400" id="dash-not-applicable">0</div>
-      <div class="text-xs text-violet-300" data-i18n="dash_not_applicable">No Aplicable 🚫</div>
-    </div>
+  <div class="kpi-card bg-gradient-to-br from-violet-900/30 to-violet-800/20 border border-violet-500/50 rounded-lg p-3 text-center hover:border-violet-400">
+    <div class="text-2xl font-bold text-violet-400 tabular-nums" id="dash-not-applicable">0</div>
+    <div class="text-xs text-violet-300" data-i18n="dash_not_applicable">No Aplicable 🚫</div>
+  </div>
 
     <!-- Riesgos Críticos -->
-    <div class="bg-gradient-to-br from-red-950/60 to-red-900/40 border border-red-700/50 rounded-lg p-3 text-center hover:border-red-500 transition-colors">
-    <div class="text-2xl font-bold text-red-500" id="dash-critical-risk">0</div>
+  <div class="kpi-card bg-gradient-to-br from-red-950/60 to-red-900/40 border border-red-700/50 rounded-lg p-3 text-center hover:border-red-500">
+    <div class="text-2xl font-bold text-red-500 tabular-nums" id="dash-critical-risk">0</div>
     <div class="text-xs text-red-400" data-i18n="dash_critical_risk">Riesgos Críticos 🔴🔴</div>
-    </div>
+  </div>
     <!-- Riesgos Altos -->
-    <div class="bg-gradient-to-br from-orange-900/40 to-red-900/20 border border-orange-600/50 rounded-lg p-3 text-center hover:border-orange-400 transition-colors">
-    <div class="text-2xl font-bold text-orange-400" id="dash-high-risk">0</div>
+  <div class="kpi-card bg-gradient-to-br from-orange-900/40 to-red-900/20 border border-orange-600/50 rounded-lg p-3 text-center hover:border-orange-400">
+    <div class="text-2xl font-bold text-orange-400 tabular-nums" id="dash-high-risk">0</div>
     <div class="text-xs text-orange-300" data-i18n="dash_high_risk">Riesgos Altos 🔴</div>
     </div>
   </div>
@@ -552,8 +734,8 @@ class="absolute w-full bg-gray-800 border border-gray-600 rounded-lg mt-1 max-h-
       </div>
       <div class="flex-1 mx-4">
         <div class="w-full bg-gray-700 h-2 rounded-full">
-          <div class="bg-gradient-to-r from-cyberok to-green-400 h-2 rounded-full transition-all duration-500" 
-               id="dash-compliance-bar" style="width: 0%"></div>
+    <div class="progress-shimmer h-2 rounded-full transition-all duration-500"
+         id="dash-compliance-bar" style="width: 0%"></div>
         </div>
       </div>
       <span class="text-xs text-gray-400" id="dash-compliance-text">0/0 controles</span>
@@ -1101,7 +1283,7 @@ data-i18n="export_json_btn">💾 Exportar JSON</button>
 
 <!-- Evaluation History Modal -->
 <div id="evaluation-history-modal"
-class="fixed inset-0 bg-black bg-opacity-80 z-50 hidden items-center justify-center"
+class="fixed inset-0 bg-black bg-opacity-80 modal-backdrop z-50 hidden items-center justify-center"
 style="display:none">
 <div class="bg-cyberpanel border border-cyberaccent rounded-xl w-11/12 max-w-5xl flex flex-col"
 style="max-height:90vh">
@@ -1122,7 +1304,7 @@ class="w-full bg-gray-700 text-gray-100 rounded px-3 py-2 text-sm border border-
 
 <!-- Template Library Modal -->
 <div id="template-modal"
-class="fixed inset-0 bg-black bg-opacity-80 z-50 hidden items-center justify-center"
+class="fixed inset-0 bg-black bg-opacity-80 modal-backdrop z-50 hidden items-center justify-center"
 style="display:none">
 <div class="bg-cyberpanel border border-cyberaccent rounded-xl w-11/12 max-w-5xl flex flex-col"
 style="max-height:90vh">
@@ -3947,18 +4129,54 @@ function reopenForNewVersion() {
 function renderDelayIndicator(plannedVal, actualVal, targetId, fallbackHtml) {
   const el = document.getElementById(targetId);
   if (!el) return;
-  if (!actualVal) { el.innerHTML = fallbackHtml || ''; return; }
+
+  // Deriva el ID del input "Real" a partir del targetId:
+  //   eng_fieldwork_start_delay  → eng_fieldwork_start_actual
+  //   eng_draft_report_delay     → eng_draft_report_actual
+  //   eng_final_report_delay     → eng_issued_at  (caso especial)
+  let inputId = targetId.replace(/_delay$/, '_actual');
+  if (targetId === 'eng_final_report_delay') inputId = 'eng_issued_at';
+  const inputEl = document.getElementById(inputId);
+
+  // Limpia estados anteriores del input (si había una fecha y se borra)
+  if (inputEl) {
+    inputEl.classList.remove('date-real-late', 'date-real-early', 'date-real-ontime');
+  }
+
+  if (!actualVal) {
+    el.innerHTML = fallbackHtml || '';
+    return;
+  }
   if (!plannedVal) {
     el.innerHTML = `<span class="text-gray-500">${T('date_delay_no_plan')}</span>`;
     return;
   }
+
   const days = Math.round((new Date(actualVal) - new Date(plannedVal)) / 86400000);
+  const dayWord = days === 1 || days === -1 ? T('date_delay_day') : T('date_delay_days');
+
   if (days > 0) {
-    el.innerHTML = `<span class="text-red-400">⚠ ${days} ${days === 1 ? T('date_delay_day') : T('date_delay_days')} ${T('date_delay_late')}</span>`;
+    // RETRASO — input rojo + badge inline + indicador de texto
+    el.innerHTML = `<span class="text-red-400 font-bold">⚠ ${days} ${dayWord} ${T('date_delay_late')}</span>`;
+    if (inputEl) {
+      inputEl.classList.add('date-real-late');
+      inputEl.title = `⚠ ${days} ${dayWord} de retraso respecto a la fecha prevista`;
+    }
   } else if (days < 0) {
-    el.innerHTML = `<span class="text-cyberok">✓ ${Math.abs(days)} ${Math.abs(days) === 1 ? T('date_delay_day') : T('date_delay_days')} ${T('date_delay_early')}</span>`;
+    // ADELANTO — input verde + badge inline + indicador de texto
+    const absDays = Math.abs(days);
+    el.innerHTML = `<span class="text-cyberok">⬆ ${absDays} ${dayWord} ${T('date_delay_early')}</span>`;
+    if (inputEl) {
+      inputEl.classList.add('date-real-early');
+      inputEl.title = `⬆ ${absDays} ${dayWord} de adelanto respecto a la fecha prevista`;
+    }
   } else {
+    // A TIEMPO — input verde suave + indicador de texto
     el.innerHTML = `<span class="text-cyberok">✓ ${T('date_delay_on_time')}</span>`;
+    if (inputEl) {
+      inputEl.classList.add('date-real-ontime');
+      inputEl.title = '✓ Cumplido en la fecha prevista';
+    }
   }
 }
 
@@ -9860,7 +10078,7 @@ window.addEventListener('beforeunload', function (e) {
 <!-- ─────────────────────────────────────────────────────────────────────────── -->
 <!-- 📄 AUTO ANALYZE MODAL                                                        -->
 <!-- ─────────────────────────────────────────────────────────────────────────── -->
-<div id="auto-analyze-modal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4">
+<div id="auto-analyze-modal" class="fixed inset-0 bg-black/80 modal-backdrop z-50 hidden flex items-center justify-center p-4">
   <div class="bg-gray-900 border border-indigo-500 rounded-xl w-full max-w-lg shadow-2xl flex flex-col" style="max-height:90vh">
 
     <!-- Header -->
@@ -9945,7 +10163,7 @@ window.addEventListener('beforeunload', function (e) {
 <!-- ─────────────────────────────────────────────────────────────────────────── -->
 <!-- ⚙️ AI SETTINGS MODAL                                                        -->
 <!-- ─────────────────────────────────────────────────────────────────────────── -->
-<div id="ai-settings-modal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4">
+<div id="ai-settings-modal" class="fixed inset-0 bg-black/80 modal-backdrop z-50 hidden flex items-center justify-center p-4">
   <div class="bg-gray-900 border border-blue-500 rounded-xl w-full max-w-md shadow-2xl">
 
     <!-- Header -->
@@ -10017,7 +10235,7 @@ window.addEventListener('beforeunload', function (e) {
 <!-- ─────────────────────────────────────────────────────────────────────────── -->
 <!-- 🤖 AI ASSESSMENT MODAL                                                      -->
 <!-- ─────────────────────────────────────────────────────────────────────────── -->
-<div id="ai-assessment-modal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4">
+<div id="ai-assessment-modal" class="fixed inset-0 bg-black/80 modal-backdrop z-50 hidden flex items-center justify-center p-4">
   <div class="bg-gray-900 border border-purple-500 rounded-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl">
 
     <!-- Header -->
@@ -10125,7 +10343,7 @@ window.addEventListener('beforeunload', function (e) {
      exactly like the rest of this page's static HTML — setLanguage()
      re-translates it the same way it does everything else, on language
      change, not by trying to interpolate JS at parse time. -->
-<div id="evidence-item-modal" class="hidden fixed inset-0 bg-black/80 z-50 items-center justify-center p-4">
+<div id="evidence-item-modal" class="hidden fixed inset-0 bg-black/80 modal-backdrop z-50 items-center justify-center p-4">
   <div class="bg-gray-800 rounded-lg border border-gray-600 w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto">
     <div class="flex items-center justify-between px-5 py-3 border-b border-gray-700">
       <h3 class="font-bold text-cyberaccent text-sm" data-i18n="evidence_modal_title">Nueva Evidencia Estructurada</h3>
@@ -10184,7 +10402,7 @@ window.addEventListener('beforeunload', function (e) {
 </div>
 
 <!-- ── Modo Enfoque — near-fullscreen editor for Notas/Evidencia ────────── -->
-<div id="focus-mode-overlay" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 md:p-10">
+<div id="focus-mode-overlay" class="hidden fixed inset-0 bg-black/70 modal-backdrop z-50 flex items-center justify-center p-4 md:p-10">
   <div class="bg-gray-800 rounded-lg border border-gray-600 w-full h-full max-w-5xl flex flex-col shadow-2xl">
     <div class="flex items-center justify-between px-5 py-3 border-b border-gray-700">
       <h3 id="focus-mode-title" data-i18n="focus_mode_title" class="font-bold text-cyberaccent text-sm truncate pr-4">Modo Enfoque</h3>
@@ -10200,6 +10418,13 @@ window.addEventListener('beforeunload', function (e) {
     </div>
   </div>
 </div>
+
+<script>
+// Inicializa todos los iconos Lucide después de cargar la página
+document.addEventListener('DOMContentLoaded', () => {
+  if (window.lucide) lucide.createIcons();
+});
+</script>
 
 </body>
 </html>
