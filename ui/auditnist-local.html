@@ -585,7 +585,7 @@ Return ONLY valid JSON with no markdown, no code fences, no text outside the JSO
   <span class="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></span>
   
   <!-- Icono -->
-  <span class="relative text-base group-hover:scale-110 transition-transform duration-200">🆕</span>
+ <i data-lucide="plus" class="relative w-4 h-4 group-hover:scale-110 transition-transform duration-200"></i>
   
   <!-- Texto -->
   <span data-i18n="new_audit_btn" class="relative hidden sm:inline">Nueva Auditoría</span>
@@ -629,13 +629,17 @@ class="bg-cyberpanel text-white border border-cyberaccent px-3 py-1 rounded">
 </select>
 
 <button onclick="openTemplateLibrary()"
-onmouseenter="showGridPreview()"
-class="px-3 py-1 bg-cyberaccent text-black font-bold rounded text-sm hover:bg-blue-300"
-data-i18n="template_library_btn">📚 Biblioteca</button>
-
+  onmouseenter="showGridPreview()"
+  class="px-3 py-1.5 bg-cyberaccent text-black font-bold rounded text-sm hover:bg-blue-300 flex items-center gap-1.5"
+  data-i18n="template_library_btn">
+  <i data-lucide="book-open" class="w-4 h-4"></i>
+  <span>Biblioteca</span>
+</button>
 <button onclick="openEvaluationHistory()"
-class="px-3 py-1 bg-indigo-600 text-white font-bold rounded text-sm hover:bg-indigo-500"
-data-i18n="history_btn">📜 Historial
+  class="px-3 py-1.5 bg-indigo-600 text-white font-bold rounded text-sm hover:bg-indigo-500 flex items-center gap-1.5"
+  data-i18n="history_btn">
+  <i data-lucide="history" class="w-4 h-4"></i>
+  <span>Historial</span>
 </button>
 
 <!-- Vista Dashboard / Vista de Trabajo — the dashboard view is great for a
@@ -644,11 +648,11 @@ data-i18n="history_btn">📜 Historial
      View collapses the dashboards and swaps the stacked control list for a
      compact index + a single large focused panel. -->
 <button id="work-view-toggle-btn" onclick="toggleWorkView()"
-class="px-3 py-1 bg-gray-700 text-cyberaccent font-bold rounded text-sm hover:bg-gray-600 border border-cyberaccent/40"
-title="Alternar entre la vista de dashboard y una vista compacta para trabajar control a control" data-i18n-title="work_view_toggle_title">
-<span data-i18n="work_view_btn">📝 Vista de Trabajo</span>
+  class="px-3 py-1.5 bg-gray-700 text-cyberaccent font-bold rounded text-sm hover:bg-gray-600 border border-cyberaccent/40 flex items-center gap-1.5"
+  title="Alternar entre la vista de dashboard y una vista compacta para trabajar control a control" data-i18n-title="work_view_toggle_title">
+  <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+  <span data-i18n="work_view_btn">Vista de Trabajo</span>
 </button>
-</div>
 
 <!-- 🔹 BUSCADOR DE AUDITORÍAS GUARDADAS -->
 <div class="container mx-auto px-4 mt-4">
@@ -1141,28 +1145,46 @@ data-i18n="expand_all">↕ Expandir</button>
 class="px-3 py-2 bg-gray-600 text-white rounded hover:bg-gray-500 text-sm"
 data-i18n="collapse_all">↕ Colapsar</button>
 <button onclick="openAutoAnalyze()"
-class="px-3 py-2 bg-indigo-700 text-white rounded hover:bg-indigo-600 text-sm font-bold"
-data-i18n="auto_analyze_btn">📄 Auto Analyze</button>
+  class="px-3 py-2 bg-indigo-700 text-white rounded hover:bg-indigo-600 text-sm font-bold flex items-center gap-1.5"
+  data-i18n="auto_analyze_btn">
+  <i data-lucide="file-search" class="w-4 h-4"></i>
+  <span>Auto Analyze</span>
+</button>
 <button id="ai-settings-btn" onclick="openAISettings()"
-class="px-3 py-2 bg-gray-700 text-white rounded hover:bg-gray-600 text-sm"
-title="AI Provider Settings">🖥️ AI</button>
+  class="px-3 py-2 bg-gray-700 text-white rounded hover:bg-gray-600 text-sm flex items-center gap-1.5"
+  title="AI Provider Settings">
+  <i data-lucide="cpu" class="w-4 h-4"></i>
+  <span>AI</span>
+</button>
 <button onclick="runAIAssessment()"
-class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-500 font-bold"
-data-i18n="ai_assessment_btn">🤖 AI Assessment</button>
+  class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-500 font-bold flex items-center gap-1.5"
+  data-i18n="ai_assessment_btn">
+  <i data-lucide="brain" class="w-4 h-4"></i>
+  <span>AI Assessment</span>
+</button>
 <button onclick="generatePDF()"
-class="px-4 py-2 bg-cyberok text-black rounded hover:bg-green-400"
-data-i18n="generate_pdf_btn">📄 PDF</button>
+  class="px-4 py-2 bg-cyberok text-black rounded hover:bg-green-400 flex items-center gap-1.5"
+  data-i18n="generate_pdf_btn">
+  <i data-lucide="file-down" class="w-4 h-4"></i>
+  <span>PDF</span>
+</button>
 <button onclick="exportToJSON()"
-class="px-4 py-2 bg-cyberwarn text-black rounded hover:bg-yellow-500"
-data-i18n="export_json_btn">💾 Exportar JSON</button>
-<label class="px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-600 cursor-pointer">
-<span data-i18n="import_json_btn">📂 Importar JSON</span>
-<input type="file" onchange="importFromJSON(this)" class="hidden" accept=".json">
+  class="px-4 py-2 bg-cyberwarn text-black rounded hover:bg-yellow-500 flex items-center gap-1.5"
+  data-i18n="export_json_btn">
+  <i data-lucide="download" class="w-4 h-4"></i>
+  <span>Exportar JSON</span>
+</button>
+<label class="px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-600 cursor-pointer flex items-center gap-1.5">
+  <i data-lucide="upload" class="w-4 h-4"></i>
+  <span data-i18n="import_json_btn">Importar JSON</span>
+  <input type="file" onchange="importFromJSON(this)" class="hidden" accept=".json">
 </label>
- <button onclick="issueFinalReport()"
-          class="px-4 py-2 bg-purple-700 text-white rounded hover:bg-purple-600 font-bold"
-          data-i18n="issue_report_btn">📢 Emitir Informe Final</button>
-</div>
+<button onclick="issueFinalReport()"
+  class="px-4 py-2 bg-purple-700 text-white rounded hover:bg-purple-600 font-bold flex items-center gap-1.5"
+  data-i18n="issue_report_btn">
+  <i data-lucide="send" class="w-4 h-4"></i>
+  <span>Emitir Informe Final</span>
+</button>
 
 <!-- Issue #1 (audit-handoff): shown right after a successful issuance.
      Two separate buttons rather than two automatic downloads — each
